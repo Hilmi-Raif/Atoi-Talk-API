@@ -495,13 +495,29 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 
 	if s.wsHub != nil && len(createdSystemMessages) > 0 {
 		go func() {
+			msgIDs := make([]uuid.UUID, 0, len(createdSystemMessages))
 			for _, sysMsg := range createdSystemMessages {
-				fullMsg, err := s.client.Message.Query().
-					Where(message.ID(sysMsg.ID)).
-					WithSender().
-					Only(context.Background())
-				if err != nil {
-					slog.Error("Failed to fetch system message for broadcast", "error", err, "messageID", sysMsg.ID)
+				msgIDs = append(msgIDs, sysMsg.ID)
+			}
+
+			fullMsgs, err := s.client.Message.Query().
+				Where(message.IDIn(msgIDs...)).
+				WithSender().
+				All(context.Background())
+			if err != nil {
+				slog.Error("Failed to fetch system messages for broadcast", "error", err, "messageIDs", msgIDs)
+				return
+			}
+
+			fullMsgByID := make(map[uuid.UUID]*ent.Message, len(fullMsgs))
+			for _, fullMsg := range fullMsgs {
+				fullMsgByID[fullMsg.ID] = fullMsg
+			}
+
+			for _, sysMsg := range createdSystemMessages {
+				fullMsg := fullMsgByID[sysMsg.ID]
+				if fullMsg == nil {
+					slog.Error("System message missing from broadcast query result", "messageID", sysMsg.ID)
 					continue
 				}
 
@@ -540,7 +556,7 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 				Description: updatedGroup.Description,
 				IsPublic:    &updatedGroup.IsPublic,
 				Avatar:      avatarURL,
-				LastMessage: helper.ToMessageResponse(createdSystemMessages[len(createdSystemMessages)-1], s.storageAdapter, nil, string(requestorRole)),
+				LastMessage: helper.ToMessageResponse(fullMsgByID[createdSystemMessages[len(createdSystemMessages)-1].ID], s.storageAdapter, nil, string(requestorRole)),
 			}
 
 			if updatedGroup.IsPublic {
