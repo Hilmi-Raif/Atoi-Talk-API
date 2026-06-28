@@ -1,10 +1,6 @@
 package model
 
-import (
-	"mime/multipart"
-
-	"github.com/google/uuid"
-)
+import "github.com/google/uuid"
 
 type UserDTO struct {
 	ID               uuid.UUID  `json:"id"`
@@ -40,11 +36,11 @@ type CreateUserDTO struct {
 }
 
 type UpdateProfileRequest struct {
-	Username     string                `form:"username" validate:"omitempty,min=3,max=50,alphanum"`
-	FullName     string                `form:"full_name" validate:"required,min=3,max=100"`
-	Bio          string                `form:"bio" validate:"max=255"`
-	Avatar       *multipart.FileHeader `form:"avatar" validate:"omitempty,imagevalid=800_800_2"`
-	DeleteAvatar bool                  `form:"delete_avatar"`
+	Username      string     `json:"username" validate:"omitempty,min=3,max=50,alphanum"`
+	FullName      string     `json:"full_name" validate:"required,min=3,max=100"`
+	Bio           string     `json:"bio" validate:"max=255"`
+	AvatarMediaID *uuid.UUID `json:"avatar_media_id" validate:"omitempty"`
+	DeleteAvatar  bool       `json:"delete_avatar"`
 }
 
 type SearchUserRequest struct {

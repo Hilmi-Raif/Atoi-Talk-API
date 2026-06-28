@@ -8,6 +8,7 @@ import (
 	"AtoiTalkAPI/ent/user"
 	"AtoiTalkAPI/ent/userblock"
 	"AtoiTalkAPI/internal/helper"
+	"AtoiTalkAPI/internal/model"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -15,8 +16,6 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
-	"io"
-	"mime/multipart"
 	"net/http"
 	"strings"
 	"testing"
@@ -24,6 +23,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -39,6 +39,53 @@ func createTestImage(t *testing.T, width, height int) []byte {
 	err := jpeg.Encode(&buf, img, nil)
 	assert.NoError(t, err)
 	return buf.Bytes()
+}
+
+func newProfileJSONRequest(token string, payload interface{}) *http.Request {
+	body, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("PUT", "/api/user/profile", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	return req
+}
+
+func uploadCompletedUserAvatar(t *testing.T, token, originalName string, content []byte) uuid.UUID {
+	t.Helper()
+
+	uploadReq := newUploadMediaRequest("user_avatar", originalName, len(content), "image/jpeg", "dummy-token")
+	uploadReq.Header.Set("Authorization", "Bearer "+token)
+	uploadRR := executeRequest(uploadReq)
+	if !assert.Equal(t, http.StatusOK, uploadRR.Code) {
+		printBody(t, uploadRR)
+	}
+
+	var uploadResp helper.ResponseSuccess
+	json.Unmarshal(uploadRR.Body.Bytes(), &uploadResp)
+	uploadData := uploadResp.Data.(map[string]interface{})
+	mediaMap := uploadData["media"].(map[string]interface{})
+	mediaID := mediaMap["id"].(string)
+	fileName := mediaMap["file_name"].(string)
+
+	_, err := s3Client.PutObject(context.Background(), &s3.PutObjectInput{
+		Bucket:      aws.String(testConfig.S3BucketPublic),
+		Key:         aws.String(fileName),
+		Body:        bytes.NewReader(content),
+		ContentType: aws.String("image/jpeg"),
+	})
+	assert.NoError(t, err)
+
+	completeReq, _ := http.NewRequest("POST", fmt.Sprintf("/api/media/%s/complete", mediaID), nil)
+	completeReq.Header.Set("Authorization", "Bearer "+token)
+	completeRR := executeRequest(completeReq)
+	if !assert.Equal(t, http.StatusOK, completeRR.Code) {
+		printBody(t, completeRR)
+	}
+
+	parsedMediaID, err := uuid.Parse(mediaID)
+	assert.NoError(t, err)
+	return parsedMediaID
 }
 
 func TestGetCurrentUser(t *testing.T) {
@@ -298,16 +345,11 @@ func TestUpdateProfile(t *testing.T) {
 
 		token, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, u.ID)
 
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-		_ = writer.WriteField("full_name", "New Name")
-		_ = writer.WriteField("bio", "New Bio")
-		_ = writer.WriteField("username", "newusername")
-		_ = writer.Close()
-
-		req, _ := http.NewRequest("PUT", "/api/user/profile", body)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
-		req.Header.Set("Authorization", "Bearer "+token)
+		req := newProfileJSONRequest(token, model.UpdateProfileRequest{
+			FullName: "New Name",
+			Bio:      "New Bio",
+			Username: "newusername",
+		})
 
 		rr := executeRequest(req)
 
@@ -343,15 +385,10 @@ func TestUpdateProfile(t *testing.T) {
 
 		token, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, u.ID)
 
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-		_ = writer.WriteField("full_name", "  New Name  ")
-		_ = writer.WriteField("bio", "  New Bio  ")
-		_ = writer.Close()
-
-		req, _ := http.NewRequest("PUT", "/api/user/profile", body)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
-		req.Header.Set("Authorization", "Bearer "+token)
+		req := newProfileJSONRequest(token, model.UpdateProfileRequest{
+			FullName: "  New Name  ",
+			Bio:      "  New Bio  ",
+		})
 
 		rr := executeRequest(req)
 
@@ -380,15 +417,10 @@ func TestUpdateProfile(t *testing.T) {
 
 		token, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, u1.ID)
 
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-		_ = writer.WriteField("full_name", "User 1")
-		_ = writer.WriteField("username", "user2")
-		_ = writer.Close()
-
-		req, _ := http.NewRequest("PUT", "/api/user/profile", body)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
-		req.Header.Set("Authorization", "Bearer "+token)
+		req := newProfileJSONRequest(token, model.UpdateProfileRequest{
+			FullName: "User 1",
+			Username: "user2",
+		})
 
 		rr := executeRequest(req)
 		assert.Equal(t, http.StatusConflict, rr.Code)
@@ -408,18 +440,13 @@ func TestUpdateProfile(t *testing.T) {
 
 		token, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, u.ID)
 
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-		_ = writer.WriteField("full_name", "New Name")
-
-		part, _ := writer.CreateFormFile("avatar", "avatar.jpg")
 		imgData := createTestImage(t, 400, 400)
-		_, _ = io.Copy(part, bytes.NewReader(imgData))
-		_ = writer.Close()
+		avatarMediaID := uploadCompletedUserAvatar(t, token, "avatar.jpg", imgData)
 
-		req, _ := http.NewRequest("PUT", "/api/user/profile", body)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
-		req.Header.Set("Authorization", "Bearer "+token)
+		req := newProfileJSONRequest(token, model.UpdateProfileRequest{
+			FullName:      "New Name",
+			AvatarMediaID: &avatarMediaID,
+		})
 
 		rr := executeRequest(req)
 
@@ -459,6 +486,7 @@ func TestUpdateProfile(t *testing.T) {
 		media, err := testClient.Media.Create().
 			SetFileName("old_avatar.jpg").SetOriginalName("old.jpg").
 			SetFileSize(1024).SetMimeType("image/jpeg").
+			SetCategory("user_avatar").
 			SetUploader(u).
 			Save(context.Background())
 		assert.NoError(t, err)
@@ -468,15 +496,10 @@ func TestUpdateProfile(t *testing.T) {
 
 		token, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, u.ID)
 
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-		_ = writer.WriteField("full_name", "User With Avatar")
-		_ = writer.WriteField("delete_avatar", "true")
-		_ = writer.Close()
-
-		req, _ := http.NewRequest("PUT", "/api/user/profile", body)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
-		req.Header.Set("Authorization", "Bearer "+token)
+		req := newProfileJSONRequest(token, model.UpdateProfileRequest{
+			FullName:     "User With Avatar",
+			DeleteAvatar: true,
+		})
 
 		rr := executeRequest(req)
 
@@ -488,7 +511,7 @@ func TestUpdateProfile(t *testing.T) {
 		assert.Nil(t, updatedUser.Edges.Avatar)
 	})
 
-	t.Run("Invalid Image Format", func(t *testing.T) {
+	t.Run("Fail Request Avatar Upload with Invalid Image MIME", func(t *testing.T) {
 		clearDatabase(context.Background())
 
 		hashedPassword, _ := helper.HashPassword(validPassword)
@@ -502,16 +525,7 @@ func TestUpdateProfile(t *testing.T) {
 
 		token, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, u.ID)
 
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-		_ = writer.WriteField("full_name", "User")
-
-		part, _ := writer.CreateFormFile("avatar", "avatar.txt")
-		_, _ = io.WriteString(part, "This is not an image")
-		_ = writer.Close()
-
-		req, _ := http.NewRequest("PUT", "/api/user/profile", body)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
+		req := newUploadMediaRequest("user_avatar", "avatar.txt", len("This is not an image"), "text/plain", "dummy-token")
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		rr := executeRequest(req)
@@ -521,7 +535,7 @@ func TestUpdateProfile(t *testing.T) {
 		}
 	})
 
-	t.Run("Image Too Large", func(t *testing.T) {
+	t.Run("Fail Request Avatar Upload Too Large", func(t *testing.T) {
 		clearDatabase(context.Background())
 
 		hashedPassword, _ := helper.HashPassword(validPassword)
@@ -535,17 +549,7 @@ func TestUpdateProfile(t *testing.T) {
 
 		token, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, u.ID)
 
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-		_ = writer.WriteField("full_name", "User")
-
-		largeData := make([]byte, 4*1024*1024)
-		part, _ := writer.CreateFormFile("avatar", "large.jpg")
-		_, _ = part.Write(largeData)
-		_ = writer.Close()
-
-		req, _ := http.NewRequest("PUT", "/api/user/profile", body)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
+		req := newUploadMediaRequest("user_avatar", "large.jpg", 4*1024*1024, "image/jpeg", "dummy-token")
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		rr := executeRequest(req)
@@ -555,7 +559,7 @@ func TestUpdateProfile(t *testing.T) {
 		}
 	})
 
-	t.Run("Image Dimensions Too Large", func(t *testing.T) {
+	t.Run("Success Request Avatar Upload Ignores Dimensions", func(t *testing.T) {
 		clearDatabase(context.Background())
 
 		hashedPassword, _ := helper.HashPassword(validPassword)
@@ -568,35 +572,20 @@ func TestUpdateProfile(t *testing.T) {
 		assert.NoError(t, err)
 
 		token, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, u.ID)
-
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-		_ = writer.WriteField("full_name", "User")
 
 		imgData := createTestImage(t, 900, 900)
-		part, _ := writer.CreateFormFile("avatar", "large_dim.jpg")
-		_, _ = io.Copy(part, bytes.NewReader(imgData))
-		_ = writer.Close()
-
-		req, _ := http.NewRequest("PUT", "/api/user/profile", body)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
+		req := newUploadMediaRequest("user_avatar", "large_dim.jpg", len(imgData), "image/jpeg", "dummy-token")
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		rr := executeRequest(req)
 
-		if !assert.Equal(t, http.StatusBadRequest, rr.Code) {
+		if !assert.Equal(t, http.StatusOK, rr.Code) {
 			printBody(t, rr)
 		}
 	})
 
 	t.Run("Unauthorized", func(t *testing.T) {
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-		_ = writer.WriteField("full_name", "New Name")
-		_ = writer.Close()
-
-		req, _ := http.NewRequest("PUT", "/api/user/profile", body)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
+		req := newProfileJSONRequest("", model.UpdateProfileRequest{FullName: "New Name"})
 
 		rr := executeRequest(req)
 

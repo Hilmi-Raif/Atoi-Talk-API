@@ -1626,7 +1626,7 @@
                 ],
                 "description": "Create a new group chat with multiple members and an optional avatar.",
                 "consumes": [
-                    "multipart/form-data"
+                    "application/json"
                 ],
                 "produces": [
                     "application/json"
@@ -1637,36 +1637,13 @@
                 "summary": "Create Group Chat",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Group Name",
-                        "name": "name",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Group Description",
-                        "name": "description",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "JSON Array of Member IDs (UUIDs)",
-                        "name": "member_ids",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "Group Avatar Image",
-                        "name": "avatar",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Is Public Group",
-                        "name": "is_public",
-                        "in": "formData"
+                        "description": "Group creation",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateGroupChatRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -1972,7 +1949,7 @@
                 ],
                 "description": "Update group name, description, avatar, or visibility. Only owners or admins can perform this action.",
                 "consumes": [
-                    "multipart/form-data"
+                    "application/json"
                 ],
                 "produces": [
                     "application/json"
@@ -1990,34 +1967,13 @@
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "Group Name",
-                        "name": "name",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Group Description",
-                        "name": "description",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "file",
-                        "description": "Group Avatar Image",
-                        "name": "avatar",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Delete Avatar (Set to true to delete current avatar)",
-                        "name": "delete_avatar",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Is Public Group",
-                        "name": "is_public",
-                        "in": "formData"
+                        "description": "Group update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateGroupChatRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -3299,15 +3255,118 @@
             }
         },
         "/api/media/upload": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a pending media row and upload URL for direct storage upload.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "media"
+                ],
+                "summary": "Create Media Upload URL",
+                "parameters": [
+                    {
+                        "enum": [
+                            "message_attachment",
+                            "user_avatar",
+                            "group_avatar"
+                        ],
+                        "type": "string",
+                        "description": "Upload usage",
+                        "name": "usage",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Original file name",
+                        "name": "original_name",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "File size in bytes",
+                        "name": "file_size",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "MIME type",
+                        "name": "mime_type",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Captcha token",
+                        "name": "captcha_token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.UploadMediaResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/helper.ResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/helper.ResponseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/helper.ResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/helper.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/media/{mediaID}/complete": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Upload a file (image, video, file, audio) to be used as attachment.",
+                "description": "Verify the uploaded object exists and mark pending media as completed.",
                 "consumes": [
-                    "multipart/form-data"
+                    "application/json"
                 ],
                 "produces": [
                     "application/json"
@@ -3315,20 +3374,13 @@
                 "tags": [
                     "media"
                 ],
-                "summary": "Upload Media",
+                "summary": "Complete Media Upload",
                 "parameters": [
                     {
-                        "type": "file",
-                        "description": "File to upload",
-                        "name": "file",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
                         "type": "string",
-                        "description": "Captcha Token",
-                        "name": "captcha_token",
-                        "in": "formData",
+                        "description": "Media ID (UUID)",
+                        "name": "mediaID",
+                        "in": "path",
                         "required": true
                     }
                 ],
@@ -3363,8 +3415,14 @@
                             "$ref": "#/definitions/helper.ResponseError"
                         }
                     },
-                    "429": {
-                        "description": "Too Many Requests",
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/helper.ResponseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/helper.ResponseError"
                         }
@@ -3903,7 +3961,7 @@
                 ],
                 "description": "Update user's full name, bio, and avatar.",
                 "consumes": [
-                    "multipart/form-data"
+                    "application/json"
                 ],
                 "produces": [
                     "application/json"
@@ -3914,35 +3972,13 @@
                 "summary": "Update User Profile",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Username",
-                        "name": "username",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Full Name",
-                        "name": "full_name",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Bio",
-                        "name": "bio",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "file",
-                        "description": "Avatar Image",
-                        "name": "avatar",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Delete Avatar",
-                        "name": "delete_avatar",
-                        "in": "formData"
+                        "description": "Profile update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateProfileRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -4718,6 +4754,37 @@
                 }
             }
         },
+        "model.CreateGroupChatRequest": {
+            "type": "object",
+            "required": [
+                "member_ids",
+                "name"
+            ],
+            "properties": {
+                "avatar_media_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "is_public": {
+                    "type": "boolean"
+                },
+                "member_ids": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 3
+                }
+            }
+        },
         "model.CreatePrivateChatRequest": {
             "type": "object",
             "required": [
@@ -4931,6 +4998,9 @@
         "model.MediaDTO": {
             "type": "object",
             "properties": {
+                "category": {
+                    "type": "string"
+                },
                 "file_name": {
                     "type": "string"
                 },
@@ -4944,6 +5014,9 @@
                     "type": "string"
                 },
                 "original_name": {
+                    "type": "string"
+                },
+                "upload_status": {
                     "type": "string"
                 },
                 "url": {
@@ -5344,6 +5417,29 @@
                 }
             }
         },
+        "model.UpdateGroupChatRequest": {
+            "type": "object",
+            "properties": {
+                "avatar_media_id": {
+                    "type": "string"
+                },
+                "delete_avatar": {
+                    "type": "boolean"
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "is_public": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 3
+                }
+            }
+        },
         "model.UpdateGroupMemberRoleRequest": {
             "type": "object",
             "required": [
@@ -5356,6 +5452,57 @@
                         "admin",
                         "member"
                     ]
+                }
+            }
+        },
+        "model.UpdateProfileRequest": {
+            "type": "object",
+            "required": [
+                "full_name"
+            ],
+            "properties": {
+                "avatar_media_id": {
+                    "type": "string"
+                },
+                "bio": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "delete_avatar": {
+                    "type": "boolean"
+                },
+                "full_name": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 3
+                },
+                "username": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 3
+                }
+            }
+        },
+        "model.UploadMediaResponse": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "media": {
+                    "$ref": "#/definitions/model.MediaDTO"
+                },
+                "upload_headers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "upload_method": {
+                    "type": "string"
+                },
+                "upload_url": {
+                    "type": "string"
                 }
             }
         },

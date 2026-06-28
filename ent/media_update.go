@@ -117,6 +117,60 @@ func (_u *MediaUpdate) SetNillableCategory(v *media.Category) *MediaUpdate {
 	return _u
 }
 
+// SetUploadStatus sets the "upload_status" field.
+func (_u *MediaUpdate) SetUploadStatus(v media.UploadStatus) *MediaUpdate {
+	_u.mutation.SetUploadStatus(v)
+	return _u
+}
+
+// SetNillableUploadStatus sets the "upload_status" field if the given value is not nil.
+func (_u *MediaUpdate) SetNillableUploadStatus(v *media.UploadStatus) *MediaUpdate {
+	if v != nil {
+		_u.SetUploadStatus(*v)
+	}
+	return _u
+}
+
+// SetUploadExpiresAt sets the "upload_expires_at" field.
+func (_u *MediaUpdate) SetUploadExpiresAt(v time.Time) *MediaUpdate {
+	_u.mutation.SetUploadExpiresAt(v)
+	return _u
+}
+
+// SetNillableUploadExpiresAt sets the "upload_expires_at" field if the given value is not nil.
+func (_u *MediaUpdate) SetNillableUploadExpiresAt(v *time.Time) *MediaUpdate {
+	if v != nil {
+		_u.SetUploadExpiresAt(*v)
+	}
+	return _u
+}
+
+// ClearUploadExpiresAt clears the value of the "upload_expires_at" field.
+func (_u *MediaUpdate) ClearUploadExpiresAt() *MediaUpdate {
+	_u.mutation.ClearUploadExpiresAt()
+	return _u
+}
+
+// SetCompletedAt sets the "completed_at" field.
+func (_u *MediaUpdate) SetCompletedAt(v time.Time) *MediaUpdate {
+	_u.mutation.SetCompletedAt(v)
+	return _u
+}
+
+// SetNillableCompletedAt sets the "completed_at" field if the given value is not nil.
+func (_u *MediaUpdate) SetNillableCompletedAt(v *time.Time) *MediaUpdate {
+	if v != nil {
+		_u.SetCompletedAt(*v)
+	}
+	return _u
+}
+
+// ClearCompletedAt clears the value of the "completed_at" field.
+func (_u *MediaUpdate) ClearCompletedAt() *MediaUpdate {
+	_u.mutation.ClearCompletedAt()
+	return _u
+}
+
 // SetMessageID sets the "message_id" field.
 func (_u *MediaUpdate) SetMessageID(v uuid.UUID) *MediaUpdate {
 	_u.mutation.SetMessageID(v)
@@ -347,6 +401,11 @@ func (_u *MediaUpdate) check() error {
 			return &ValidationError{Name: "category", err: fmt.Errorf(`ent: validator failed for field "Media.category": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.UploadStatus(); ok {
+		if err := media.UploadStatusValidator(v); err != nil {
+			return &ValidationError{Name: "upload_status", err: fmt.Errorf(`ent: validator failed for field "Media.upload_status": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -388,6 +447,21 @@ func (_u *MediaUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Category(); ok {
 		_spec.SetField(media.FieldCategory, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.UploadStatus(); ok {
+		_spec.SetField(media.FieldUploadStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.UploadExpiresAt(); ok {
+		_spec.SetField(media.FieldUploadExpiresAt, field.TypeTime, value)
+	}
+	if _u.mutation.UploadExpiresAtCleared() {
+		_spec.ClearField(media.FieldUploadExpiresAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.CompletedAt(); ok {
+		_spec.SetField(media.FieldCompletedAt, field.TypeTime, value)
+	}
+	if _u.mutation.CompletedAtCleared() {
+		_spec.ClearField(media.FieldCompletedAt, field.TypeTime)
 	}
 	if _u.mutation.MessageCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -655,6 +729,60 @@ func (_u *MediaUpdateOne) SetNillableCategory(v *media.Category) *MediaUpdateOne
 	return _u
 }
 
+// SetUploadStatus sets the "upload_status" field.
+func (_u *MediaUpdateOne) SetUploadStatus(v media.UploadStatus) *MediaUpdateOne {
+	_u.mutation.SetUploadStatus(v)
+	return _u
+}
+
+// SetNillableUploadStatus sets the "upload_status" field if the given value is not nil.
+func (_u *MediaUpdateOne) SetNillableUploadStatus(v *media.UploadStatus) *MediaUpdateOne {
+	if v != nil {
+		_u.SetUploadStatus(*v)
+	}
+	return _u
+}
+
+// SetUploadExpiresAt sets the "upload_expires_at" field.
+func (_u *MediaUpdateOne) SetUploadExpiresAt(v time.Time) *MediaUpdateOne {
+	_u.mutation.SetUploadExpiresAt(v)
+	return _u
+}
+
+// SetNillableUploadExpiresAt sets the "upload_expires_at" field if the given value is not nil.
+func (_u *MediaUpdateOne) SetNillableUploadExpiresAt(v *time.Time) *MediaUpdateOne {
+	if v != nil {
+		_u.SetUploadExpiresAt(*v)
+	}
+	return _u
+}
+
+// ClearUploadExpiresAt clears the value of the "upload_expires_at" field.
+func (_u *MediaUpdateOne) ClearUploadExpiresAt() *MediaUpdateOne {
+	_u.mutation.ClearUploadExpiresAt()
+	return _u
+}
+
+// SetCompletedAt sets the "completed_at" field.
+func (_u *MediaUpdateOne) SetCompletedAt(v time.Time) *MediaUpdateOne {
+	_u.mutation.SetCompletedAt(v)
+	return _u
+}
+
+// SetNillableCompletedAt sets the "completed_at" field if the given value is not nil.
+func (_u *MediaUpdateOne) SetNillableCompletedAt(v *time.Time) *MediaUpdateOne {
+	if v != nil {
+		_u.SetCompletedAt(*v)
+	}
+	return _u
+}
+
+// ClearCompletedAt clears the value of the "completed_at" field.
+func (_u *MediaUpdateOne) ClearCompletedAt() *MediaUpdateOne {
+	_u.mutation.ClearCompletedAt()
+	return _u
+}
+
 // SetMessageID sets the "message_id" field.
 func (_u *MediaUpdateOne) SetMessageID(v uuid.UUID) *MediaUpdateOne {
 	_u.mutation.SetMessageID(v)
@@ -898,6 +1026,11 @@ func (_u *MediaUpdateOne) check() error {
 			return &ValidationError{Name: "category", err: fmt.Errorf(`ent: validator failed for field "Media.category": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.UploadStatus(); ok {
+		if err := media.UploadStatusValidator(v); err != nil {
+			return &ValidationError{Name: "upload_status", err: fmt.Errorf(`ent: validator failed for field "Media.upload_status": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -956,6 +1089,21 @@ func (_u *MediaUpdateOne) sqlSave(ctx context.Context) (_node *Media, err error)
 	}
 	if value, ok := _u.mutation.Category(); ok {
 		_spec.SetField(media.FieldCategory, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.UploadStatus(); ok {
+		_spec.SetField(media.FieldUploadStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.UploadExpiresAt(); ok {
+		_spec.SetField(media.FieldUploadExpiresAt, field.TypeTime, value)
+	}
+	if _u.mutation.UploadExpiresAtCleared() {
+		_spec.ClearField(media.FieldUploadExpiresAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.CompletedAt(); ok {
+		_spec.SetField(media.FieldCompletedAt, field.TypeTime, value)
+	}
+	if _u.mutation.CompletedAtCleared() {
+		_spec.ClearField(media.FieldCompletedAt, field.TypeTime)
 	}
 	if _u.mutation.MessageCleared() {
 		edge := &sqlgraph.EdgeSpec{

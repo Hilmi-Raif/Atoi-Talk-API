@@ -8,10 +8,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"mime/multipart"
 	"net/http"
-	"net/textproto"
+	"strings"
 	"testing"
 
 	"AtoiTalkAPI/internal/helper"
@@ -28,23 +26,8 @@ func TestUploadMedia(t *testing.T) {
 	token, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, u.ID)
 
 	t.Run("Success - Upload Image", func(t *testing.T) {
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-
-		h := make(textproto.MIMEHeader)
-		h.Set("Content-Disposition", `form-data; name="file"; filename="test_image.jpg"`)
-		h.Set("Content-Type", "image/jpeg")
-		part, _ := writer.CreatePart(h)
-
 		imgData := createTestImage(t, 100, 100)
-		_, _ = io.Copy(part, bytes.NewReader(imgData))
-
-		_ = writer.WriteField("captcha_token", "dummy-token")
-
-		_ = writer.Close()
-
-		req, _ := http.NewRequest("POST", "/api/media/upload", body)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
+		req := newUploadMediaRequest("message_attachment", "test_image.jpg", len(imgData), "image/jpeg", "dummy-token")
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		rr := executeRequest(req)
@@ -56,57 +39,62 @@ func TestUploadMedia(t *testing.T) {
 		var resp helper.ResponseSuccess
 		json.Unmarshal(rr.Body.Bytes(), &resp)
 		dataMap := resp.Data.(map[string]interface{})
+		mediaMap := dataMap["media"].(map[string]interface{})
 
-		assert.NotEmpty(t, dataMap["id"])
-		assert.Equal(t, "test_image.jpg", dataMap["original_name"])
-		assert.Equal(t, "image/jpeg", dataMap["mime_type"])
-		assert.NotEmpty(t, dataMap["url"])
+		assert.NotEmpty(t, mediaMap["id"])
+		assert.Equal(t, "test_image.jpg", mediaMap["original_name"])
+		assert.Equal(t, "image/jpeg", mediaMap["mime_type"])
+		assert.Equal(t, "pending", mediaMap["upload_status"])
+		assert.NotEmpty(t, dataMap["upload_url"])
+		uploadHeaders := dataMap["upload_headers"].(map[string]interface{})
+		assert.Equal(t, "image/jpeg", uploadHeaders["Content-Type"])
+		assert.NotContains(t, uploadHeaders, "Content-Length")
+		assert.Contains(t, strings.ToLower(dataMap["upload_url"].(string)), "content-length")
 
-		fileName := dataMap["file_name"].(string)
-		_, err := s3Client.HeadObject(context.Background(), &s3.HeadObjectInput{
-			Bucket: aws.String(testConfig.S3BucketPrivate),
-			Key:    aws.String(fileName),
+		fileName := mediaMap["file_name"].(string)
+		_, err := s3Client.PutObject(context.Background(), &s3.PutObjectInput{
+			Bucket:      aws.String(testConfig.S3BucketPrivate),
+			Key:         aws.String(fileName),
+			Body:        bytes.NewReader(imgData),
+			ContentType: aws.String("image/jpeg"),
 		})
-		assert.NoError(t, err, "Uploaded file should exist in S3")
+		assert.NoError(t, err)
+
+		completeReq, _ := http.NewRequest("POST", fmt.Sprintf("/api/media/%s/complete", mediaMap["id"]), nil)
+		completeReq.Header.Set("Authorization", "Bearer "+token)
+		completeRR := executeRequest(completeReq)
+		if !assert.Equal(t, http.StatusOK, completeRR.Code) {
+			printBody(t, completeRR)
+		}
+
+		var completeResp helper.ResponseSuccess
+		json.Unmarshal(completeRR.Body.Bytes(), &completeResp)
+		completeMap := completeResp.Data.(map[string]interface{})
+		assert.Equal(t, "completed", completeMap["upload_status"])
+		assert.NotEmpty(t, completeMap["url"])
 	})
 
-	t.Run("Fail - Invalid Form Data", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/api/media/upload", nil)
+	t.Run("Fail - Invalid JSON", func(t *testing.T) {
+		req, _ := http.NewRequest("POST", "/api/media/upload", bytes.NewBufferString("{"))
+		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		rr := executeRequest(req)
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	})
 
-	t.Run("Fail - Missing File", func(t *testing.T) {
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-		_ = writer.WriteField("captcha_token", "dummy-token")
-		_ = writer.Close()
-
-		req, _ := http.NewRequest("POST", "/api/media/upload", body)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
+	t.Run("Success - Message Attachment Allows Any MIME", func(t *testing.T) {
+		req := newUploadMediaRequest("message_attachment", "test.exe", 100, "application/x-msdownload", "dummy-token")
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		rr := executeRequest(req)
-		assert.Equal(t, http.StatusBadRequest, rr.Code)
+		if !assert.Equal(t, http.StatusOK, rr.Code) {
+			printBody(t, rr)
+		}
 	})
 
 	t.Run("Fail - Missing Captcha", func(t *testing.T) {
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-
-		h := make(textproto.MIMEHeader)
-		h.Set("Content-Disposition", `form-data; name="file"; filename="test_image.jpg"`)
-		h.Set("Content-Type", "image/jpeg")
-		part, _ := writer.CreatePart(h)
-
-		imgData := createTestImage(t, 100, 100)
-		_, _ = io.Copy(part, bytes.NewReader(imgData))
-		_ = writer.Close()
-
-		req, _ := http.NewRequest("POST", "/api/media/upload", body)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
+		req := newUploadMediaRequest("message_attachment", "test_image.jpg", 100, "image/jpeg", "")
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		rr := executeRequest(req)
@@ -114,10 +102,23 @@ func TestUploadMedia(t *testing.T) {
 	})
 
 	t.Run("Fail - Unauthorized", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/api/media/upload", nil)
+		req := newUploadMediaRequest("message_attachment", "test_image.jpg", 100, "image/jpeg", "dummy-token")
 		rr := executeRequest(req)
 		assert.Equal(t, http.StatusUnauthorized, rr.Code)
 	})
+}
+
+func newUploadMediaRequest(usage, originalName string, fileSize int, mimeType, captchaToken string) *http.Request {
+	body, _ := json.Marshal(map[string]interface{}{
+		"usage":         usage,
+		"original_name": originalName,
+		"file_size":     fileSize,
+		"mime_type":     mimeType,
+		"captcha_token": captchaToken,
+	})
+	req, _ := http.NewRequest("POST", "/api/media/upload", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	return req
 }
 
 func TestGetMediaURL(t *testing.T) {

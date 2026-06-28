@@ -2855,6 +2855,9 @@ type MediaMutation struct {
 	addfile_size        *int64
 	mime_type           *string
 	category            *media.Category
+	upload_status       *media.UploadStatus
+	upload_expires_at   *time.Time
+	completed_at        *time.Time
 	clearedFields       map[string]struct{}
 	message             *uuid.UUID
 	clearedmessage      bool
@@ -3248,6 +3251,140 @@ func (m *MediaMutation) ResetCategory() {
 	m.category = nil
 }
 
+// SetUploadStatus sets the "upload_status" field.
+func (m *MediaMutation) SetUploadStatus(ms media.UploadStatus) {
+	m.upload_status = &ms
+}
+
+// UploadStatus returns the value of the "upload_status" field in the mutation.
+func (m *MediaMutation) UploadStatus() (r media.UploadStatus, exists bool) {
+	v := m.upload_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUploadStatus returns the old "upload_status" field's value of the Media entity.
+// If the Media object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MediaMutation) OldUploadStatus(ctx context.Context) (v media.UploadStatus, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUploadStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUploadStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUploadStatus: %w", err)
+	}
+	return oldValue.UploadStatus, nil
+}
+
+// ResetUploadStatus resets all changes to the "upload_status" field.
+func (m *MediaMutation) ResetUploadStatus() {
+	m.upload_status = nil
+}
+
+// SetUploadExpiresAt sets the "upload_expires_at" field.
+func (m *MediaMutation) SetUploadExpiresAt(t time.Time) {
+	m.upload_expires_at = &t
+}
+
+// UploadExpiresAt returns the value of the "upload_expires_at" field in the mutation.
+func (m *MediaMutation) UploadExpiresAt() (r time.Time, exists bool) {
+	v := m.upload_expires_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUploadExpiresAt returns the old "upload_expires_at" field's value of the Media entity.
+// If the Media object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MediaMutation) OldUploadExpiresAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUploadExpiresAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUploadExpiresAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUploadExpiresAt: %w", err)
+	}
+	return oldValue.UploadExpiresAt, nil
+}
+
+// ClearUploadExpiresAt clears the value of the "upload_expires_at" field.
+func (m *MediaMutation) ClearUploadExpiresAt() {
+	m.upload_expires_at = nil
+	m.clearedFields[media.FieldUploadExpiresAt] = struct{}{}
+}
+
+// UploadExpiresAtCleared returns if the "upload_expires_at" field was cleared in this mutation.
+func (m *MediaMutation) UploadExpiresAtCleared() bool {
+	_, ok := m.clearedFields[media.FieldUploadExpiresAt]
+	return ok
+}
+
+// ResetUploadExpiresAt resets all changes to the "upload_expires_at" field.
+func (m *MediaMutation) ResetUploadExpiresAt() {
+	m.upload_expires_at = nil
+	delete(m.clearedFields, media.FieldUploadExpiresAt)
+}
+
+// SetCompletedAt sets the "completed_at" field.
+func (m *MediaMutation) SetCompletedAt(t time.Time) {
+	m.completed_at = &t
+}
+
+// CompletedAt returns the value of the "completed_at" field in the mutation.
+func (m *MediaMutation) CompletedAt() (r time.Time, exists bool) {
+	v := m.completed_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCompletedAt returns the old "completed_at" field's value of the Media entity.
+// If the Media object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MediaMutation) OldCompletedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCompletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCompletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCompletedAt: %w", err)
+	}
+	return oldValue.CompletedAt, nil
+}
+
+// ClearCompletedAt clears the value of the "completed_at" field.
+func (m *MediaMutation) ClearCompletedAt() {
+	m.completed_at = nil
+	m.clearedFields[media.FieldCompletedAt] = struct{}{}
+}
+
+// CompletedAtCleared returns if the "completed_at" field was cleared in this mutation.
+func (m *MediaMutation) CompletedAtCleared() bool {
+	_, ok := m.clearedFields[media.FieldCompletedAt]
+	return ok
+}
+
+// ResetCompletedAt resets all changes to the "completed_at" field.
+func (m *MediaMutation) ResetCompletedAt() {
+	m.completed_at = nil
+	delete(m.clearedFields, media.FieldCompletedAt)
+}
+
 // SetMessageID sets the "message_id" field.
 func (m *MediaMutation) SetMessageID(u uuid.UUID) {
 	m.message = &u
@@ -3579,7 +3716,7 @@ func (m *MediaMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MediaMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 12)
 	if m.created_at != nil {
 		fields = append(fields, media.FieldCreatedAt)
 	}
@@ -3600,6 +3737,15 @@ func (m *MediaMutation) Fields() []string {
 	}
 	if m.category != nil {
 		fields = append(fields, media.FieldCategory)
+	}
+	if m.upload_status != nil {
+		fields = append(fields, media.FieldUploadStatus)
+	}
+	if m.upload_expires_at != nil {
+		fields = append(fields, media.FieldUploadExpiresAt)
+	}
+	if m.completed_at != nil {
+		fields = append(fields, media.FieldCompletedAt)
 	}
 	if m.message != nil {
 		fields = append(fields, media.FieldMessageID)
@@ -3629,6 +3775,12 @@ func (m *MediaMutation) Field(name string) (ent.Value, bool) {
 		return m.MimeType()
 	case media.FieldCategory:
 		return m.Category()
+	case media.FieldUploadStatus:
+		return m.UploadStatus()
+	case media.FieldUploadExpiresAt:
+		return m.UploadExpiresAt()
+	case media.FieldCompletedAt:
+		return m.CompletedAt()
 	case media.FieldMessageID:
 		return m.MessageID()
 	case media.FieldUploadedByID:
@@ -3656,6 +3808,12 @@ func (m *MediaMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldMimeType(ctx)
 	case media.FieldCategory:
 		return m.OldCategory(ctx)
+	case media.FieldUploadStatus:
+		return m.OldUploadStatus(ctx)
+	case media.FieldUploadExpiresAt:
+		return m.OldUploadExpiresAt(ctx)
+	case media.FieldCompletedAt:
+		return m.OldCompletedAt(ctx)
 	case media.FieldMessageID:
 		return m.OldMessageID(ctx)
 	case media.FieldUploadedByID:
@@ -3718,6 +3876,27 @@ func (m *MediaMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetCategory(v)
 		return nil
+	case media.FieldUploadStatus:
+		v, ok := value.(media.UploadStatus)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUploadStatus(v)
+		return nil
+	case media.FieldUploadExpiresAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUploadExpiresAt(v)
+		return nil
+	case media.FieldCompletedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCompletedAt(v)
+		return nil
 	case media.FieldMessageID:
 		v, ok := value.(uuid.UUID)
 		if !ok {
@@ -3777,6 +3956,12 @@ func (m *MediaMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *MediaMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(media.FieldUploadExpiresAt) {
+		fields = append(fields, media.FieldUploadExpiresAt)
+	}
+	if m.FieldCleared(media.FieldCompletedAt) {
+		fields = append(fields, media.FieldCompletedAt)
+	}
 	if m.FieldCleared(media.FieldMessageID) {
 		fields = append(fields, media.FieldMessageID)
 	}
@@ -3797,6 +3982,12 @@ func (m *MediaMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *MediaMutation) ClearField(name string) error {
 	switch name {
+	case media.FieldUploadExpiresAt:
+		m.ClearUploadExpiresAt()
+		return nil
+	case media.FieldCompletedAt:
+		m.ClearCompletedAt()
+		return nil
 	case media.FieldMessageID:
 		m.ClearMessageID()
 		return nil
@@ -3831,6 +4022,15 @@ func (m *MediaMutation) ResetField(name string) error {
 		return nil
 	case media.FieldCategory:
 		m.ResetCategory()
+		return nil
+	case media.FieldUploadStatus:
+		m.ResetUploadStatus()
+		return nil
+	case media.FieldUploadExpiresAt:
+		m.ResetUploadExpiresAt()
+		return nil
+	case media.FieldCompletedAt:
+		m.ResetCompletedAt()
 		return nil
 	case media.FieldMessageID:
 		m.ResetMessageID()

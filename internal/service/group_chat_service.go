@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"mime/multipart"
 	"strings"
 	"time"
 
@@ -111,42 +110,24 @@ func (s *GroupChatService) CreateGroupChat(ctx context.Context, creatorID uuid.U
 	defer tx.Rollback()
 
 	var avatarMedia *ent.Media
-	var fileToUpload multipart.File
-	var fileUploadPath string
-	var fileContentType string
-	avatarUploadSucceeded := true
 
-	if req.Avatar != nil {
-		file, err := req.Avatar.Open()
+	if req.AvatarMediaID != nil {
+		avatarMedia, err = tx.Media.Query().
+			Where(
+				media.ID(*req.AvatarMediaID),
+				media.CategoryEQ(media.CategoryGroupAvatar),
+				media.UploadStatusEQ(media.UploadStatusCompleted),
+				media.HasUploaderWith(user.ID(creatorID)),
+				media.Not(media.HasUserAvatar()),
+				media.Not(media.HasGroupAvatar()),
+				media.MessageIDIsNil(),
+			).
+			Only(ctx)
 		if err != nil {
-			slog.Error("Failed to open avatar file", "error", err)
-			return nil, helper.NewInternalServerError("")
-		}
-		defer file.Close()
-		fileToUpload = file
-
-		contentType, err := helper.DetectFileContentType(file)
-		if err != nil {
-			slog.Error("Failed to detect file content type", "error", err)
-			return nil, helper.NewInternalServerError("")
-		}
-
-		fileName := helper.GenerateUniqueFileName(req.Avatar.Filename)
-		filePath := fileName
-
-		fileUploadPath = filePath
-		fileContentType = contentType
-
-		avatarMedia, err = tx.Media.Create().
-			SetFileName(fileName).
-			SetOriginalName(req.Avatar.Filename).
-			SetFileSize(req.Avatar.Size).
-			SetMimeType(contentType).
-			SetCategory(media.CategoryGroupAvatar).
-			SetUploaderID(creatorID).
-			Save(ctx)
-		if err != nil {
-			slog.Error("Failed to create media record for group avatar", "error", err)
+			if ent.IsNotFound(err) {
+				return nil, helper.NewBadRequestError("Invalid avatar media")
+			}
+			slog.Error("Failed to query group avatar media", "error", err, "mediaID", *req.AvatarMediaID)
 			return nil, helper.NewInternalServerError("")
 		}
 	}
@@ -230,29 +211,8 @@ func (s *GroupChatService) CreateGroupChat(ctx context.Context, creatorID uuid.U
 		return nil, helper.NewInternalServerError("")
 	}
 
-	if fileToUpload != nil {
-		if err := s.storageAdapter.StoreFromReader(fileToUpload, fileContentType, fileUploadPath, true); err != nil {
-			avatarUploadSucceeded = false
-			slog.Error("Failed to store group avatar after db commit", "error", err)
-
-			if avatarMedia != nil {
-				cleanupCtx := context.Background()
-				_, unlinkErr := s.client.GroupChat.UpdateOneID(newGroupChat.ID).ClearAvatar().Save(cleanupCtx)
-				if unlinkErr != nil {
-					slog.Error("Failed to unlink group avatar after file upload failure", "error", unlinkErr, "groupID", newGroupChat.ID)
-				} else {
-					if delErr := s.client.Media.DeleteOneID(avatarMedia.ID).Exec(cleanupCtx); delErr != nil {
-						slog.Error("Failed to delete orphan media record after file upload failure", "error", delErr, "mediaID", avatarMedia.ID)
-					}
-				}
-			}
-
-			avatarMedia = nil
-		}
-	}
-
 	avatarURL := ""
-	if avatarMedia != nil && avatarUploadSucceeded {
+	if avatarMedia != nil {
 		avatarURL = s.storageAdapter.GetPublicURL(avatarMedia.FileName)
 	}
 
@@ -435,11 +395,7 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 		hasChanges = true
 	}
 
-	var fileToUpload multipart.File
-	var fileUploadPath string
-	var fileContentType string
-	var newMediaID uuid.UUID
-	avatarUploadSucceeded := true
+	var avatarMedia *ent.Media
 
 	if req.DeleteAvatar && gc.Edges.Avatar != nil {
 		update.ClearAvatar()
@@ -451,42 +407,27 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 				"action": "removed",
 			}))
 		hasChanges = true
-	} else if req.Avatar != nil {
-		file, err := req.Avatar.Open()
+	} else if req.AvatarMediaID != nil {
+		avatarMedia, err = tx.Media.Query().
+			Where(
+				media.ID(*req.AvatarMediaID),
+				media.CategoryEQ(media.CategoryGroupAvatar),
+				media.UploadStatusEQ(media.UploadStatusCompleted),
+				media.HasUploaderWith(user.ID(requestorID)),
+				media.Not(media.HasUserAvatar()),
+				media.Not(media.HasGroupAvatar()),
+				media.MessageIDIsNil(),
+			).
+			Only(ctx)
 		if err != nil {
-			slog.Error("Failed to open avatar file", "error", err)
-			return nil, helper.NewInternalServerError("")
-		}
-		defer file.Close()
-		fileToUpload = file
-
-		contentType, err := helper.DetectFileContentType(file)
-		if err != nil {
-			slog.Error("Failed to detect file content type", "error", err)
-			return nil, helper.NewInternalServerError("")
-		}
-
-		fileName := helper.GenerateUniqueFileName(req.Avatar.Filename)
-		filePath := fileName
-
-		fileUploadPath = filePath
-		fileContentType = contentType
-
-		media, err := tx.Media.Create().
-			SetFileName(fileName).
-			SetOriginalName(req.Avatar.Filename).
-			SetFileSize(req.Avatar.Size).
-			SetMimeType(contentType).
-			SetCategory(media.CategoryGroupAvatar).
-			SetUploaderID(requestorID).
-			Save(ctx)
-		if err != nil {
-			slog.Error("Failed to create media record for group avatar", "error", err)
+			if ent.IsNotFound(err) {
+				return nil, helper.NewBadRequestError("Invalid avatar media")
+			}
+			slog.Error("Failed to query group avatar media", "error", err, "mediaID", *req.AvatarMediaID)
 			return nil, helper.NewInternalServerError("")
 		}
 
-		update.SetAvatar(media)
-		newMediaID = media.ID
+		update.SetAvatar(avatarMedia)
 
 		systemMessages = append(systemMessages, tx.Message.Create().
 			SetChatID(gc.ChatID).
@@ -546,25 +487,6 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 		return nil, helper.NewInternalServerError("")
 	}
 
-	if fileToUpload != nil {
-		if err := s.storageAdapter.StoreFromReader(fileToUpload, fileContentType, fileUploadPath, true); err != nil {
-			avatarUploadSucceeded = false
-			slog.Error("Failed to store group avatar after db commit", "error", err)
-
-			if newMediaID != uuid.Nil {
-				cleanupCtx := context.Background()
-				_, unlinkErr := s.client.GroupChat.UpdateOneID(updatedGroup.ID).ClearAvatar().Save(cleanupCtx)
-				if unlinkErr != nil {
-					slog.Error("Failed to unlink group avatar after file upload failure", "error", unlinkErr, "groupID", updatedGroup.ID)
-				} else {
-					if delErr := s.client.Media.DeleteOneID(newMediaID).Exec(cleanupCtx); delErr != nil {
-						slog.Error("Failed to delete orphan media record after file upload failure", "error", delErr, "mediaID", newMediaID)
-					}
-				}
-			}
-		}
-	}
-
 	var inviteExpiresAt *string
 	if updatedGroup.InviteExpiresAt != nil {
 		t := updatedGroup.InviteExpiresAt.Format(time.RFC3339)
@@ -607,7 +529,7 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 			}
 
 			avatarURL := ""
-			if avatarUploadSucceeded && updatedGroupWithAvatar != nil && updatedGroupWithAvatar.Edges.Avatar != nil {
+			if updatedGroupWithAvatar != nil && updatedGroupWithAvatar.Edges.Avatar != nil {
 				avatarURL = s.storageAdapter.GetPublicURL(updatedGroupWithAvatar.Edges.Avatar.FileName)
 			}
 
@@ -669,17 +591,15 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 
 	if req.DeleteAvatar {
 		avatarURL = ""
-	} else if req.Avatar != nil {
-		if avatarUploadSucceeded {
-			updatedGroupWithAvatar, avatarErr := s.client.GroupChat.Query().
-				Where(groupchat.ID(updatedGroup.ID)).
-				WithAvatar().
-				Only(context.Background())
-			if avatarErr != nil {
-				slog.Error("Failed to fetch updated group avatar for response", "error", avatarErr, "groupID", updatedGroup.ID)
-			} else if updatedGroupWithAvatar.Edges.Avatar != nil {
-				avatarURL = s.storageAdapter.GetPublicURL(updatedGroupWithAvatar.Edges.Avatar.FileName)
-			}
+	} else if req.AvatarMediaID != nil {
+		updatedGroupWithAvatar, avatarErr := s.client.GroupChat.Query().
+			Where(groupchat.ID(updatedGroup.ID)).
+			WithAvatar().
+			Only(context.Background())
+		if avatarErr != nil {
+			slog.Error("Failed to fetch updated group avatar for response", "error", avatarErr, "groupID", updatedGroup.ID)
+		} else if updatedGroupWithAvatar.Edges.Avatar != nil {
+			avatarURL = s.storageAdapter.GetPublicURL(updatedGroupWithAvatar.Edges.Avatar.FileName)
 		}
 	} else if gc.Edges.Avatar != nil {
 		avatarURL = s.storageAdapter.GetPublicURL(gc.Edges.Avatar.FileName)

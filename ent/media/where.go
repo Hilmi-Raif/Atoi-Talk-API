@@ -86,6 +86,16 @@ func MimeType(v string) predicate.Media {
 	return predicate.Media(sql.FieldEQ(FieldMimeType, v))
 }
 
+// UploadExpiresAt applies equality check predicate on the "upload_expires_at" field. It's identical to UploadExpiresAtEQ.
+func UploadExpiresAt(v time.Time) predicate.Media {
+	return predicate.Media(sql.FieldEQ(FieldUploadExpiresAt, v))
+}
+
+// CompletedAt applies equality check predicate on the "completed_at" field. It's identical to CompletedAtEQ.
+func CompletedAt(v time.Time) predicate.Media {
+	return predicate.Media(sql.FieldEQ(FieldCompletedAt, v))
+}
+
 // MessageID applies equality check predicate on the "message_id" field. It's identical to MessageIDEQ.
 func MessageID(v uuid.UUID) predicate.Media {
 	return predicate.Media(sql.FieldEQ(FieldMessageID, v))
@@ -429,6 +439,126 @@ func CategoryIn(vs ...Category) predicate.Media {
 // CategoryNotIn applies the NotIn predicate on the "category" field.
 func CategoryNotIn(vs ...Category) predicate.Media {
 	return predicate.Media(sql.FieldNotIn(FieldCategory, vs...))
+}
+
+// UploadStatusEQ applies the EQ predicate on the "upload_status" field.
+func UploadStatusEQ(v UploadStatus) predicate.Media {
+	return predicate.Media(sql.FieldEQ(FieldUploadStatus, v))
+}
+
+// UploadStatusNEQ applies the NEQ predicate on the "upload_status" field.
+func UploadStatusNEQ(v UploadStatus) predicate.Media {
+	return predicate.Media(sql.FieldNEQ(FieldUploadStatus, v))
+}
+
+// UploadStatusIn applies the In predicate on the "upload_status" field.
+func UploadStatusIn(vs ...UploadStatus) predicate.Media {
+	return predicate.Media(sql.FieldIn(FieldUploadStatus, vs...))
+}
+
+// UploadStatusNotIn applies the NotIn predicate on the "upload_status" field.
+func UploadStatusNotIn(vs ...UploadStatus) predicate.Media {
+	return predicate.Media(sql.FieldNotIn(FieldUploadStatus, vs...))
+}
+
+// UploadExpiresAtEQ applies the EQ predicate on the "upload_expires_at" field.
+func UploadExpiresAtEQ(v time.Time) predicate.Media {
+	return predicate.Media(sql.FieldEQ(FieldUploadExpiresAt, v))
+}
+
+// UploadExpiresAtNEQ applies the NEQ predicate on the "upload_expires_at" field.
+func UploadExpiresAtNEQ(v time.Time) predicate.Media {
+	return predicate.Media(sql.FieldNEQ(FieldUploadExpiresAt, v))
+}
+
+// UploadExpiresAtIn applies the In predicate on the "upload_expires_at" field.
+func UploadExpiresAtIn(vs ...time.Time) predicate.Media {
+	return predicate.Media(sql.FieldIn(FieldUploadExpiresAt, vs...))
+}
+
+// UploadExpiresAtNotIn applies the NotIn predicate on the "upload_expires_at" field.
+func UploadExpiresAtNotIn(vs ...time.Time) predicate.Media {
+	return predicate.Media(sql.FieldNotIn(FieldUploadExpiresAt, vs...))
+}
+
+// UploadExpiresAtGT applies the GT predicate on the "upload_expires_at" field.
+func UploadExpiresAtGT(v time.Time) predicate.Media {
+	return predicate.Media(sql.FieldGT(FieldUploadExpiresAt, v))
+}
+
+// UploadExpiresAtGTE applies the GTE predicate on the "upload_expires_at" field.
+func UploadExpiresAtGTE(v time.Time) predicate.Media {
+	return predicate.Media(sql.FieldGTE(FieldUploadExpiresAt, v))
+}
+
+// UploadExpiresAtLT applies the LT predicate on the "upload_expires_at" field.
+func UploadExpiresAtLT(v time.Time) predicate.Media {
+	return predicate.Media(sql.FieldLT(FieldUploadExpiresAt, v))
+}
+
+// UploadExpiresAtLTE applies the LTE predicate on the "upload_expires_at" field.
+func UploadExpiresAtLTE(v time.Time) predicate.Media {
+	return predicate.Media(sql.FieldLTE(FieldUploadExpiresAt, v))
+}
+
+// UploadExpiresAtIsNil applies the IsNil predicate on the "upload_expires_at" field.
+func UploadExpiresAtIsNil() predicate.Media {
+	return predicate.Media(sql.FieldIsNull(FieldUploadExpiresAt))
+}
+
+// UploadExpiresAtNotNil applies the NotNil predicate on the "upload_expires_at" field.
+func UploadExpiresAtNotNil() predicate.Media {
+	return predicate.Media(sql.FieldNotNull(FieldUploadExpiresAt))
+}
+
+// CompletedAtEQ applies the EQ predicate on the "completed_at" field.
+func CompletedAtEQ(v time.Time) predicate.Media {
+	return predicate.Media(sql.FieldEQ(FieldCompletedAt, v))
+}
+
+// CompletedAtNEQ applies the NEQ predicate on the "completed_at" field.
+func CompletedAtNEQ(v time.Time) predicate.Media {
+	return predicate.Media(sql.FieldNEQ(FieldCompletedAt, v))
+}
+
+// CompletedAtIn applies the In predicate on the "completed_at" field.
+func CompletedAtIn(vs ...time.Time) predicate.Media {
+	return predicate.Media(sql.FieldIn(FieldCompletedAt, vs...))
+}
+
+// CompletedAtNotIn applies the NotIn predicate on the "completed_at" field.
+func CompletedAtNotIn(vs ...time.Time) predicate.Media {
+	return predicate.Media(sql.FieldNotIn(FieldCompletedAt, vs...))
+}
+
+// CompletedAtGT applies the GT predicate on the "completed_at" field.
+func CompletedAtGT(v time.Time) predicate.Media {
+	return predicate.Media(sql.FieldGT(FieldCompletedAt, v))
+}
+
+// CompletedAtGTE applies the GTE predicate on the "completed_at" field.
+func CompletedAtGTE(v time.Time) predicate.Media {
+	return predicate.Media(sql.FieldGTE(FieldCompletedAt, v))
+}
+
+// CompletedAtLT applies the LT predicate on the "completed_at" field.
+func CompletedAtLT(v time.Time) predicate.Media {
+	return predicate.Media(sql.FieldLT(FieldCompletedAt, v))
+}
+
+// CompletedAtLTE applies the LTE predicate on the "completed_at" field.
+func CompletedAtLTE(v time.Time) predicate.Media {
+	return predicate.Media(sql.FieldLTE(FieldCompletedAt, v))
+}
+
+// CompletedAtIsNil applies the IsNil predicate on the "completed_at" field.
+func CompletedAtIsNil() predicate.Media {
+	return predicate.Media(sql.FieldIsNull(FieldCompletedAt))
+}
+
+// CompletedAtNotNil applies the NotNil predicate on the "completed_at" field.
+func CompletedAtNotNil() predicate.Media {
+	return predicate.Media(sql.FieldNotNull(FieldCompletedAt))
 }
 
 // MessageIDEQ applies the EQ predicate on the "message_id" field.

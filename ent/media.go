@@ -35,6 +35,12 @@ type Media struct {
 	MimeType string `json:"mime_type,omitempty"`
 	// Category holds the value of the "category" field.
 	Category media.Category `json:"category,omitempty"`
+	// UploadStatus holds the value of the "upload_status" field.
+	UploadStatus media.UploadStatus `json:"upload_status,omitempty"`
+	// UploadExpiresAt holds the value of the "upload_expires_at" field.
+	UploadExpiresAt *time.Time `json:"upload_expires_at,omitempty"`
+	// CompletedAt holds the value of the "completed_at" field.
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
 	// MessageID holds the value of the "message_id" field.
 	MessageID *uuid.UUID `json:"message_id,omitempty"`
 	// UploadedByID holds the value of the "uploaded_by_id" field.
@@ -124,9 +130,9 @@ func (*Media) scanValues(columns []string) ([]any, error) {
 			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		case media.FieldFileSize:
 			values[i] = new(sql.NullInt64)
-		case media.FieldFileName, media.FieldOriginalName, media.FieldMimeType, media.FieldCategory:
+		case media.FieldFileName, media.FieldOriginalName, media.FieldMimeType, media.FieldCategory, media.FieldUploadStatus:
 			values[i] = new(sql.NullString)
-		case media.FieldCreatedAt, media.FieldUpdatedAt:
+		case media.FieldCreatedAt, media.FieldUpdatedAt, media.FieldUploadExpiresAt, media.FieldCompletedAt:
 			values[i] = new(sql.NullTime)
 		case media.FieldID:
 			values[i] = new(uuid.UUID)
@@ -192,6 +198,26 @@ func (_m *Media) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field category", values[i])
 			} else if value.Valid {
 				_m.Category = media.Category(value.String)
+			}
+		case media.FieldUploadStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field upload_status", values[i])
+			} else if value.Valid {
+				_m.UploadStatus = media.UploadStatus(value.String)
+			}
+		case media.FieldUploadExpiresAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field upload_expires_at", values[i])
+			} else if value.Valid {
+				_m.UploadExpiresAt = new(time.Time)
+				*_m.UploadExpiresAt = value.Time
+			}
+		case media.FieldCompletedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field completed_at", values[i])
+			} else if value.Valid {
+				_m.CompletedAt = new(time.Time)
+				*_m.CompletedAt = value.Time
 			}
 		case media.FieldMessageID:
 			if value, ok := values[i].(*sql.NullScanner); !ok {
@@ -288,6 +314,19 @@ func (_m *Media) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("category=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Category))
+	builder.WriteString(", ")
+	builder.WriteString("upload_status=")
+	builder.WriteString(fmt.Sprintf("%v", _m.UploadStatus))
+	builder.WriteString(", ")
+	if v := _m.UploadExpiresAt; v != nil {
+		builder.WriteString("upload_expires_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	if v := _m.CompletedAt; v != nil {
+		builder.WriteString("completed_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", ")
 	if v := _m.MessageID; v != nil {
 		builder.WriteString("message_id=")

@@ -30,6 +30,12 @@ const (
 	FieldMimeType = "mime_type"
 	// FieldCategory holds the string denoting the category field in the database.
 	FieldCategory = "category"
+	// FieldUploadStatus holds the string denoting the upload_status field in the database.
+	FieldUploadStatus = "upload_status"
+	// FieldUploadExpiresAt holds the string denoting the upload_expires_at field in the database.
+	FieldUploadExpiresAt = "upload_expires_at"
+	// FieldCompletedAt holds the string denoting the completed_at field in the database.
+	FieldCompletedAt = "completed_at"
 	// FieldMessageID holds the string denoting the message_id field in the database.
 	FieldMessageID = "message_id"
 	// FieldUploadedByID holds the string denoting the uploaded_by_id field in the database.
@@ -91,6 +97,9 @@ var Columns = []string{
 	FieldFileSize,
 	FieldMimeType,
 	FieldCategory,
+	FieldUploadStatus,
+	FieldUploadExpiresAt,
+	FieldCompletedAt,
 	FieldMessageID,
 	FieldUploadedByID,
 }
@@ -157,6 +166,32 @@ func CategoryValidator(c Category) error {
 	}
 }
 
+// UploadStatus defines the type for the "upload_status" enum field.
+type UploadStatus string
+
+// UploadStatusCompleted is the default value of the UploadStatus enum.
+const DefaultUploadStatus = UploadStatusCompleted
+
+// UploadStatus values.
+const (
+	UploadStatusPending   UploadStatus = "pending"
+	UploadStatusCompleted UploadStatus = "completed"
+)
+
+func (us UploadStatus) String() string {
+	return string(us)
+}
+
+// UploadStatusValidator is a validator for the "upload_status" field enum values. It is called by the builders before save.
+func UploadStatusValidator(us UploadStatus) error {
+	switch us {
+	case UploadStatusPending, UploadStatusCompleted:
+		return nil
+	default:
+		return fmt.Errorf("media: invalid enum value for upload_status field: %q", us)
+	}
+}
+
 // OrderOption defines the ordering options for the Media queries.
 type OrderOption func(*sql.Selector)
 
@@ -198,6 +233,21 @@ func ByMimeType(opts ...sql.OrderTermOption) OrderOption {
 // ByCategory orders the results by the category field.
 func ByCategory(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCategory, opts...).ToFunc()
+}
+
+// ByUploadStatus orders the results by the upload_status field.
+func ByUploadStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUploadStatus, opts...).ToFunc()
+}
+
+// ByUploadExpiresAt orders the results by the upload_expires_at field.
+func ByUploadExpiresAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUploadExpiresAt, opts...).ToFunc()
+}
+
+// ByCompletedAt orders the results by the completed_at field.
+func ByCompletedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCompletedAt, opts...).ToFunc()
 }
 
 // ByMessageID orders the results by the message_id field.

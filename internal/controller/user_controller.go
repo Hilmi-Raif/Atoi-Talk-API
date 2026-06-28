@@ -5,6 +5,7 @@ import (
 	"AtoiTalkAPI/internal/middleware"
 	"AtoiTalkAPI/internal/model"
 	"AtoiTalkAPI/internal/service"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -93,13 +94,9 @@ func (c *UserController) GetUserProfile(w http.ResponseWriter, r *http.Request) 
 // @Summary      Update User Profile
 // @Description  Update user's full name, bio, and avatar.
 // @Tags         user
-// @Accept       multipart/form-data
+// @Accept       json
 // @Produce      json
-// @Param        username formData string false "Username"
-// @Param        full_name formData string true "Full Name"
-// @Param        bio formData string false "Bio"
-// @Param        avatar formData file false "Avatar Image"
-// @Param        delete_avatar formData boolean false "Delete Avatar"
+// @Param        request body model.UpdateProfileRequest true "Profile update"
 // @Success      200  {object}  helper.ResponseSuccess{data=model.UserDTO}
 // @Failure      400  {object}  helper.ResponseError
 // @Failure      401  {object}  helper.ResponseError
@@ -116,24 +113,8 @@ func (c *UserController) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req model.UpdateProfileRequest
-	req.Username = r.FormValue("username")
-	req.FullName = r.FormValue("full_name")
-	req.Bio = r.FormValue("bio")
-	if deleteAvatarRaw := r.FormValue("delete_avatar"); deleteAvatarRaw != "" {
-		deleteAvatar, parseErr := strconv.ParseBool(deleteAvatarRaw)
-		if parseErr != nil {
-			helper.WriteError(w, helper.NewBadRequestError("Invalid delete_avatar value"))
-			return
-		}
-		req.DeleteAvatar = deleteAvatar
-	}
-
-	file, header, err := r.FormFile("avatar")
-	if err == nil {
-		defer file.Close()
-		req.Avatar = header
-	} else if err != http.ErrMissingFile {
-		slog.Warn("Error retrieving avatar file", "error", err)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		slog.Warn("Error decoding profile update request", "error", err)
 		helper.WriteError(w, helper.NewBadRequestError(""))
 		return
 	}

@@ -94,6 +94,48 @@ func (_c *MediaCreate) SetNillableCategory(v *media.Category) *MediaCreate {
 	return _c
 }
 
+// SetUploadStatus sets the "upload_status" field.
+func (_c *MediaCreate) SetUploadStatus(v media.UploadStatus) *MediaCreate {
+	_c.mutation.SetUploadStatus(v)
+	return _c
+}
+
+// SetNillableUploadStatus sets the "upload_status" field if the given value is not nil.
+func (_c *MediaCreate) SetNillableUploadStatus(v *media.UploadStatus) *MediaCreate {
+	if v != nil {
+		_c.SetUploadStatus(*v)
+	}
+	return _c
+}
+
+// SetUploadExpiresAt sets the "upload_expires_at" field.
+func (_c *MediaCreate) SetUploadExpiresAt(v time.Time) *MediaCreate {
+	_c.mutation.SetUploadExpiresAt(v)
+	return _c
+}
+
+// SetNillableUploadExpiresAt sets the "upload_expires_at" field if the given value is not nil.
+func (_c *MediaCreate) SetNillableUploadExpiresAt(v *time.Time) *MediaCreate {
+	if v != nil {
+		_c.SetUploadExpiresAt(*v)
+	}
+	return _c
+}
+
+// SetCompletedAt sets the "completed_at" field.
+func (_c *MediaCreate) SetCompletedAt(v time.Time) *MediaCreate {
+	_c.mutation.SetCompletedAt(v)
+	return _c
+}
+
+// SetNillableCompletedAt sets the "completed_at" field if the given value is not nil.
+func (_c *MediaCreate) SetNillableCompletedAt(v *time.Time) *MediaCreate {
+	if v != nil {
+		_c.SetCompletedAt(*v)
+	}
+	return _c
+}
+
 // SetMessageID sets the "message_id" field.
 func (_c *MediaCreate) SetMessageID(v uuid.UUID) *MediaCreate {
 	_c.mutation.SetMessageID(v)
@@ -260,6 +302,10 @@ func (_c *MediaCreate) defaults() {
 		v := media.DefaultCategory
 		_c.mutation.SetCategory(v)
 	}
+	if _, ok := _c.mutation.UploadStatus(); !ok {
+		v := media.DefaultUploadStatus
+		_c.mutation.SetUploadStatus(v)
+	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := media.DefaultID()
 		_c.mutation.SetID(v)
@@ -312,6 +358,14 @@ func (_c *MediaCreate) check() error {
 	if v, ok := _c.mutation.Category(); ok {
 		if err := media.CategoryValidator(v); err != nil {
 			return &ValidationError{Name: "category", err: fmt.Errorf(`ent: validator failed for field "Media.category": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.UploadStatus(); !ok {
+		return &ValidationError{Name: "upload_status", err: errors.New(`ent: missing required field "Media.upload_status"`)}
+	}
+	if v, ok := _c.mutation.UploadStatus(); ok {
+		if err := media.UploadStatusValidator(v); err != nil {
+			return &ValidationError{Name: "upload_status", err: fmt.Errorf(`ent: validator failed for field "Media.upload_status": %w`, err)}
 		}
 	}
 	return nil
@@ -377,6 +431,18 @@ func (_c *MediaCreate) createSpec() (*Media, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Category(); ok {
 		_spec.SetField(media.FieldCategory, field.TypeEnum, value)
 		_node.Category = value
+	}
+	if value, ok := _c.mutation.UploadStatus(); ok {
+		_spec.SetField(media.FieldUploadStatus, field.TypeEnum, value)
+		_node.UploadStatus = value
+	}
+	if value, ok := _c.mutation.UploadExpiresAt(); ok {
+		_spec.SetField(media.FieldUploadExpiresAt, field.TypeTime, value)
+		_node.UploadExpiresAt = &value
+	}
+	if value, ok := _c.mutation.CompletedAt(); ok {
+		_spec.SetField(media.FieldCompletedAt, field.TypeTime, value)
+		_node.CompletedAt = &value
 	}
 	if nodes := _c.mutation.MessageIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -590,6 +656,54 @@ func (u *MediaUpsert) UpdateCategory() *MediaUpsert {
 	return u
 }
 
+// SetUploadStatus sets the "upload_status" field.
+func (u *MediaUpsert) SetUploadStatus(v media.UploadStatus) *MediaUpsert {
+	u.Set(media.FieldUploadStatus, v)
+	return u
+}
+
+// UpdateUploadStatus sets the "upload_status" field to the value that was provided on create.
+func (u *MediaUpsert) UpdateUploadStatus() *MediaUpsert {
+	u.SetExcluded(media.FieldUploadStatus)
+	return u
+}
+
+// SetUploadExpiresAt sets the "upload_expires_at" field.
+func (u *MediaUpsert) SetUploadExpiresAt(v time.Time) *MediaUpsert {
+	u.Set(media.FieldUploadExpiresAt, v)
+	return u
+}
+
+// UpdateUploadExpiresAt sets the "upload_expires_at" field to the value that was provided on create.
+func (u *MediaUpsert) UpdateUploadExpiresAt() *MediaUpsert {
+	u.SetExcluded(media.FieldUploadExpiresAt)
+	return u
+}
+
+// ClearUploadExpiresAt clears the value of the "upload_expires_at" field.
+func (u *MediaUpsert) ClearUploadExpiresAt() *MediaUpsert {
+	u.SetNull(media.FieldUploadExpiresAt)
+	return u
+}
+
+// SetCompletedAt sets the "completed_at" field.
+func (u *MediaUpsert) SetCompletedAt(v time.Time) *MediaUpsert {
+	u.Set(media.FieldCompletedAt, v)
+	return u
+}
+
+// UpdateCompletedAt sets the "completed_at" field to the value that was provided on create.
+func (u *MediaUpsert) UpdateCompletedAt() *MediaUpsert {
+	u.SetExcluded(media.FieldCompletedAt)
+	return u
+}
+
+// ClearCompletedAt clears the value of the "completed_at" field.
+func (u *MediaUpsert) ClearCompletedAt() *MediaUpsert {
+	u.SetNull(media.FieldCompletedAt)
+	return u
+}
+
 // SetMessageID sets the "message_id" field.
 func (u *MediaUpsert) SetMessageID(v uuid.UUID) *MediaUpsert {
 	u.Set(media.FieldMessageID, v)
@@ -765,6 +879,62 @@ func (u *MediaUpsertOne) SetCategory(v media.Category) *MediaUpsertOne {
 func (u *MediaUpsertOne) UpdateCategory() *MediaUpsertOne {
 	return u.Update(func(s *MediaUpsert) {
 		s.UpdateCategory()
+	})
+}
+
+// SetUploadStatus sets the "upload_status" field.
+func (u *MediaUpsertOne) SetUploadStatus(v media.UploadStatus) *MediaUpsertOne {
+	return u.Update(func(s *MediaUpsert) {
+		s.SetUploadStatus(v)
+	})
+}
+
+// UpdateUploadStatus sets the "upload_status" field to the value that was provided on create.
+func (u *MediaUpsertOne) UpdateUploadStatus() *MediaUpsertOne {
+	return u.Update(func(s *MediaUpsert) {
+		s.UpdateUploadStatus()
+	})
+}
+
+// SetUploadExpiresAt sets the "upload_expires_at" field.
+func (u *MediaUpsertOne) SetUploadExpiresAt(v time.Time) *MediaUpsertOne {
+	return u.Update(func(s *MediaUpsert) {
+		s.SetUploadExpiresAt(v)
+	})
+}
+
+// UpdateUploadExpiresAt sets the "upload_expires_at" field to the value that was provided on create.
+func (u *MediaUpsertOne) UpdateUploadExpiresAt() *MediaUpsertOne {
+	return u.Update(func(s *MediaUpsert) {
+		s.UpdateUploadExpiresAt()
+	})
+}
+
+// ClearUploadExpiresAt clears the value of the "upload_expires_at" field.
+func (u *MediaUpsertOne) ClearUploadExpiresAt() *MediaUpsertOne {
+	return u.Update(func(s *MediaUpsert) {
+		s.ClearUploadExpiresAt()
+	})
+}
+
+// SetCompletedAt sets the "completed_at" field.
+func (u *MediaUpsertOne) SetCompletedAt(v time.Time) *MediaUpsertOne {
+	return u.Update(func(s *MediaUpsert) {
+		s.SetCompletedAt(v)
+	})
+}
+
+// UpdateCompletedAt sets the "completed_at" field to the value that was provided on create.
+func (u *MediaUpsertOne) UpdateCompletedAt() *MediaUpsertOne {
+	return u.Update(func(s *MediaUpsert) {
+		s.UpdateCompletedAt()
+	})
+}
+
+// ClearCompletedAt clears the value of the "completed_at" field.
+func (u *MediaUpsertOne) ClearCompletedAt() *MediaUpsertOne {
+	return u.Update(func(s *MediaUpsert) {
+		s.ClearCompletedAt()
 	})
 }
 
@@ -1116,6 +1286,62 @@ func (u *MediaUpsertBulk) SetCategory(v media.Category) *MediaUpsertBulk {
 func (u *MediaUpsertBulk) UpdateCategory() *MediaUpsertBulk {
 	return u.Update(func(s *MediaUpsert) {
 		s.UpdateCategory()
+	})
+}
+
+// SetUploadStatus sets the "upload_status" field.
+func (u *MediaUpsertBulk) SetUploadStatus(v media.UploadStatus) *MediaUpsertBulk {
+	return u.Update(func(s *MediaUpsert) {
+		s.SetUploadStatus(v)
+	})
+}
+
+// UpdateUploadStatus sets the "upload_status" field to the value that was provided on create.
+func (u *MediaUpsertBulk) UpdateUploadStatus() *MediaUpsertBulk {
+	return u.Update(func(s *MediaUpsert) {
+		s.UpdateUploadStatus()
+	})
+}
+
+// SetUploadExpiresAt sets the "upload_expires_at" field.
+func (u *MediaUpsertBulk) SetUploadExpiresAt(v time.Time) *MediaUpsertBulk {
+	return u.Update(func(s *MediaUpsert) {
+		s.SetUploadExpiresAt(v)
+	})
+}
+
+// UpdateUploadExpiresAt sets the "upload_expires_at" field to the value that was provided on create.
+func (u *MediaUpsertBulk) UpdateUploadExpiresAt() *MediaUpsertBulk {
+	return u.Update(func(s *MediaUpsert) {
+		s.UpdateUploadExpiresAt()
+	})
+}
+
+// ClearUploadExpiresAt clears the value of the "upload_expires_at" field.
+func (u *MediaUpsertBulk) ClearUploadExpiresAt() *MediaUpsertBulk {
+	return u.Update(func(s *MediaUpsert) {
+		s.ClearUploadExpiresAt()
+	})
+}
+
+// SetCompletedAt sets the "completed_at" field.
+func (u *MediaUpsertBulk) SetCompletedAt(v time.Time) *MediaUpsertBulk {
+	return u.Update(func(s *MediaUpsert) {
+		s.SetCompletedAt(v)
+	})
+}
+
+// UpdateCompletedAt sets the "completed_at" field to the value that was provided on create.
+func (u *MediaUpsertBulk) UpdateCompletedAt() *MediaUpsertBulk {
+	return u.Update(func(s *MediaUpsert) {
+		s.UpdateCompletedAt()
+	})
+}
+
+// ClearCompletedAt clears the value of the "completed_at" field.
+func (u *MediaUpsertBulk) ClearCompletedAt() *MediaUpsertBulk {
+	return u.Update(func(s *MediaUpsert) {
+		s.ClearCompletedAt()
 	})
 }
 

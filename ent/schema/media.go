@@ -21,6 +21,9 @@ func (Media) Fields() []ent.Field {
 		field.Int64("file_size").Positive(),
 		field.String("mime_type").MaxLen(100).NotEmpty(),
 		field.Enum("category").Values("user_avatar", "group_avatar", "message_attachment").Default("message_attachment"),
+		field.Enum("upload_status").Values("pending", "completed").Default("completed"),
+		field.Time("upload_expires_at").Optional().Nillable(),
+		field.Time("completed_at").Optional().Nillable(),
 		field.UUID("message_id", uuid.UUID{}).Optional().Nillable(),
 		field.UUID("uploaded_by_id", uuid.UUID{}).Optional().Nillable(),
 	}

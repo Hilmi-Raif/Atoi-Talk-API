@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -28,13 +27,9 @@ func NewGroupChatController(groupChatService *service.GroupChatService) *GroupCh
 // @Summary      Create Group Chat
 // @Description  Create a new group chat with multiple members and an optional avatar.
 // @Tags         chat
-// @Accept       multipart/form-data
+// @Accept       json
 // @Produce      json
-// @Param        name formData string true "Group Name"
-// @Param        description formData string false "Group Description"
-// @Param        member_ids formData string true "JSON Array of Member IDs (UUIDs)"
-// @Param        avatar formData file false "Group Avatar Image"
-// @Param        is_public formData boolean false "Is Public Group"
+// @Param        request body model.CreateGroupChatRequest true "Group creation"
 // @Success      200  {object}  helper.ResponseSuccess{data=model.ChatListResponse}
 // @Failure      400  {object}  helper.ResponseError
 // @Failure      401  {object}  helper.ResponseError
@@ -50,63 +45,10 @@ func (c *GroupChatController) CreateGroupChat(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	name := r.FormValue("name")
-	description := r.FormValue("description")
-	memberIDsStr := r.FormValue("member_ids")
-	isPublicStr := r.FormValue("is_public")
-
-	var memberIDs []uuid.UUID
-	if memberIDsStr != "" {
-		var idStrings []string
-		if err := json.Unmarshal([]byte(memberIDsStr), &idStrings); err == nil {
-			for _, s := range idStrings {
-				id, parseErr := uuid.Parse(strings.TrimSpace(s))
-				if parseErr != nil {
-					helper.WriteError(w, helper.NewBadRequestError("Invalid member_ids format"))
-					return
-				}
-				memberIDs = append(memberIDs, id)
-			}
-		} else {
-			parts := strings.Split(memberIDsStr, ",")
-			for _, p := range parts {
-				trimmed := strings.TrimSpace(p)
-				if trimmed == "" {
-					helper.WriteError(w, helper.NewBadRequestError("Invalid member_ids format"))
-					return
-				}
-				id, parseErr := uuid.Parse(trimmed)
-				if parseErr != nil {
-					helper.WriteError(w, helper.NewBadRequestError("Invalid member_ids format"))
-					return
-				}
-				memberIDs = append(memberIDs, id)
-			}
-		}
-	}
-
-	isPublic := false
-	if isPublicStr != "" {
-		parsed, parseErr := strconv.ParseBool(isPublicStr)
-		if parseErr != nil {
-			helper.WriteError(w, helper.NewBadRequestError("Invalid is_public value"))
-			return
-		}
-		isPublic = parsed
-	}
-
-	_, header, err := r.FormFile("avatar")
-	if err != nil && err != http.ErrMissingFile {
-		helper.WriteError(w, helper.NewBadRequestError("Failed to process avatar file"))
+	var req model.CreateGroupChatRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helper.WriteError(w, helper.NewBadRequestError(""))
 		return
-	}
-
-	req := model.CreateGroupChatRequest{
-		Name:        name,
-		Description: description,
-		MemberIDs:   memberIDs,
-		Avatar:      header,
-		IsPublic:    isPublic,
 	}
 
 	resp, err := c.groupChatService.CreateGroupChat(r.Context(), userContext.ID, req)
@@ -122,14 +64,10 @@ func (c *GroupChatController) CreateGroupChat(w http.ResponseWriter, r *http.Req
 // @Summary      Update Group Chat Info
 // @Description  Update group name, description, avatar, or visibility. Only owners or admins can perform this action.
 // @Tags         chat
-// @Accept       multipart/form-data
+// @Accept       json
 // @Produce      json
 // @Param        chatID path string true "Group Chat ID (UUID)"
-// @Param        name formData string false "Group Name"
-// @Param        description formData string false "Group Description"
-// @Param        avatar formData file false "Group Avatar Image"
-// @Param        delete_avatar formData boolean false "Delete Avatar (Set to true to delete current avatar)"
-// @Param        is_public formData boolean false "Is Public Group"
+// @Param        request body model.UpdateGroupChatRequest true "Group update"
 // @Success      200  {object}  helper.ResponseSuccess{data=model.ChatListResponse}
 // @Failure      400  {object}  helper.ResponseError
 // @Failure      401  {object}  helper.ResponseError
@@ -153,43 +91,9 @@ func (c *GroupChatController) UpdateGroupChat(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		helper.WriteError(w, helper.NewBadRequestError("Failed to parse form data"))
-		return
-	}
-
 	var req model.UpdateGroupChatRequest
-
-	if _, ok := r.MultipartForm.Value["name"]; ok {
-		name := r.FormValue("name")
-		req.Name = &name
-	}
-	if _, ok := r.MultipartForm.Value["description"]; ok {
-		desc := r.FormValue("description")
-		req.Description = &desc
-	}
-	if _, ok := r.MultipartForm.Value["is_public"]; ok {
-		isPublic, parseErr := strconv.ParseBool(r.FormValue("is_public"))
-		if parseErr != nil {
-			helper.WriteError(w, helper.NewBadRequestError("Invalid is_public value"))
-			return
-		}
-		req.IsPublic = &isPublic
-	}
-	if _, ok := r.MultipartForm.Value["delete_avatar"]; ok {
-		deleteAvatar, parseErr := strconv.ParseBool(r.FormValue("delete_avatar"))
-		if parseErr != nil {
-			helper.WriteError(w, helper.NewBadRequestError("Invalid delete_avatar value"))
-			return
-		}
-		req.DeleteAvatar = deleteAvatar
-	}
-
-	_, header, err := r.FormFile("avatar")
-	if err == nil {
-		req.Avatar = header
-	} else if err != http.ErrMissingFile {
-		helper.WriteError(w, helper.NewBadRequestError("Failed to process avatar file"))
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helper.WriteError(w, helper.NewBadRequestError(""))
 		return
 	}
 

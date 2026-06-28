@@ -15,7 +15,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"mime/multipart"
 	"strings"
 	"time"
 
@@ -210,7 +209,7 @@ func (s *UserService) GetUserProfile(ctx context.Context, currentUserID uuid.UUI
 }
 
 func (s *UserService) UpdateProfile(ctx context.Context, userID uuid.UUID, req model.UpdateProfileRequest) (*model.UserDTO, error) {
-	if req.DeleteAvatar && req.Avatar != nil {
+	if req.DeleteAvatar && req.AvatarMediaID != nil {
 		return nil, helper.NewBadRequestError("")
 	}
 
@@ -298,7 +297,7 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID uuid.UUID, req m
 		}
 	}
 
-	if req.DeleteAvatar || req.Avatar != nil {
+	if req.DeleteAvatar || req.AvatarMediaID != nil {
 		hasChanges = true
 	}
 
@@ -349,54 +348,34 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID uuid.UUID, req m
 		return httpResp, nil
 	}
 
-	var newAvatarFileName string
 	var isAvatarUpdated bool
-
-	var fileToUpload multipart.File
-	var fileUploadPath string
-	var fileContentType string
-	var mediaID uuid.UUID
-	avatarUploadSucceeded := true
+	var newAvatarFileName string
 
 	if req.DeleteAvatar {
 		update.ClearAvatar().ClearAvatarID()
 		isAvatarUpdated = true
-	} else if req.Avatar != nil {
-		file, err := req.Avatar.Open()
+	} else if req.AvatarMediaID != nil {
+		avatarMedia, err := tx.Media.Query().
+			Where(
+				media.ID(*req.AvatarMediaID),
+				media.CategoryEQ(media.CategoryUserAvatar),
+				media.UploadStatusEQ(media.UploadStatusCompleted),
+				media.HasUploaderWith(user.ID(userID)),
+				media.Not(media.HasUserAvatar()),
+				media.Not(media.HasGroupAvatar()),
+				media.MessageIDIsNil(),
+			).
+			Only(ctx)
 		if err != nil {
-			slog.Error("Failed to open avatar file", "error", err, "userID", userID)
+			if ent.IsNotFound(err) {
+				return nil, helper.NewBadRequestError("Invalid avatar media")
+			}
+			slog.Error("Failed to query avatar media", "error", err, "userID", userID, "mediaID", *req.AvatarMediaID)
 			return nil, helper.NewInternalServerError("")
 		}
-		defer file.Close()
-		fileToUpload = file
 
-		contentType, err := helper.DetectFileContentType(file)
-		if err != nil {
-			slog.Error("Failed to detect file content type", "error", err)
-			return nil, helper.NewInternalServerError("")
-		}
-
-		fileName := helper.GenerateUniqueFileName(req.Avatar.Filename)
-		filePath := fileName
-
-		fileUploadPath = filePath
-		fileContentType = contentType
-
-		media, err := tx.Media.Create().
-			SetFileName(fileName).SetOriginalName(req.Avatar.Filename).
-			SetFileSize(req.Avatar.Size).SetMimeType(contentType).
-			SetCategory(media.CategoryUserAvatar).
-			SetUploaderID(userID).
-			Save(ctx)
-
-		if err != nil {
-			slog.Error("Failed to create media record", "error", err, "userID", userID)
-			return nil, helper.NewInternalServerError("")
-		}
-		mediaID = media.ID
-
-		update.SetAvatar(media)
-		newAvatarFileName = fileName
+		update.SetAvatar(avatarMedia)
+		newAvatarFileName = avatarMedia.FileName
 		isAvatarUpdated = true
 	}
 
@@ -414,35 +393,9 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID uuid.UUID, req m
 		return nil, helper.NewInternalServerError("")
 	}
 
-	if fileToUpload != nil {
-
-		if err := s.storageAdapter.StoreFromReader(fileToUpload, fileContentType, fileUploadPath, true); err != nil {
-			avatarUploadSucceeded = false
-			slog.Error("Failed to store avatar to storage after db commit", "error", err, "userID", userID)
-
-			if mediaID != uuid.Nil {
-				cleanupCtx := context.Background()
-
-				_, unlinkErr := s.client.User.UpdateOneID(userID).ClearAvatar().Save(cleanupCtx)
-				if unlinkErr != nil {
-					slog.Error("Failed to unlink avatar after file upload failure", "error", unlinkErr, "userID", userID)
-				} else {
-
-					if delErr := s.client.Media.DeleteOneID(mediaID).Exec(cleanupCtx); delErr != nil {
-						slog.Error("Failed to delete orphan media record after file upload failure", "error", delErr, "mediaID", mediaID)
-					}
-				}
-			}
-		}
-	}
-
 	var avatarFileName string
 	if isAvatarUpdated {
-		if req.Avatar != nil {
-			if avatarUploadSucceeded {
-				avatarFileName = newAvatarFileName
-			}
-		}
+		avatarFileName = newAvatarFileName
 	} else if u.Edges.Avatar != nil {
 		avatarFileName = u.Edges.Avatar.FileName
 	}

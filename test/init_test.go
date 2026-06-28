@@ -90,14 +90,14 @@ func TestMain(m *testing.M) {
 		os.Setenv("TURNSTILE_SECRET_KEY", "1x0000000000000000000000000000000AA")
 	}
 
-	os.Setenv("S3_BUCKET_PUBLIC", "test-public-bucket")
-	os.Setenv("S3_BUCKET_PRIVATE", "test-private-bucket")
-	os.Setenv("S3_REGION", "us-east-1")
-	os.Setenv("S3_ACCESS_KEY", "test")
-	os.Setenv("S3_SECRET_KEY", "test")
-	os.Setenv("S3_ENDPOINT", "http://localhost:9090")
+	setEnvDefault("S3_BUCKET_PUBLIC", "test-public-bucket")
+	setEnvDefault("S3_BUCKET_PRIVATE", "test-private-bucket")
+	setEnvDefault("S3_REGION", "us-east-1")
+	setEnvDefault("S3_ACCESS_KEY", "test")
+	setEnvDefault("S3_SECRET_KEY", "test")
+	setEnvDefault("S3_ENDPOINT", "http://localhost:9090")
 
-	os.Setenv("S3_PUBLIC_DOMAIN", "http://localhost:9090/test-public-bucket")
+	setEnvDefault("S3_PUBLIC_DOMAIN", os.Getenv("S3_ENDPOINT")+"/"+os.Getenv("S3_BUCKET_PUBLIC"))
 
 	os.Setenv("SMTP_ASYNC", "false")
 
@@ -174,6 +174,12 @@ func TestMain(m *testing.M) {
 
 	testClient.Close()
 	os.Exit(code)
+}
+
+func setEnvDefault(key, value string) {
+	if os.Getenv(key) == "" {
+		os.Setenv(key, value)
+	}
 }
 
 func initS3Buckets(client *s3.Client, buckets ...string) {

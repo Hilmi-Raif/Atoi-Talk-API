@@ -27,6 +27,11 @@ type StorageAdapter struct {
 	presignClient *s3.PresignClient
 }
 
+type StorageObjectInfo struct {
+	Size        int64
+	ContentType string
+}
+
 func NewStorageAdapter(cfg *config.AppConfig, s3Client *s3.Client, httpClient *http.Client) *StorageAdapter {
 	var presignClient *s3.PresignClient
 	if s3Client != nil {
@@ -162,4 +167,64 @@ func (s *StorageAdapter) GetPresignedURL(path string, expiry time.Duration) (str
 	}
 
 	return req.URL, nil
+}
+
+func (s *StorageAdapter) GetPresignedPutURL(path string, contentType string, contentLength int64, isPublic bool, expiry time.Duration) (string, map[string]string, error) {
+	if s.presignClient == nil {
+		return "", nil, errors.New("presign client is not initialized")
+	}
+
+	bucket := s.bucketPrivate
+	if isPublic {
+		bucket = s.bucketPublic
+	}
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	s3Key := filepath.ToSlash(path)
+	req, err := s.presignClient.PresignPutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket:        aws.String(bucket),
+		Key:           aws.String(s3Key),
+		ContentType:   aws.String(contentType),
+		ContentLength: aws.Int64(contentLength),
+	}, func(opts *s3.PresignOptions) {
+		opts.Expires = expiry
+	})
+	if err != nil {
+		return "", nil, err
+	}
+
+	headers := map[string]string{"Content-Type": contentType}
+	return req.URL, headers, nil
+}
+
+func (s *StorageAdapter) Head(path string, isPublic bool) (*StorageObjectInfo, error) {
+	if s.client == nil {
+		return nil, errors.New("s3 client is not initialized")
+	}
+
+	bucket := s.bucketPrivate
+	if isPublic {
+		bucket = s.bucketPublic
+	}
+
+	s3Key := filepath.ToSlash(path)
+	resp, err := s.client.HeadObject(context.TODO(), &s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(s3Key),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	info := &StorageObjectInfo{}
+	if resp.ContentLength != nil {
+		info.Size = *resp.ContentLength
+	}
+	if resp.ContentType != nil {
+		info.ContentType = *resp.ContentType
+	}
+
+	return info, nil
 }

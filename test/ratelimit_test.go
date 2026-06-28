@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"mime/multipart"
 	"net/http"
 	"testing"
 
@@ -61,17 +60,8 @@ func TestRateLimit_Authenticated(t *testing.T) {
 	u := createTestUser(t, "ratelimituser")
 	token, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, u.ID)
 
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-	part, _ := writer.CreateFormFile("file", "test.txt")
-	part.Write([]byte("test content"))
-	writer.Close()
-	contentType := writer.FormDataContentType()
-	bodyBytes := body.Bytes()
-
 	for i := 0; i < 20; i++ {
-		req, _ := http.NewRequest("POST", "/api/media/upload", bytes.NewBuffer(bodyBytes))
-		req.Header.Set("Content-Type", contentType)
+		req := newUploadMediaRequest("message_attachment", "test.txt", 12, "text/plain", "dummy-token")
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		req.Header.Set("X-Forwarded-For", fmt.Sprintf("192.168.1.%d", i))
@@ -80,8 +70,7 @@ func TestRateLimit_Authenticated(t *testing.T) {
 		assert.NotEqual(t, http.StatusTooManyRequests, rr.Code, fmt.Sprintf("Request %d should be allowed", i+1))
 	}
 
-	req, _ := http.NewRequest("POST", "/api/media/upload", bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Content-Type", contentType)
+	req := newUploadMediaRequest("message_attachment", "test.txt", 12, "text/plain", "dummy-token")
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("X-Forwarded-For", "192.168.1.99")
 

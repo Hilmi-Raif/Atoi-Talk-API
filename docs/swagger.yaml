@@ -201,6 +201,28 @@ definitions:
       type:
         type: string
     type: object
+  model.CreateGroupChatRequest:
+    properties:
+      avatar_media_id:
+        type: string
+      description:
+        maxLength: 255
+        type: string
+      is_public:
+        type: boolean
+      member_ids:
+        items:
+          type: string
+        minItems: 1
+        type: array
+      name:
+        maxLength: 100
+        minLength: 3
+        type: string
+    required:
+    - member_ids
+    - name
+    type: object
   model.CreatePrivateChatRequest:
     properties:
       target_user_id:
@@ -345,6 +367,8 @@ definitions:
     type: object
   model.MediaDTO:
     properties:
+      category:
+        type: string
       file_name:
         type: string
       file_size:
@@ -354,6 +378,8 @@ definitions:
       mime_type:
         type: string
       original_name:
+        type: string
+      upload_status:
         type: string
       url:
         type: string
@@ -673,6 +699,22 @@ definitions:
     required:
     - new_owner_id
     type: object
+  model.UpdateGroupChatRequest:
+    properties:
+      avatar_media_id:
+        type: string
+      delete_avatar:
+        type: boolean
+      description:
+        maxLength: 255
+        type: string
+      is_public:
+        type: boolean
+      name:
+        maxLength: 100
+        minLength: 3
+        type: string
+    type: object
   model.UpdateGroupMemberRoleRequest:
     properties:
       role:
@@ -682,6 +724,41 @@ definitions:
         type: string
     required:
     - role
+    type: object
+  model.UpdateProfileRequest:
+    properties:
+      avatar_media_id:
+        type: string
+      bio:
+        maxLength: 255
+        type: string
+      delete_avatar:
+        type: boolean
+      full_name:
+        maxLength: 100
+        minLength: 3
+        type: string
+      username:
+        maxLength: 50
+        minLength: 3
+        type: string
+    required:
+    - full_name
+    type: object
+  model.UploadMediaResponse:
+    properties:
+      expires_at:
+        type: string
+      media:
+        $ref: '#/definitions/model.MediaDTO'
+      upload_headers:
+        additionalProperties:
+          type: string
+        type: object
+      upload_method:
+        type: string
+      upload_url:
+        type: string
     type: object
   model.UserDTO:
     properties:
@@ -1932,31 +2009,15 @@ paths:
   /api/chats/group:
     post:
       consumes:
-      - multipart/form-data
+      - application/json
       description: Create a new group chat with multiple members and an optional avatar.
       parameters:
-      - description: Group Name
-        in: formData
-        name: name
+      - description: Group creation
+        in: body
+        name: request
         required: true
-        type: string
-      - description: Group Description
-        in: formData
-        name: description
-        type: string
-      - description: JSON Array of Member IDs (UUIDs)
-        in: formData
-        name: member_ids
-        required: true
-        type: string
-      - description: Group Avatar Image
-        in: formData
-        name: avatar
-        type: file
-      - description: Is Public Group
-        in: formData
-        name: is_public
-        type: boolean
+        schema:
+          $ref: '#/definitions/model.CreateGroupChatRequest'
       produces:
       - application/json
       responses:
@@ -2043,7 +2104,7 @@ paths:
       - chat
     put:
       consumes:
-      - multipart/form-data
+      - application/json
       description: Update group name, description, avatar, or visibility. Only owners
         or admins can perform this action.
       parameters:
@@ -2052,26 +2113,12 @@ paths:
         name: chatID
         required: true
         type: string
-      - description: Group Name
-        in: formData
-        name: name
-        type: string
-      - description: Group Description
-        in: formData
-        name: description
-        type: string
-      - description: Group Avatar Image
-        in: formData
-        name: avatar
-        type: file
-      - description: Delete Avatar (Set to true to delete current avatar)
-        in: formData
-        name: delete_avatar
-        type: boolean
-      - description: Is Public Group
-        in: formData
-        name: is_public
-        type: boolean
+      - description: Group update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateGroupChatRequest'
       produces:
       - application/json
       responses:
@@ -2782,6 +2829,54 @@ paths:
       summary: Create Private Chat
       tags:
       - chat
+  /api/media/{mediaID}/complete:
+    post:
+      consumes:
+      - application/json
+      description: Verify the uploaded object exists and mark pending media as completed.
+      parameters:
+      - description: Media ID (UUID)
+        in: path
+        name: mediaID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/helper.ResponseSuccess'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.MediaDTO'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helper.ResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/helper.ResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/helper.ResponseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/helper.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helper.ResponseError'
+      security:
+      - BearerAuth: []
+      summary: Complete Media Upload
+      tags:
+      - media
   /api/media/{mediaID}/url:
     get:
       consumes:
@@ -2832,18 +2927,35 @@ paths:
       tags:
       - media
   /api/media/upload:
-    post:
-      consumes:
-      - multipart/form-data
-      description: Upload a file (image, video, file, audio) to be used as attachment.
+    get:
+      description: Create a pending media row and upload URL for direct storage upload.
       parameters:
-      - description: File to upload
-        in: formData
-        name: file
+      - description: Upload usage
+        enum:
+        - message_attachment
+        - user_avatar
+        - group_avatar
+        in: query
+        name: usage
         required: true
-        type: file
-      - description: Captcha Token
-        in: formData
+        type: string
+      - description: Original file name
+        in: query
+        name: original_name
+        required: true
+        type: string
+      - description: File size in bytes
+        in: query
+        name: file_size
+        required: true
+        type: integer
+      - description: MIME type
+        in: query
+        name: mime_type
+        required: true
+        type: string
+      - description: Captcha token
+        in: query
         name: captcha_token
         required: true
         type: string
@@ -2857,7 +2969,7 @@ paths:
             - $ref: '#/definitions/helper.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.MediaDTO'
+                  $ref: '#/definitions/model.UploadMediaResponse'
               type: object
         "400":
           description: Bad Request
@@ -2877,7 +2989,7 @@ paths:
             $ref: '#/definitions/helper.ResponseError'
       security:
       - BearerAuth: []
-      summary: Upload Media
+      summary: Create Media Upload URL
       tags:
       - media
   /api/messages:
@@ -3159,30 +3271,15 @@ paths:
   /api/user/profile:
     put:
       consumes:
-      - multipart/form-data
+      - application/json
       description: Update user's full name, bio, and avatar.
       parameters:
-      - description: Username
-        in: formData
-        name: username
-        type: string
-      - description: Full Name
-        in: formData
-        name: full_name
+      - description: Profile update
+        in: body
+        name: request
         required: true
-        type: string
-      - description: Bio
-        in: formData
-        name: bio
-        type: string
-      - description: Avatar Image
-        in: formData
-        name: avatar
-        type: file
-      - description: Delete Avatar
-        in: formData
-        name: delete_avatar
-        type: boolean
+        schema:
+          $ref: '#/definitions/model.UpdateProfileRequest'
       produces:
       - application/json
       responses:

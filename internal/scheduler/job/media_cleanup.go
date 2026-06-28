@@ -21,9 +21,20 @@ func RunMediaCleanup(ctx context.Context, client *ent.Client, storage *adapter.S
 
 	slog.Info("Running Media Cleanup", "retentionDays", retentionDays, "cutoff", cutoff, "now_utc", time.Now().UTC())
 
+	now := time.Now().UTC()
 	orphans, err := client.Media.Query().
 		Where(
-			media.CreatedAtLT(cutoff),
+			media.Or(
+				media.And(
+					media.UploadStatusEQ(media.UploadStatusPending),
+					media.UploadExpiresAtNotNil(),
+					media.UploadExpiresAtLT(now),
+				),
+				media.And(
+					media.UploadStatusEQ(media.UploadStatusCompleted),
+					media.CreatedAtLT(cutoff),
+				),
+			),
 			media.MessageIDIsNil(),
 			media.Not(media.HasUserAvatar()),
 			media.Not(media.HasGroupAvatar()),

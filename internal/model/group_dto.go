@@ -1,25 +1,21 @@
 package model
 
-import (
-	"mime/multipart"
-
-	"github.com/google/uuid"
-)
+import "github.com/google/uuid"
 
 type CreateGroupChatRequest struct {
-	Name        string                `form:"name" validate:"required,min=3,max=100"`
-	Description string                `form:"description" validate:"max=255"`
-	MemberIDs   []uuid.UUID           `form:"member_ids" validate:"required,min=1,dive"`
-	Avatar      *multipart.FileHeader `form:"avatar" validate:"omitempty,imagevalid=800_800_2"`
-	IsPublic    bool                  `form:"is_public"`
+	Name          string      `json:"name" validate:"required,min=3,max=100"`
+	Description   string      `json:"description" validate:"max=255"`
+	MemberIDs     []uuid.UUID `json:"member_ids" validate:"required,min=1,dive"`
+	AvatarMediaID *uuid.UUID  `json:"avatar_media_id" validate:"omitempty"`
+	IsPublic      bool        `json:"is_public"`
 }
 
 type UpdateGroupChatRequest struct {
-	Name         *string               `form:"name" validate:"omitempty,min=3,max=100"`
-	Description  *string               `form:"description" validate:"omitempty,max=255"`
-	Avatar       *multipart.FileHeader `form:"avatar" validate:"omitempty,imagevalid=800_800_2"`
-	IsPublic     *bool                 `form:"is_public"`
-	DeleteAvatar bool                  `form:"delete_avatar"`
+	Name          *string    `json:"name" validate:"omitempty,min=3,max=100"`
+	Description   *string    `json:"description" validate:"omitempty,max=255"`
+	AvatarMediaID *uuid.UUID `json:"avatar_media_id" validate:"omitempty"`
+	IsPublic      *bool      `json:"is_public"`
+	DeleteAvatar  bool       `json:"delete_avatar"`
 }
 
 type SearchGroupMembersRequest struct {

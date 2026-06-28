@@ -14,7 +14,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"mime/multipart"
 	"net/http"
 	"testing"
 	"time"
@@ -194,15 +193,9 @@ func TestBannedUserRestrictions(t *testing.T) {
 			MemberIDs: []uuid.UUID{bannedUser.ID},
 		}
 
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-		_ = writer.WriteField("name", reqBody.Name)
-		idsJSON, _ := json.Marshal([]string{bannedUser.ID.String()})
-		_ = writer.WriteField("member_ids", string(idsJSON))
-		writer.Close()
-
-		req, _ := http.NewRequest("POST", "/api/chats/group", body)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
+		body, _ := json.Marshal(reqBody)
+		req, _ := http.NewRequest("POST", "/api/chats/group", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+normalToken)
 
 		rr := executeRequest(req)

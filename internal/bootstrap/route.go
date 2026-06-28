@@ -87,13 +87,14 @@ func (route *Route) Register() {
 			})
 
 			r.Group(func(r chi.Router) {
-				r.Use(middleware.MaxBodySize(20 * 1024 * 1024))
+				r.Use(middleware.MaxBodySize(100 * 1024))
 				r.Use(route.rateLimitMiddleware.Limit("media_upload", 20, time.Minute))
 				r.Post("/media/upload", route.mediaController.UploadMedia)
+				r.Post("/media/{mediaID}/complete", route.mediaController.CompleteUpload)
 			})
 
 			r.Group(func(r chi.Router) {
-				r.Use(middleware.MaxBodySize(5 * 1024 * 1024))
+				r.Use(middleware.MaxBodySize(100 * 1024))
 				r.Use(route.rateLimitMiddleware.Limit("user_management", 30, time.Minute))
 
 				r.Put("/user/profile", route.userController.UpdateProfile)

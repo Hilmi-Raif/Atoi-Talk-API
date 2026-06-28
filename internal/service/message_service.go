@@ -187,8 +187,8 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 			Where(
 				media.IDIn(req.AttachmentIDs...),
 				media.MessageIDIsNil(),
-				media.Not(media.HasUserAvatar()),
-				media.Not(media.HasGroupAvatar()),
+				media.CategoryEQ(media.CategoryMessageAttachment),
+				media.UploadStatusEQ(media.UploadStatusCompleted),
 				media.HasUploaderWith(user.ID(userID)),
 			).
 			Count(ctx)
