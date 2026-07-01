@@ -1,8 +1,8 @@
-# AtoiTalkAPI
+# Atoi-Talk-API
 
 RESTful API for real-time chat applications. Handles authentication, private/group messaging, media uploads, WebSocket events, and background cleanup jobs. Built with Go, PostgreSQL, Redis, and S3-compatible storage.
 
-See [AtoiTalk](https://github.com/ScrKiddie/AtoiTalk) for an example frontend.
+See [Atoi-Talk](https://github.com/Hilmi-Raif/Atoi-Talk) for an example frontend.
 
 ## Architecture
 
@@ -197,8 +197,8 @@ test/                 # Integration tests
 1. Clone the repo:
 
 ```bash
-git clone https://github.com/ScrKiddie/AtoiTalkAPI.git
-cd AtoiTalkAPI
+git clone https://github.com/Hilmi-Raif/Atoi-Talk-API.git
+cd Atoi-Talk-API
 ```
 
 2. Copy and fill the env file:

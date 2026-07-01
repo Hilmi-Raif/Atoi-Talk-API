@@ -101,6 +101,16 @@ func (s *ChatService) GetChatByID(ctx context.Context, userID, chatID uuid.UUID)
 	}
 
 	resp := helper.MapChatToResponse(userID, c, blockedMap, onlineMap, s.storageAdapter)
+	if resp != nil && c.Type == chat.TypeGroup && c.Edges.GroupChat != nil {
+		memberCount, err := s.client.GroupMember.Query().
+			Where(groupmember.GroupChatID(c.Edges.GroupChat.ID), groupmember.HasUserWith(user.DeletedAtIsNil())).
+			Count(ctx)
+		if err == nil {
+			resp.MemberCount = memberCount
+		} else {
+			slog.Error("Failed to count group members", "error", err, "groupID", c.Edges.GroupChat.ID)
+		}
+	}
 
 	if resp != nil {
 
@@ -286,10 +296,34 @@ func (s *ChatService) GetChats(ctx context.Context, userID uuid.UUID, req model.
 		}
 	}
 
+	memberCounts := make(map[uuid.UUID]int)
+	groupIDs := make([]uuid.UUID, 0)
+	for _, c := range chats {
+		if c.Type == chat.TypeGroup && c.Edges.GroupChat != nil {
+			groupIDs = append(groupIDs, c.Edges.GroupChat.ID)
+		}
+	}
+	if len(groupIDs) > 0 {
+		members, err := s.client.GroupMember.Query().
+			Where(groupmember.GroupChatIDIn(groupIDs...), groupmember.HasUserWith(user.DeletedAtIsNil())).
+			Select(groupmember.FieldGroupChatID).
+			All(ctx)
+		if err == nil {
+			for _, m := range members {
+				memberCounts[m.GroupChatID]++
+			}
+		} else {
+			slog.Error("Failed to batch count group members", "error", err)
+		}
+	}
+
 	response := make([]model.ChatListResponse, 0)
 	for _, c := range chats {
 		resp := helper.MapChatToResponse(userID, c, blockedMap, onlineMap, s.storageAdapter)
 		if resp != nil {
+			if c.Type == chat.TypeGroup && c.Edges.GroupChat != nil {
+				resp.MemberCount = memberCounts[c.Edges.GroupChat.ID]
+			}
 
 			if resp.LastMessage != nil && resp.LastMessage.ActionData != nil {
 				if targetIDStr, ok := resp.LastMessage.ActionData["target_id"].(string); ok {

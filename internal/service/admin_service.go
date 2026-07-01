@@ -245,7 +245,7 @@ func (s *AdminService) GetReports(ctx context.Context, req model.GetReportsReque
 		nextCursor = base64.URLEncoding.EncodeToString([]byte(lastID.String()))
 	}
 
-	var response []model.ReportListResponse
+	response := make([]model.ReportListResponse, 0)
 	for _, r := range reports {
 		reporterName := "Deleted User"
 		if r.Edges.Reporter != nil {
@@ -863,6 +863,28 @@ func (s *AdminService) GetGroups(ctx context.Context, req model.AdminGetGroupLis
 	}
 
 	data := make([]model.AdminGroupListResponse, 0, len(groups))
+	groupIDs := make([]uuid.UUID, 0, len(groups))
+	memberCounts := make(map[uuid.UUID]int, len(groups))
+	for _, g := range groups {
+		groupIDs = append(groupIDs, g.ID)
+	}
+	if len(groupIDs) > 0 {
+		members, err := s.client.GroupMember.Query().
+			Where(
+				groupmember.GroupChatIDIn(groupIDs...),
+				groupmember.HasUserWith(user.DeletedAtIsNil()),
+			).
+			Select(groupmember.FieldGroupChatID).
+			All(ctx)
+		if err != nil {
+			slog.Error("Failed to count group members", "error", err)
+			return nil, "", false, helper.NewInternalServerError("Failed to fetch groups")
+		}
+		for _, member := range members {
+			memberCounts[member.GroupChatID]++
+		}
+	}
+
 	for _, g := range groups {
 		createdAt := ""
 		if g.Edges.Chat != nil {
@@ -870,11 +892,12 @@ func (s *AdminService) GetGroups(ctx context.Context, req model.AdminGetGroupLis
 		}
 
 		data = append(data, model.AdminGroupListResponse{
-			ID:        g.ID,
-			ChatID:    g.ChatID,
-			Name:      g.Name,
-			IsPublic:  g.IsPublic,
-			CreatedAt: createdAt,
+			ID:          g.ID,
+			ChatID:      g.ChatID,
+			Name:        g.Name,
+			IsPublic:    g.IsPublic,
+			MemberCount: memberCounts[g.ID],
+			CreatedAt:   createdAt,
 		})
 	}
 

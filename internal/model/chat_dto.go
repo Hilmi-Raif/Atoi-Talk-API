@@ -30,7 +30,7 @@ type ChatListResponse struct {
 	LastMessage *MessageResponse `json:"last_message"`
 
 	// Number of unread messages for the current user
-	UnreadCount int `json:"unread_count,omitempty"`
+	UnreadCount int `json:"unread_count"`
 
 	// Timestamp when the current user last read the chat
 	LastReadAt *string `json:"last_read_at,omitempty"`
@@ -79,7 +79,7 @@ type ChatListResponse struct {
 	MyRole *string `json:"my_role,omitempty"`
 
 	// Total number of members in the group
-	MemberCount int `json:"member_count,omitempty"`
+	MemberCount int `json:"member_count"`
 }
 
 type GetChatsRequest struct {

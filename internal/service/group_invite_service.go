@@ -136,6 +136,8 @@ func (s *GroupChatService) JoinGroupByInvite(ctx context.Context, userID uuid.UU
 		MemberCount: memberCount,
 		IsPublic:    &gc.IsPublic,
 	}
+	myRole := string(groupmember.RoleMember)
+	chatListResponse.MyRole = &myRole
 	if gc.IsPublic {
 		chatListResponse.InviteCode = &gc.InviteCode
 	}
@@ -282,38 +284,42 @@ func (s *GroupChatService) ResetInviteCode(ctx context.Context, userID, groupID 
 
 	if s.wsHub != nil {
 		go func() {
-			admins, err := s.client.GroupMember.Query().
+			updatedGroup, err := s.client.GroupChat.Query().
+				Where(groupchat.ID(gc.ID)).
+				WithAvatar().
+				Only(context.Background())
+			if err != nil {
+				slog.Error("Failed to fetch updated group for invite reset event", "error", err, "groupID", gc.ID)
+				return
+			}
+
+			memberQuery := s.client.GroupMember.Query().
 				Where(
 					groupmember.GroupChatID(gc.ID),
-					groupmember.RoleIn(groupmember.RoleOwner, groupmember.RoleAdmin),
-				).
-				Select(groupmember.FieldUserID).
-				All(context.Background())
+				)
+			if !gc.IsPublic {
+				memberQuery = memberQuery.Where(groupmember.RoleIn(groupmember.RoleOwner, groupmember.RoleAdmin))
+			}
 
-			if err == nil {
-				event := websocket.Event{
-					Type: websocket.EventChatUpdate,
-					Payload: map[string]interface{}{
-						"id":                gc.ChatID,
-						"invite_code":       newCode,
-						"invite_expires_at": expiresAtStr,
-					},
+			members, err := memberQuery.All(context.Background())
+			if err != nil {
+				slog.Error("Failed to fetch invite reset recipients", "error", err, "groupID", gc.ID)
+				return
+			}
+
+			lastMessage := s.getGroupLastMessageResponse(context.Background(), gc.ChatID)
+			for _, m := range members {
+				role := m.Role
+				payload := s.buildGroupChatListResponse(context.Background(), updatedGroup, &role, lastMessage)
+				s.wsHub.BroadcastToUser(m.UserID, websocket.Event{
+					Type:    websocket.EventChatUpdate,
+					Payload: payload,
 					Meta: &websocket.EventMeta{
 						Timestamp: time.Now().UTC().UnixMilli(),
 						ChatID:    gc.ChatID,
 						SenderID:  userID,
 					},
-				}
-
-				if gc.IsPublic {
-					s.wsHub.BroadcastToChat(gc.ChatID, event)
-				} else {
-					for _, admin := range admins {
-						if admin.UserID != userID {
-							s.wsHub.BroadcastToUser(admin.UserID, event)
-						}
-					}
-				}
+				})
 			}
 		}()
 	}

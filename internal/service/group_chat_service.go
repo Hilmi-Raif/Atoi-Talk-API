@@ -35,6 +35,72 @@ type GroupChatService struct {
 	redisAdapter   *adapter.RedisAdapter
 }
 
+func (s *GroupChatService) buildGroupChatListResponse(ctx context.Context, gc *ent.GroupChat, role *groupmember.Role, lastMessage *model.MessageResponse) model.ChatListResponse {
+	avatarURL := ""
+	if gc.Edges.Avatar != nil {
+		avatarURL = s.storageAdapter.GetPublicURL(gc.Edges.Avatar.FileName)
+	}
+
+	var inviteExpiresAt *string
+	if gc.InviteExpiresAt != nil {
+		t := gc.InviteExpiresAt.Format(time.RFC3339)
+		inviteExpiresAt = &t
+	}
+
+	memberCount, err := s.client.GroupMember.Query().
+		Where(groupmember.GroupChatID(gc.ID), groupmember.HasUserWith(user.DeletedAtIsNil())).
+		Count(ctx)
+	if err != nil {
+		slog.Error("Failed to count group members", "error", err, "groupID", gc.ID)
+	}
+
+	resp := model.ChatListResponse{
+		ID:              gc.ChatID,
+		Type:            string(chat.TypeGroup),
+		Name:            gc.Name,
+		Description:     gc.Description,
+		IsPublic:        &gc.IsPublic,
+		Avatar:          avatarURL,
+		LastMessage:     lastMessage,
+		UnreadCount:     0,
+		MemberCount:     memberCount,
+		InviteExpiresAt: inviteExpiresAt,
+	}
+
+	if role != nil {
+		roleStr := string(*role)
+		resp.MyRole = &roleStr
+	}
+	if gc.IsPublic || (role != nil && (*role == groupmember.RoleOwner || *role == groupmember.RoleAdmin)) {
+		resp.InviteCode = &gc.InviteCode
+	}
+	if !gc.IsPublic && (role == nil || (*role != groupmember.RoleOwner && *role != groupmember.RoleAdmin)) {
+		resp.InviteExpiresAt = nil
+	}
+
+	return resp
+}
+
+func (s *GroupChatService) getGroupLastMessageResponse(ctx context.Context, chatID uuid.UUID) *model.MessageResponse {
+	lastMsg, err := s.client.Message.Query().
+		Where(message.ChatID(chatID)).
+		Order(ent.Desc(message.FieldCreatedAt)).
+		WithSender().
+		WithAttachments().
+		WithReplyTo(func(q *ent.MessageQuery) {
+			q.WithSender()
+		}).
+		First(ctx)
+	if err != nil {
+		if !ent.IsNotFound(err) {
+			slog.Error("Failed to fetch group last message", "error", err, "chatID", chatID)
+		}
+		return nil
+	}
+
+	return helper.ToMessageResponse(lastMsg, s.storageAdapter, nil, "")
+}
+
 func NewGroupChatService(client *ent.Client, repo *repository.Repository, cfg *config.AppConfig, validator *validator.Validate, wsHub *websocket.Hub, storageAdapter *adapter.StorageAdapter, redisAdapter *adapter.RedisAdapter) *GroupChatService {
 	return &GroupChatService{
 		client:         client,
@@ -440,20 +506,8 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 	}
 
 	if !hasChanges {
-		avatarURL := ""
-		if gc.Edges.Avatar != nil {
-			avatarURL = s.storageAdapter.GetPublicURL(gc.Edges.Avatar.FileName)
-		}
-		myRole := string(requestorRole)
-		return &model.ChatListResponse{
-			ID:          gc.Edges.Chat.ID,
-			Type:        string(chat.TypeGroup),
-			Name:        gc.Name,
-			Description: gc.Description,
-			IsPublic:    &gc.IsPublic,
-			Avatar:      avatarURL,
-			MyRole:      &myRole,
-		}, nil
+		resp := s.buildGroupChatListResponse(ctx, gc, &requestorRole, nil)
+		return &resp, nil
 	}
 
 	updatedGroup, err := update.Save(ctx)
@@ -485,12 +539,6 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 	if err := tx.Commit(); err != nil {
 		slog.Error("Failed to commit transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
-	}
-
-	var inviteExpiresAt *string
-	if updatedGroup.InviteExpiresAt != nil {
-		t := updatedGroup.InviteExpiresAt.Format(time.RFC3339)
-		inviteExpiresAt = &t
 	}
 
 	if s.wsHub != nil && len(createdSystemMessages) > 0 {
@@ -544,96 +592,47 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 				return
 			}
 
-			avatarURL := ""
-			if updatedGroupWithAvatar != nil && updatedGroupWithAvatar.Edges.Avatar != nil {
-				avatarURL = s.storageAdapter.GetPublicURL(updatedGroupWithAvatar.Edges.Avatar.FileName)
+			lastMsgResponse := helper.ToMessageResponse(fullMsgByID[createdSystemMessages[len(createdSystemMessages)-1].ID], s.storageAdapter, nil, string(requestorRole))
+			members, err := s.client.GroupMember.Query().
+				Where(groupmember.GroupChatID(gc.ID)).
+				Select(groupmember.FieldUserID, groupmember.FieldRole).
+				All(context.Background())
+
+			if err != nil {
+				slog.Error("Failed to fetch group members for chat update broadcast", "error", err, "groupID", gc.ID)
+				return
 			}
 
-			chatPayload := model.ChatListResponse{
-				ID:          gc.Edges.Chat.ID,
-				Type:        string(chat.TypeGroup),
-				Name:        updatedGroup.Name,
-				Description: updatedGroup.Description,
-				IsPublic:    &updatedGroup.IsPublic,
-				Avatar:      avatarURL,
-				LastMessage: helper.ToMessageResponse(fullMsgByID[createdSystemMessages[len(createdSystemMessages)-1].ID], s.storageAdapter, nil, string(requestorRole)),
-			}
-
-			if updatedGroup.IsPublic {
-				chatPayload.InviteCode = &updatedGroup.InviteCode
-
-				s.wsHub.BroadcastToChat(gc.ChatID, websocket.Event{
+			for _, m := range members {
+				role := m.Role
+				payload := s.buildGroupChatListResponse(context.Background(), updatedGroupWithAvatar, &role, lastMsgResponse)
+				s.wsHub.BroadcastToUser(m.UserID, websocket.Event{
 					Type:    websocket.EventChatUpdate,
-					Payload: chatPayload,
+					Payload: payload,
 					Meta: &websocket.EventMeta{
 						Timestamp: time.Now().UTC().UnixMilli(),
 						ChatID:    gc.ChatID,
 						SenderID:  requestorID,
 					},
 				})
-			} else {
-				members, err := s.client.GroupMember.Query().
-					Where(groupmember.GroupChatID(gc.ID)).
-					Select(groupmember.FieldUserID, groupmember.FieldRole).
-					All(context.Background())
-
-				if err != nil {
-					slog.Error("Failed to fetch group members for chat update broadcast", "error", err, "groupID", gc.ID)
-					return
-				}
-
-				for _, m := range members {
-					payload := chatPayload
-					if m.Role == groupmember.RoleOwner || m.Role == groupmember.RoleAdmin {
-						payload.InviteCode = &updatedGroup.InviteCode
-						payload.InviteExpiresAt = inviteExpiresAt
-					}
-
-					s.wsHub.BroadcastToUser(m.UserID, websocket.Event{
-						Type:    websocket.EventChatUpdate,
-						Payload: payload,
-						Meta: &websocket.EventMeta{
-							Timestamp: time.Now().UTC().UnixMilli(),
-							ChatID:    gc.ChatID,
-							SenderID:  requestorID,
-						},
-					})
-				}
 			}
 		}()
 	}
 
-	avatarURL := ""
-
-	if req.DeleteAvatar {
-		avatarURL = ""
-	} else if req.AvatarMediaID != nil {
-		updatedGroupWithAvatar, avatarErr := s.client.GroupChat.Query().
-			Where(groupchat.ID(updatedGroup.ID)).
-			WithAvatar().
-			Only(context.Background())
-		if avatarErr != nil {
-			slog.Error("Failed to fetch updated group avatar for response", "error", avatarErr, "groupID", updatedGroup.ID)
-		} else if updatedGroupWithAvatar.Edges.Avatar != nil {
-			avatarURL = s.storageAdapter.GetPublicURL(updatedGroupWithAvatar.Edges.Avatar.FileName)
-		}
-	} else if gc.Edges.Avatar != nil {
-		avatarURL = s.storageAdapter.GetPublicURL(gc.Edges.Avatar.FileName)
+	updatedGroupWithAvatar, err := s.client.GroupChat.Query().
+		Where(groupchat.ID(updatedGroup.ID)).
+		WithAvatar().
+		Only(context.Background())
+	if err != nil {
+		slog.Error("Failed to fetch updated group for response", "error", err, "groupID", updatedGroup.ID)
+		return nil, helper.NewInternalServerError("")
 	}
-
-	myRole := string(requestorRole)
-
-	return &model.ChatListResponse{
-		ID:              gc.Edges.Chat.ID,
-		Type:            string(chat.TypeGroup),
-		Name:            updatedGroup.Name,
-		Description:     updatedGroup.Description,
-		IsPublic:        &updatedGroup.IsPublic,
-		InviteCode:      &updatedGroup.InviteCode,
-		InviteExpiresAt: inviteExpiresAt,
-		Avatar:          avatarURL,
-		MyRole:          &myRole,
-	}, nil
+	var lastMsgResponse *model.MessageResponse
+	if len(createdSystemMessages) > 0 {
+		lastMsgResponse = s.getGroupLastMessageResponse(context.Background(), gc.ChatID)
+	}
+	resp := s.buildGroupChatListResponse(ctx, updatedGroupWithAvatar, &requestorRole, lastMsgResponse)
+	return &resp, nil
 }
 
 func (s *GroupChatService) DeleteGroup(ctx context.Context, userID, groupID uuid.UUID, isAdmin bool) error {

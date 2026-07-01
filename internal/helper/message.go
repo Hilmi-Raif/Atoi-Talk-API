@@ -17,7 +17,7 @@ func ToMessageResponse(msg *ent.Message, urlGen URLGenerator, hiddenAt *time.Tim
 	var deletedAtStr *string
 	var editedAtStr *string
 	var content string
-	var attachments []model.MediaDTO
+	attachments := make([]model.MediaDTO, 0)
 	var actionData map[string]interface{}
 
 	if isDeleted {

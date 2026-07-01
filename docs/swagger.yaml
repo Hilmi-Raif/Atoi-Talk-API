@@ -745,6 +745,31 @@ definitions:
     required:
     - full_name
     type: object
+  model.UploadMediaRequest:
+    properties:
+      captcha_token:
+        type: string
+      file_size:
+        type: integer
+      mime_type:
+        maxLength: 100
+        type: string
+      original_name:
+        maxLength: 255
+        type: string
+      usage:
+        enum:
+        - message_attachment
+        - user_avatar
+        - group_avatar
+        type: string
+    required:
+    - captcha_token
+    - file_size
+    - mime_type
+    - original_name
+    - usage
+    type: object
   model.UploadMediaResponse:
     properties:
       expires_at:
@@ -2927,38 +2952,17 @@ paths:
       tags:
       - media
   /api/media/upload:
-    get:
+    post:
+      consumes:
+      - application/json
       description: Create a pending media row and upload URL for direct storage upload.
       parameters:
-      - description: Upload usage
-        enum:
-        - message_attachment
-        - user_avatar
-        - group_avatar
-        in: query
-        name: usage
+      - description: Upload request
+        in: body
+        name: request
         required: true
-        type: string
-      - description: Original file name
-        in: query
-        name: original_name
-        required: true
-        type: string
-      - description: File size in bytes
-        in: query
-        name: file_size
-        required: true
-        type: integer
-      - description: MIME type
-        in: query
-        name: mime_type
-        required: true
-        type: string
-      - description: Captcha token
-        in: query
-        name: captcha_token
-        required: true
-        type: string
+        schema:
+          $ref: '#/definitions/model.UploadMediaRequest'
       produces:
       - application/json
       responses:

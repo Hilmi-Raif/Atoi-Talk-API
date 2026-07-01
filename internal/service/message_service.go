@@ -396,22 +396,24 @@ func (s *MessageService) EditMessage(ctx context.Context, userID uuid.UUID, mess
 		currentAttachmentIDs[att.ID] = true
 	}
 
-	newAttachmentIDs := make(map[uuid.UUID]bool)
-	for _, id := range req.AttachmentIDs {
-		newAttachmentIDs[id] = true
-	}
-
 	var toUnlink []uuid.UUID
-	for id := range currentAttachmentIDs {
-		if !newAttachmentIDs[id] {
-			toUnlink = append(toUnlink, id)
-		}
-	}
-
 	var toLink []uuid.UUID
-	for id := range newAttachmentIDs {
-		if !currentAttachmentIDs[id] {
-			toLink = append(toLink, id)
+	if req.HasAttachmentIDs {
+		newAttachmentIDs := make(map[uuid.UUID]bool)
+		for _, id := range req.AttachmentIDs {
+			newAttachmentIDs[id] = true
+		}
+
+		for id := range currentAttachmentIDs {
+			if !newAttachmentIDs[id] {
+				toUnlink = append(toUnlink, id)
+			}
+		}
+
+		for id := range newAttachmentIDs {
+			if !currentAttachmentIDs[id] {
+				toLink = append(toLink, id)
+			}
 		}
 	}
 
@@ -740,7 +742,7 @@ func (s *MessageService) GetMessages(ctx context.Context, userID uuid.UUID, req 
 		}
 	}
 
-	var response []model.MessageResponse
+	response := make([]model.MessageResponse, 0)
 	for _, msg := range messages {
 		var role string
 		if msg.SenderID != nil {

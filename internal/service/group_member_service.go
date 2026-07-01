@@ -58,7 +58,7 @@ func (s *GroupChatService) SearchGroupMembers(ctx context.Context, userID uuid.U
 		return nil, "", false, helper.NewInternalServerError("")
 	}
 
-	var memberDTOs []model.GroupMemberDTO
+	memberDTOs := make([]model.GroupMemberDTO, 0)
 	for _, m := range members {
 
 		if m.Edges.User != nil && m.Edges.User.DeletedAt != nil {

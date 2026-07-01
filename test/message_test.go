@@ -62,7 +62,8 @@ func TestSendMessage(t *testing.T) {
 		assert.Equal(t, u1.ID.String(), dataMap["sender_id"])
 		assert.Equal(t, "Hello User 2!", dataMap["content"])
 		assert.Equal(t, "regular", dataMap["type"])
-		assert.Nil(t, dataMap["attachments"])
+		attachments := dataMap["attachments"].([]interface{})
+		assert.Empty(t, attachments)
 
 		pc, _ := testClient.PrivateChat.Query().Where(privatechat.ChatID(chatEntity.ID)).Only(context.Background())
 		assert.Equal(t, 0, pc.User1UnreadCount)
@@ -1105,6 +1106,81 @@ func TestEditMessage(t *testing.T) {
 
 		att1Reload, _ := testClient.Media.Get(context.Background(), att1.ID)
 		assert.Nil(t, att1Reload.MessageID)
+	})
+
+	t.Run("Success - Edit Text Only Keeps Existing Attachments", func(t *testing.T) {
+		att, _ := testClient.Media.Create().
+			SetFileName("keep.jpg").SetOriginalName("keep.jpg").SetFileSize(100).SetMimeType("image/jpeg").
+			SetUploaderID(u1.ID).Save(context.Background())
+
+		msg, _ := testClient.Message.Create().
+			SetChatID(chatEntity.ID).
+			SetSenderID(u1.ID).
+			SetType(message.TypeRegular).
+			SetContent("Keep Attachment").
+			AddAttachmentIDs(att.ID).
+			Save(context.Background())
+
+		s3Client.PutObject(context.Background(), &s3.PutObjectInput{
+			Bucket: aws.String(testConfig.S3BucketPrivate),
+			Key:    aws.String(att.FileName),
+			Body:   bytes.NewReader([]byte("test content")),
+		})
+
+		body, _ := json.Marshal(map[string]interface{}{"content": "Edited Only"})
+		req, _ := http.NewRequest("PUT", fmt.Sprintf("/api/messages/%s", msg.ID), bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token1)
+
+		rr := executeRequest(req)
+		assert.Equal(t, http.StatusOK, rr.Code)
+
+		var resp helper.ResponseSuccess
+		json.Unmarshal(rr.Body.Bytes(), &resp)
+		dataMap := resp.Data.(map[string]interface{})
+		attachments := dataMap["attachments"].([]interface{})
+
+		assert.Len(t, attachments, 1)
+		assert.Equal(t, att.ID.String(), attachments[0].(map[string]interface{})["id"])
+
+		updatedMsg, _ := testClient.Message.Query().Where(message.ID(msg.ID)).WithAttachments().Only(context.Background())
+		assert.Len(t, updatedMsg.Edges.Attachments, 1)
+		assert.Equal(t, att.ID, updatedMsg.Edges.Attachments[0].ID)
+	})
+
+	t.Run("Success - Edit Explicit Empty Attachments Removes All Attachments", func(t *testing.T) {
+		att, _ := testClient.Media.Create().
+			SetFileName("remove.jpg").SetOriginalName("remove.jpg").SetFileSize(100).SetMimeType("image/jpeg").
+			SetUploaderID(u1.ID).Save(context.Background())
+
+		msg, _ := testClient.Message.Create().
+			SetChatID(chatEntity.ID).
+			SetSenderID(u1.ID).
+			SetType(message.TypeRegular).
+			SetContent("Remove Attachment").
+			AddAttachmentIDs(att.ID).
+			Save(context.Background())
+
+		body, _ := json.Marshal(map[string]interface{}{
+			"content":        "Removed Attachments",
+			"attachment_ids": []string{},
+		})
+		req, _ := http.NewRequest("PUT", fmt.Sprintf("/api/messages/%s", msg.ID), bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token1)
+
+		rr := executeRequest(req)
+		assert.Equal(t, http.StatusOK, rr.Code)
+
+		var resp helper.ResponseSuccess
+		json.Unmarshal(rr.Body.Bytes(), &resp)
+		dataMap := resp.Data.(map[string]interface{})
+		attachments := dataMap["attachments"].([]interface{})
+
+		assert.Empty(t, attachments)
+
+		updatedMsg, _ := testClient.Message.Query().Where(message.ID(msg.ID)).WithAttachments().Only(context.Background())
+		assert.Empty(t, updatedMsg.Edges.Attachments)
 	})
 
 	t.Run("Fail - Edit Other User's Message", func(t *testing.T) {

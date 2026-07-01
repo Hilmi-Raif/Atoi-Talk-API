@@ -3266,13 +3266,16 @@ const docTemplate = `{
             }
         },
         "/api/media/upload": {
-            "get": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
                 "description": "Create a pending media row and upload URL for direct storage upload.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -3282,44 +3285,13 @@ const docTemplate = `{
                 "summary": "Create Media Upload URL",
                 "parameters": [
                     {
-                        "enum": [
-                            "message_attachment",
-                            "user_avatar",
-                            "group_avatar"
-                        ],
-                        "type": "string",
-                        "description": "Upload usage",
-                        "name": "usage",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Original file name",
-                        "name": "original_name",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "File size in bytes",
-                        "name": "file_size",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "MIME type",
-                        "name": "mime_type",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Captcha token",
-                        "name": "captcha_token",
-                        "in": "query",
-                        "required": true
+                        "description": "Upload request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UploadMediaRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -5491,6 +5463,40 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 50,
                     "minLength": 3
+                }
+            }
+        },
+        "model.UploadMediaRequest": {
+            "type": "object",
+            "required": [
+                "captcha_token",
+                "file_size",
+                "mime_type",
+                "original_name",
+                "usage"
+            ],
+            "properties": {
+                "captcha_token": {
+                    "type": "string"
+                },
+                "file_size": {
+                    "type": "integer"
+                },
+                "mime_type": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "original_name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "usage": {
+                    "type": "string",
+                    "enum": [
+                        "message_attachment",
+                        "user_avatar",
+                        "group_avatar"
+                    ]
                 }
             }
         },

@@ -84,7 +84,7 @@ func (s *GroupChatService) SearchPublicGroups(ctx context.Context, userID uuid.U
 		}
 	}
 
-	var groupDTOs []model.PublicGroupDTO
+	groupDTOs := make([]model.PublicGroupDTO, 0)
 	for _, g := range groups {
 		avatarURL := ""
 		if g.Edges.Avatar != nil {
@@ -229,6 +229,8 @@ func (s *GroupChatService) JoinPublicGroup(ctx context.Context, userID uuid.UUID
 		IsPublic:    &gc.IsPublic,
 		InviteCode:  &gc.InviteCode,
 	}
+	myRole := string(groupmember.RoleMember)
+	chatResponse.MyRole = &myRole
 
 	if s.wsHub != nil && msgResponse != nil {
 		go func() {

@@ -1,6 +1,10 @@
 package model
 
-import "github.com/google/uuid"
+import (
+	"encoding/json"
+
+	"github.com/google/uuid"
+)
 
 type SendMessageRequest struct {
 	ChatID        uuid.UUID   `json:"chat_id" validate:"required"`
@@ -10,8 +14,25 @@ type SendMessageRequest struct {
 }
 
 type EditMessageRequest struct {
-	Content       string      `json:"content" validate:"required_without=AttachmentIDs,max=4000"`
-	AttachmentIDs []uuid.UUID `json:"attachment_ids" validate:"omitempty,dive"`
+	Content          string      `json:"content" validate:"required_without=AttachmentIDs,max=4000"`
+	AttachmentIDs    []uuid.UUID `json:"attachment_ids" validate:"omitempty,dive"`
+	HasAttachmentIDs bool        `json:"-"`
+}
+
+func (r *EditMessageRequest) UnmarshalJSON(data []byte) error {
+	type alias EditMessageRequest
+	var decoded alias
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	decoded.HasAttachmentIDs = raw["attachment_ids"] != nil
+	*r = EditMessageRequest(decoded)
+	return nil
 }
 
 type GetMessagesRequest struct {
@@ -97,7 +118,7 @@ type MessageResponse struct {
 	// - target_id and actor_id can be removed when referenced users are deleted.
 	ActionData map[string]interface{} `json:"action_data,omitempty"`
 
-	Attachments []MediaDTO `json:"attachments,omitempty"`
+	Attachments []MediaDTO `json:"attachments"`
 
 	// Preview of the message this message is replying to
 	ReplyTo *ReplyPreviewDTO `json:"reply_to,omitempty"`

@@ -78,7 +78,7 @@ func TestGetChats(t *testing.T) {
 		assert.Equal(t, chat2.ID.String(), c2["id"])
 
 		assert.Contains(t, c2["name"], "user3")
-		assert.NotContains(t, c2, "unread_count", "unread_count should be omitted when it is 0")
+		assert.Equal(t, float64(0), c2["unread_count"], "unread_count should be present even when it is 0")
 		assert.Nil(t, c2["invite_code"], "Private chat should NOT have invite_code")
 		assert.Equal(t, u3.ID.String(), c2["other_user_id"], "Private chat should have other_user_id")
 

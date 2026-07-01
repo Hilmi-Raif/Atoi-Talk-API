@@ -225,11 +225,6 @@ func (s *GroupChatService) AddMember(ctx context.Context, requestorID uuid.UUID,
 
 	if s.wsHub != nil {
 		go func() {
-			avatarURL := ""
-			if gc.Edges.Avatar != nil {
-				avatarURL = s.storageAdapter.GetPublicURL(gc.Edges.Avatar.FileName)
-			}
-
 			for _, resp := range responses {
 				s.wsHub.BroadcastToChat(gc.ChatID, websocket.Event{
 					Type:    websocket.EventMessageNew,
@@ -244,21 +239,12 @@ func (s *GroupChatService) AddMember(ctx context.Context, requestorID uuid.UUID,
 
 			if len(responses) > 0 {
 				lastMsgResponse := responses[len(responses)-1]
+				memberRole := groupmember.RoleMember
 
 				for _, u := range newMembers {
-					chatPayload := model.ChatListResponse{
-						ID:          gc.Edges.Chat.ID,
-						Type:        string(chat.TypeGroup),
-						Name:        gc.Name,
-						Avatar:      avatarURL,
-						LastMessage: lastMsgResponse,
-						UnreadCount: 1,
-						MemberCount: memberCount,
-						IsPublic:    &gc.IsPublic,
-					}
-					if gc.IsPublic {
-						chatPayload.InviteCode = &gc.InviteCode
-					}
+					chatPayload := s.buildGroupChatListResponse(context.Background(), gc, &memberRole, lastMsgResponse)
+					chatPayload.UnreadCount = 1
+					chatPayload.MemberCount = memberCount
 
 					s.wsHub.BroadcastToUser(u.ID, websocket.Event{
 						Type:    websocket.EventChatNew,
