@@ -173,17 +173,32 @@ internal/
 ├── scheduler/        # Cron job definitions
 │   └── job/          # Individual cleanup jobs
 ├── service/          # Business logic
-│   └── template/     # Email templates
 └── websocket/        # WebSocket hub, client, events
 
 ent/
 └── schema/           # Database schema definitions
 
 docs/                 # Generated Swagger + AsyncAPI specs
-integration/          # Integration tests (requires -tags=integration)
+integration/          # Integration tests and local backing services
+├── docker-compose.yml
+└── *_test.go          # requires -tags=integration
 ```
 
 ## Getting Started
+
+### Releases
+
+Release Please manages versioning and `CHANGELOG.md` from Conventional Commits on `main`. It creates a release pull request for review. After the release pull request is merged, the workflow creates the GitHub Release and publishes the API and scheduler images to GHCR.
+
+Commit types that create releases:
+
+| Commit | Release |
+|---|---|
+| `fix(scope): ...` | patch |
+| `feat(scope): ...` | minor |
+| `feat(scope)!: ...` | major |
+
+Release images use the version, `latest`, and immutable SHA tags. Release Please does not require Node.js or `package.json` in this Go repository.
 
 ### Prerequisites
 
@@ -306,12 +321,12 @@ Copy `.env.example` to `.env` and fill in the values. The scheduler ignores `DB_
 
 ### `.env.test` — Test Config
 
-Copy `.env.test.example` to `.env.test`. Uses a separate database and Redis DB to avoid polluting real data.
+Copy `integration/.env.example` to `integration/.env.test`. Uses a separate database and Redis DB to avoid polluting real data.
 
 | Variable | Description | Default |
 |---|---|---|
 | `DB_HOST` | Test database host | `localhost` |
-| `DB_PORT` | Test database port | `5432` |
+| `DB_PORT` | Test database port | `5433` |
 | `DB_USER` | Test database user | `postgres` |
 | `DB_PASSWORD` | Test database password | `postgres` |
 | `DB_NAME` | Test database name | `atoitalk_test` |
@@ -358,6 +373,8 @@ make test-env-up
 cp integration/.env.example integration/.env.test
 make test-integration
 make test-env-down
+
+The local integration services are defined in `integration/docker-compose.yml`.
 
 # Build binaries and docker images
 make build-api
