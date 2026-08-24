@@ -10,6 +10,7 @@ import (
 	"AtoiTalkAPI/ent/user"
 	"AtoiTalkAPI/internal/adapter"
 	"AtoiTalkAPI/internal/config"
+	"AtoiTalkAPI/internal/constant"
 	"AtoiTalkAPI/internal/helper"
 	"AtoiTalkAPI/internal/model"
 	"context"
@@ -24,10 +25,12 @@ type ReportService struct {
 	client         *ent.Client
 	cfg            *config.AppConfig
 	validator      *validator.Validate
-	storageAdapter *adapter.StorageAdapter
+	storageAdapter reportStorage
 }
 
-func NewReportService(client *ent.Client, cfg *config.AppConfig, validator *validator.Validate, storageAdapter *adapter.StorageAdapter) *ReportService {
+type reportStorage = adapter.PublicURLGenerator
+
+func NewReportService(client *ent.Client, cfg *config.AppConfig, validator *validator.Validate, storageAdapter reportStorage) *ReportService {
 	return &ReportService{
 		client:         client,
 		cfg:            cfg,
@@ -61,7 +64,9 @@ func (s *ReportService) CreateReport(ctx context.Context, reporterID uuid.UUID, 
 		msg, err := s.client.Message.Query().
 			Where(message.ID(*req.MessageID)).
 			WithSender().
-			WithAttachments().
+			WithAttachments(func(q *ent.MediaQuery) {
+				q.Limit(constant.MaxMessageAttachments + 1)
+			}).
 			Only(ctx)
 
 		if err != nil {
@@ -88,7 +93,8 @@ func (s *ReportService) CreateReport(ctx context.Context, reporterID uuid.UUID, 
 
 		var groupID *uuid.UUID
 
-		if chatInfo.Type == chat.TypePrivate {
+		switch chatInfo.Type {
+		case chat.TypePrivate:
 			if chatInfo.Edges.PrivateChat == nil {
 				return helper.NewInternalServerError("")
 			}
@@ -96,7 +102,7 @@ func (s *ReportService) CreateReport(ctx context.Context, reporterID uuid.UUID, 
 			if (pc.User1ID == nil || *pc.User1ID != reporterID) && (pc.User2ID == nil || *pc.User2ID != reporterID) {
 				return helper.NewForbiddenError("You cannot report a message from a chat you are not part of")
 			}
-		} else if chatInfo.Type == chat.TypeGroup {
+		case chat.TypeGroup:
 			if chatInfo.Edges.GroupChat == nil {
 				return helper.NewInternalServerError("")
 			}
@@ -116,7 +122,11 @@ func (s *ReportService) CreateReport(ctx context.Context, reporterID uuid.UUID, 
 			}
 		}
 
-		attachments := make([]map[string]interface{}, 0)
+		if len(msg.Edges.Attachments) > constant.MaxMessageAttachments {
+			return helper.NewBadRequestError("Too many message attachments")
+		}
+
+		attachments := make([]map[string]interface{}, 0, len(msg.Edges.Attachments))
 		for _, att := range msg.Edges.Attachments {
 			attData := map[string]interface{}{
 				"id":            att.ID,

@@ -1,0 +1,63 @@
+version: false
+with-expecter: true
+resolve-type-alias: false
+disable-version-string: true
+issue-845-fix: true
+dir: "{{.InterfaceDir}}/mocks"
+outpkg: mocks
+filename: "{{.InterfaceName | snakecase}}.go"
+mockname: "Mock{{.InterfaceName}}"
+packages:
+  AtoiTalkAPI/internal/adapter:
+    interfaces:
+      PublicURLGenerator: {}
+      AuthStorage: {}
+      MediaStorage: {}
+      CaptchaVerifier: {}
+      EmailSender: {}
+      RedisStore: {}
+      RedisOAuthStore: {}
+      RedisPresence: {}
+      RedisOnlineStore: {}
+      RedisCache: {}
+      URLGenerator: {}
+    config:
+      dir: "{{.InterfaceDir}}/mocks"
+      outpkg: mocks
+      mockname: "Mock{{.InterfaceName}}"
+  AtoiTalkAPI/internal/repository:
+    interfaces:
+      UserReader: {}
+      SessionStore: {}
+      RateLimiter: {}
+      TokenBlacklistStore: {}
+      ChatReader: {}
+      GroupMemberReader: {}
+      GroupChatReader: {}
+      MessageReader: {}
+    config:
+      dir: "{{.InterfaceDir}}/mocks"
+      outpkg: mocks
+      mockname: "Mock{{.InterfaceName}}"
+  AtoiTalkAPI/internal/service:
+    interfaces:
+      authOTP: {}
+      AuthVerifier: {}
+      ChatServicePort: {}
+      AuthServicePort: {}
+      AccountServicePort: {}
+      OTPServicePort: {}
+      UserServicePort: {}
+      PrivateChatServicePort: {}
+      GroupChatServicePort: {}
+      MessageServicePort: {}
+      MediaServicePort: {}
+      ReportServicePort: {}
+      AdminServicePort: {}
+  AtoiTalkAPI/internal/websocket:
+    interfaces:
+      Publisher: {}
+    config:
+      dir: "{{.InterfaceDir}}/mocks"
+      outpkg: mocks
+      mockname: "Mock{{.InterfaceName}}"

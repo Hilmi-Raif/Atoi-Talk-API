@@ -19,11 +19,14 @@ const (
 )
 
 type AuthMiddleware struct {
-	authService *service.AuthService
-	sessionRepo *repository.SessionRepository
+	authService authVerifier
+	sessionRepo sessionBlacklistStore
 }
 
-func NewAuthMiddleware(authService *service.AuthService, sessionRepo *repository.SessionRepository) *AuthMiddleware {
+type authVerifier = service.AuthVerifier
+type sessionBlacklistStore = repository.TokenBlacklistStore
+
+func NewAuthMiddleware(authService authVerifier, sessionRepo sessionBlacklistStore) *AuthMiddleware {
 	return &AuthMiddleware{
 		authService: authService,
 		sessionRepo: sessionRepo,

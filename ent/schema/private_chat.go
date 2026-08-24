@@ -2,6 +2,7 @@ package schema
 
 import (
 	"context"
+	"fmt"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/entsql"
@@ -41,8 +42,12 @@ func (PrivateChat) Hooks() []ent.Hook {
 						id1, ok1 := v1.(uuid.UUID)
 						id2, ok2 := v2.(uuid.UUID)
 						if ok1 && ok2 && id1.String() > id2.String() {
-							m.SetField("user1_id", id2)
-							m.SetField("user2_id", id1)
+							if err := m.SetField("user1_id", id2); err != nil {
+								return nil, fmt.Errorf("set private chat user1_id: %w", err)
+							}
+							if err := m.SetField("user2_id", id1); err != nil {
+								return nil, fmt.Errorf("set private chat user2_id: %w", err)
+							}
 						}
 					}
 				}

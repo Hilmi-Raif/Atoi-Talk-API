@@ -21,7 +21,7 @@ func (GroupChat) Fields() []ent.Field {
 		field.Text("description").Optional().Nillable(),
 		field.UUID("avatar_id", uuid.UUID{}).Optional().Nillable(),
 		field.Bool("is_public").Default(false),
-		
+
 		field.String("invite_code").MaxLen(50).Unique().NotEmpty(),
 		field.Time("invite_expires_at").Optional().Nillable(),
 	}

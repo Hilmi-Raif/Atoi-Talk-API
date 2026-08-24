@@ -24,6 +24,7 @@ const typingUserThrottle = 300 * time.Millisecond
 const emptyMembersCacheTTL = 30 * time.Second
 const pubSubChannel = "events:broadcast"
 const onlineUserTTL = 70 * time.Second
+const maxConcurrentFanouts = 32
 
 type Hub struct {
 	clients     map[*Client]bool
@@ -33,8 +34,18 @@ type Hub struct {
 	Register   chan *Client
 	Unregister chan *Client
 
-	db    *ent.Client
-	redis *adapter.RedisAdapter
+	db              *ent.Client
+	redis           *adapter.RedisAdapter
+	fanoutSemaphore chan struct{}
+
+	cacheMu        sync.Mutex
+	memberFlights  map[uuid.UUID]*cacheFetch
+	contactFlights map[uuid.UUID]*cacheFetch
+}
+
+type cacheFetch struct {
+	done    chan struct{}
+	userIDs []uuid.UUID
 }
 
 type redisPayload struct {
@@ -44,12 +55,15 @@ type redisPayload struct {
 
 func NewHub(db *ent.Client, redis *adapter.RedisAdapter) *Hub {
 	hub := &Hub{
-		clients:     make(map[*Client]bool),
-		userClients: make(map[uuid.UUID]map[*Client]bool),
-		Register:    make(chan *Client, 256),
-		Unregister:  make(chan *Client, 256),
-		db:          db,
-		redis:       redis,
+		clients:         make(map[*Client]bool),
+		userClients:     make(map[uuid.UUID]map[*Client]bool),
+		Register:        make(chan *Client, 256),
+		Unregister:      make(chan *Client, 256),
+		db:              db,
+		redis:           redis,
+		fanoutSemaphore: make(chan struct{}, maxConcurrentFanouts),
+		memberFlights:   make(map[uuid.UUID]*cacheFetch),
+		contactFlights:  make(map[uuid.UUID]*cacheFetch),
 	}
 
 	go hub.listenToRedis()
@@ -59,7 +73,7 @@ func NewHub(db *ent.Client, redis *adapter.RedisAdapter) *Hub {
 func (h *Hub) listenToRedis() {
 	ctx := context.Background()
 	pubsub := h.redis.Client().Subscribe(ctx, pubSubChannel)
-	defer pubsub.Close()
+	defer func() { _ = pubsub.Close() }()
 
 	ch := pubsub.Channel()
 
@@ -128,6 +142,9 @@ func (h *Hub) Run() {
 }
 
 func (h *Hub) BroadcastToUser(userID uuid.UUID, event Event) {
+	h.fanoutSemaphore <- struct{}{}
+	defer func() { <-h.fanoutSemaphore }()
+
 	eventData, err := json.Marshal(event)
 	if err != nil {
 		slog.Error("Failed to marshal event for redis publish", "error", err)
@@ -223,7 +240,23 @@ func (h *Hub) getChatMembers(chatID uuid.UUID) []uuid.UUID {
 		}
 	}
 
-	return h.fetchAndCacheMembers(chatID)
+	h.cacheMu.Lock()
+	if flight, ok := h.memberFlights[chatID]; ok {
+		h.cacheMu.Unlock()
+		<-flight.done
+		return flight.userIDs
+	}
+	flight := &cacheFetch{done: make(chan struct{})}
+	h.memberFlights[chatID] = flight
+	h.cacheMu.Unlock()
+
+	userIDs := h.fetchAndCacheMembers(chatID)
+	h.cacheMu.Lock()
+	flight.userIDs = userIDs
+	delete(h.memberFlights, chatID)
+	close(flight.done)
+	h.cacheMu.Unlock()
+	return userIDs
 }
 
 func (h *Hub) fetchAndCacheMembers(chatID uuid.UUID) []uuid.UUID {
@@ -245,7 +278,8 @@ func (h *Hub) fetchAndCacheMembers(chatID uuid.UUID) []uuid.UUID {
 
 	var userIDs []uuid.UUID
 
-	if c.Type == chat.TypePrivate {
+	switch c.Type {
+	case chat.TypePrivate:
 		pc, err := h.db.PrivateChat.Query().
 			Where(privatechat.ChatID(chatID)).
 			Select(privatechat.FieldUser1ID, privatechat.FieldUser2ID).
@@ -258,7 +292,7 @@ func (h *Hub) fetchAndCacheMembers(chatID uuid.UUID) []uuid.UUID {
 				userIDs = append(userIDs, *pc.User2ID)
 			}
 		}
-	} else if c.Type == chat.TypeGroup {
+	case chat.TypeGroup:
 		gcID, err := h.db.GroupChat.Query().
 			Where(groupchat.ChatID(chatID)).
 			OnlyID(ctx)
@@ -307,7 +341,10 @@ func (h *Hub) broadcastHeavy(chatID uuid.UUID, event Event) {
 		Where(chat.ID(chatID)).
 		WithPrivateChat().
 		WithGroupChat(func(q *ent.GroupChatQuery) {
-			q.WithMembers()
+			q.Select(groupchat.FieldID)
+			q.WithMembers(func(mq *ent.GroupMemberQuery) {
+				mq.Select(groupmember.FieldUserID, groupmember.FieldUnreadCount)
+			})
 		}).
 		Only(ctx)
 
@@ -343,6 +380,7 @@ func (h *Hub) broadcastHeavy(chatID uuid.UUID, event Event) {
 					userblock.BlockedID(senderID),
 				),
 			).
+			Select(userblock.FieldBlockerID, userblock.FieldBlockedID).
 			All(ctx)
 
 		if err == nil {
@@ -391,7 +429,23 @@ func (h *Hub) getContacts(userID uuid.UUID) []uuid.UUID {
 		}
 	}
 
-	return h.fetchAndCacheContacts(userID)
+	h.cacheMu.Lock()
+	if flight, ok := h.contactFlights[userID]; ok {
+		h.cacheMu.Unlock()
+		<-flight.done
+		return flight.userIDs
+	}
+	flight := &cacheFetch{done: make(chan struct{})}
+	h.contactFlights[userID] = flight
+	h.cacheMu.Unlock()
+
+	contacts := h.fetchAndCacheContacts(userID)
+	h.cacheMu.Lock()
+	flight.userIDs = contacts
+	delete(h.contactFlights, userID)
+	close(flight.done)
+	h.cacheMu.Unlock()
+	return contacts
 }
 
 func (h *Hub) fetchAndCacheContacts(userID uuid.UUID) []uuid.UUID {
@@ -428,7 +482,7 @@ func (h *Hub) fetchAndCacheContacts(userID uuid.UUID) []uuid.UUID {
 
 	key := fmt.Sprintf("contacts:%s", userID)
 	data, _ := json.Marshal(targetUserIDs)
-	h.redis.Set(ctx, key, data, cacheTTL)
+	_ = h.redis.Set(ctx, key, data, cacheTTL)
 
 	return targetUserIDs
 }
@@ -448,6 +502,7 @@ func (h *Hub) BroadcastToContacts(userID uuid.UUID, event Event) {
 					userblock.BlockedID(userID),
 				),
 			).
+			Select(userblock.FieldBlockerID, userblock.FieldBlockedID).
 			All(ctx)
 
 		if err == nil {
@@ -475,9 +530,9 @@ func (h *Hub) broadcastUserStatus(userID uuid.UUID, isOnline bool) {
 
 	if isOnline {
 
-		h.redis.Set(ctx, key, "true", onlineUserTTL)
+		_ = h.redis.Set(ctx, key, "true", onlineUserTTL)
 	} else {
-		h.redis.Del(ctx, key)
+		_ = h.redis.Del(ctx, key)
 
 		if err := h.db.User.UpdateOneID(userID).SetLastSeenAt(time.Now().UTC()).Exec(ctx); err != nil {
 			slog.Error("Failed to update user last_seen_at in DB", "error", err)
@@ -508,7 +563,7 @@ func (h *Hub) broadcastUserStatus(userID uuid.UUID, isOnline bool) {
 func (h *Hub) KeepAlive(userID uuid.UUID) {
 	ctx := context.Background()
 	key := fmt.Sprintf("online:%s", userID)
-	h.redis.Set(ctx, key, "true", onlineUserTTL)
+	_ = h.redis.Set(ctx, key, "true", onlineUserTTL)
 }
 
 func (h *Hub) DisconnectUser(userID uuid.UUID) {
@@ -519,7 +574,7 @@ func (h *Hub) DisconnectUser(userID uuid.UUID) {
 		for client := range clients {
 			delete(h.clients, client)
 			close(client.Send)
-			client.Conn.Close()
+			_ = client.Conn.Close()
 		}
 		delete(h.userClients, userID)
 		go h.broadcastUserStatus(userID, false)

@@ -14,7 +14,6 @@ import (
 	"AtoiTalkAPI/internal/model"
 	"context"
 	"log/slog"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -34,11 +33,14 @@ type MediaService struct {
 	client         *ent.Client
 	cfg            *config.AppConfig
 	validator      *validator.Validate
-	storageAdapter *adapter.StorageAdapter
-	captchaAdapter *adapter.CaptchaAdapter
+	storageAdapter mediaStorage
+	captchaAdapter mediaCaptcha
 }
 
-func NewMediaService(client *ent.Client, cfg *config.AppConfig, validator *validator.Validate, storageAdapter *adapter.StorageAdapter, captchaAdapter *adapter.CaptchaAdapter) *MediaService {
+type mediaStorage = adapter.MediaStorage
+type mediaCaptcha = adapter.CaptchaVerifier
+
+func NewMediaService(client *ent.Client, cfg *config.AppConfig, validator *validator.Validate, storageAdapter mediaStorage, captchaAdapter mediaCaptcha) *MediaService {
 	return &MediaService{
 		client:         client,
 		cfg:            cfg,
@@ -66,7 +68,14 @@ func (s *MediaService) UploadMedia(ctx context.Context, userID uuid.UUID, req mo
 
 	category := media.Category(req.Usage)
 	isPublic := category == media.CategoryUserAvatar || category == media.CategoryGroupAvatar
-	if !isAllowedUpload(category, req.MimeType, req.FileSize) {
+	allowedUpload := false
+	switch category {
+	case media.CategoryMessageAttachment:
+		allowedUpload = req.FileSize <= 20*1024*1024
+	case media.CategoryUserAvatar, media.CategoryGroupAvatar:
+		allowedUpload = req.FileSize <= 2*1024*1024 && avatarMIMETypes[req.MimeType]
+	}
+	if !allowedUpload {
 		return nil, helper.NewBadRequestError("Unsupported file metadata")
 	}
 
@@ -149,7 +158,11 @@ func (s *MediaService) CompleteUpload(ctx context.Context, userID, mediaID uuid.
 	if objectInfo.Size != m.FileSize {
 		return nil, helper.NewBadRequestError("Uploaded object size mismatch")
 	}
-	if objectInfo.ContentType != "" && !compatibleContentType(m.MimeType, objectInfo.ContentType) {
+	expectedContentType := strings.ToLower(strings.TrimSpace(m.MimeType))
+	actualContentType := strings.ToLower(strings.TrimSpace(strings.Split(objectInfo.ContentType, ";")[0]))
+	contentTypeMatches := expectedContentType == actualContentType ||
+		(expectedContentType == "application/zip" && actualContentType == "application/octet-stream")
+	if objectInfo.ContentType != "" && !contentTypeMatches {
 		return nil, helper.NewBadRequestError("Uploaded object content type mismatch")
 	}
 
@@ -175,7 +188,16 @@ func (s *MediaService) CompleteUpload(ctx context.Context, userID, mediaID uuid.
 		}
 	}
 
-	return toMediaDTO(updated, url), nil
+	return &model.MediaDTO{
+		ID:           updated.ID,
+		FileName:     helper.NormalizeStoragePath(updated.FileName),
+		OriginalName: updated.OriginalName,
+		FileSize:     updated.FileSize,
+		MimeType:     updated.MimeType,
+		Category:     string(updated.Category),
+		UploadStatus: string(updated.UploadStatus),
+		URL:          url,
+	}, nil
 }
 
 func (s *MediaService) GetMediaURL(ctx context.Context, userID, mediaID uuid.UUID) (*model.MediaURLResponse, error) {
@@ -249,34 +271,4 @@ func (s *MediaService) GetMediaURL(ctx context.Context, userID, mediaID uuid.UUI
 	return &model.MediaURLResponse{
 		URL: url,
 	}, nil
-}
-
-func isAllowedUpload(category media.Category, mimeType string, fileSize int64) bool {
-	switch category {
-	case media.CategoryMessageAttachment:
-		return fileSize <= 20*1024*1024
-	case media.CategoryUserAvatar, media.CategoryGroupAvatar:
-		return fileSize <= 2*1024*1024 && avatarMIMETypes[mimeType]
-	default:
-		return false
-	}
-}
-
-func compatibleContentType(expected, actual string) bool {
-	expected = strings.ToLower(strings.TrimSpace(expected))
-	actual = strings.ToLower(strings.TrimSpace(strings.Split(actual, ";")[0]))
-	return expected == actual || (expected == "application/zip" && actual == "application/octet-stream")
-}
-
-func toMediaDTO(m *ent.Media, url string) *model.MediaDTO {
-	return &model.MediaDTO{
-		ID:           m.ID,
-		FileName:     filepath.ToSlash(m.FileName),
-		OriginalName: m.OriginalName,
-		FileSize:     m.FileSize,
-		MimeType:     m.MimeType,
-		Category:     string(m.Category),
-		UploadStatus: string(m.UploadStatus),
-		URL:          url,
-	}
 }

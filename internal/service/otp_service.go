@@ -31,13 +31,18 @@ type OTPService struct {
 	client         *ent.Client
 	cfg            *config.AppConfig
 	validator      *validator.Validate
-	emailAdapter   *adapter.EmailAdapter
-	captchaAdapter *adapter.CaptchaAdapter
-	redisAdapter   *adapter.RedisAdapter
-	rateLimitRepo  *repository.RateLimitRepository
+	emailAdapter   otpEmailSender
+	captchaAdapter otpCaptchaVerifier
+	redisAdapter   otpStore
+	rateLimitRepo  otpRateLimiter
 }
 
-func NewOTPService(client *ent.Client, cfg *config.AppConfig, validator *validator.Validate, emailAdapter *adapter.EmailAdapter, captchaAdapter *adapter.CaptchaAdapter, redisAdapter *adapter.RedisAdapter, rateLimitRepo *repository.RateLimitRepository) *OTPService {
+type otpEmailSender = adapter.EmailSender
+type otpCaptchaVerifier = adapter.CaptchaVerifier
+type otpStore = adapter.RedisStore
+type otpRateLimiter = repository.RateLimiter
+
+func NewOTPService(client *ent.Client, cfg *config.AppConfig, validator *validator.Validate, emailAdapter otpEmailSender, captchaAdapter otpCaptchaVerifier, redisAdapter otpStore, rateLimitRepo otpRateLimiter) *OTPService {
 	return &OTPService{
 		client:         client,
 		cfg:            cfg,
@@ -148,7 +153,7 @@ func (s *OTPService) SendOTP(ctx context.Context, req model.SendOTPRequest) erro
 		if err != nil {
 			slog.Error("Failed to send OTP email", "error", err)
 
-			s.redisAdapter.Del(context.Background(), key)
+			_ = s.redisAdapter.Del(context.Background(), key)
 		}
 	}
 

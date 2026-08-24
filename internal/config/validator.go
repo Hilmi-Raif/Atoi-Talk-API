@@ -110,7 +110,7 @@ func validateImage(fl validator.FieldLevel) bool {
 		slog.Error("Failed to open file for image validation", "err", err)
 		return false
 	}
-	defer fileOpened.Close()
+	defer func() { _ = fileOpened.Close() }()
 
 	fileHeader := make([]byte, 512)
 	n, err := fileOpened.Read(fileHeader)

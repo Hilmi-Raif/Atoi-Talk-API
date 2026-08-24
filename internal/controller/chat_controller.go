@@ -13,10 +13,12 @@ import (
 )
 
 type ChatController struct {
-	chatService *service.ChatService
+	chatService chatService
 }
 
-func NewChatController(chatService *service.ChatService) *ChatController {
+type chatService = service.ChatServicePort
+
+func NewChatController(chatService chatService) *ChatController {
 	return &ChatController{
 		chatService: chatService,
 	}

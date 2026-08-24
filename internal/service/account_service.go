@@ -7,7 +7,6 @@ import (
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/user"
 	"AtoiTalkAPI/ent/useridentity"
-	"AtoiTalkAPI/internal/adapter"
 	"AtoiTalkAPI/internal/config"
 	"AtoiTalkAPI/internal/constant"
 	"AtoiTalkAPI/internal/helper"
@@ -26,21 +25,19 @@ type AccountService struct {
 	client       *ent.Client
 	cfg          *config.AppConfig
 	validator    *validator.Validate
-	wsHub        *websocket.Hub
-	otpService   *OTPService
-	redisAdapter *adapter.RedisAdapter
-	repo         *repository.Repository
+	wsHub        websocket.Publisher
+	otpService   authOTP
+	sessionStore repository.SessionStore
 }
 
-func NewAccountService(client *ent.Client, cfg *config.AppConfig, validator *validator.Validate, wsHub *websocket.Hub, otpService *OTPService, redisAdapter *adapter.RedisAdapter, repo *repository.Repository) *AccountService {
+func NewAccountService(client *ent.Client, cfg *config.AppConfig, validator *validator.Validate, wsHub websocket.Publisher, otpService authOTP, sessionStore repository.SessionStore) *AccountService {
 	return &AccountService{
 		client:       client,
 		cfg:          cfg,
 		validator:    validator,
 		wsHub:        wsHub,
 		otpService:   otpService,
-		redisAdapter: redisAdapter,
-		repo:         repo,
+		sessionStore: sessionStore,
 	}
 }
 
@@ -97,7 +94,7 @@ func (s *AccountService) ChangePassword(ctx context.Context, userID uuid.UUID, r
 		return helper.NewInternalServerError("")
 	}
 
-	revokeExpected, revokeSnapshot, err := helper.RevokeSessionsForTransaction(ctx, s.repo.Session, userID)
+	revokeExpected, revokeSnapshot, err := helper.RevokeSessionsForTransaction(ctx, s.sessionStore, userID)
 	if err != nil {
 		slog.Error("Failed to revoke sessions after password change", "error", err, "userID", userID)
 		return helper.NewServiceUnavailableError("Session service unavailable")
@@ -105,7 +102,7 @@ func (s *AccountService) ChangePassword(ctx context.Context, userID uuid.UUID, r
 
 	if err := tx.Commit(); err != nil {
 		slog.Error("Failed to commit transaction", "error", err, "userID", userID)
-		helper.RollbackSessionRevokeIfNeeded(s.repo.Session, userID, revokeExpected, revokeSnapshot)
+		helper.RollbackSessionRevokeIfNeeded(s.sessionStore, userID, revokeExpected, revokeSnapshot)
 		return helper.NewInternalServerError("")
 	}
 
@@ -186,7 +183,7 @@ func (s *AccountService) ChangeEmail(ctx context.Context, userID uuid.UUID, req 
 		return helper.NewInternalServerError("")
 	}
 
-	revokeExpected, revokeSnapshot, err := helper.RevokeSessionsForTransaction(ctx, s.repo.Session, userID)
+	revokeExpected, revokeSnapshot, err := helper.RevokeSessionsForTransaction(ctx, s.sessionStore, userID)
 	if err != nil {
 		slog.Error("Failed to revoke sessions after email change", "error", err, "userID", userID)
 		return helper.NewServiceUnavailableError("Session service unavailable")
@@ -194,7 +191,7 @@ func (s *AccountService) ChangeEmail(ctx context.Context, userID uuid.UUID, req 
 
 	if err := tx.Commit(); err != nil {
 		slog.Error("Failed to commit transaction", "error", err)
-		helper.RollbackSessionRevokeIfNeeded(s.repo.Session, userID, revokeExpected, revokeSnapshot)
+		helper.RollbackSessionRevokeIfNeeded(s.sessionStore, userID, revokeExpected, revokeSnapshot)
 		return helper.NewInternalServerError("")
 	}
 
@@ -282,7 +279,7 @@ func (s *AccountService) DeleteAccount(ctx context.Context, userID uuid.UUID, re
 		return helper.NewInternalServerError("")
 	}
 
-	revokeExpected, revokeSnapshot, err := helper.RevokeSessionsForTransaction(ctx, s.repo.Session, userID)
+	revokeExpected, revokeSnapshot, err := helper.RevokeSessionsForTransaction(ctx, s.sessionStore, userID)
 	if err != nil {
 		slog.Error("Failed to revoke sessions after account deletion", "error", err, "userID", userID)
 		return helper.NewServiceUnavailableError("Session service unavailable")
@@ -290,7 +287,7 @@ func (s *AccountService) DeleteAccount(ctx context.Context, userID uuid.UUID, re
 
 	if err := tx.Commit(); err != nil {
 		slog.Error("Failed to commit transaction", "error", err)
-		helper.RollbackSessionRevokeIfNeeded(s.repo.Session, userID, revokeExpected, revokeSnapshot)
+		helper.RollbackSessionRevokeIfNeeded(s.sessionStore, userID, revokeExpected, revokeSnapshot)
 		return helper.NewInternalServerError("")
 	}
 

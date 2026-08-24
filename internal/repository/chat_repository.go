@@ -147,7 +147,7 @@ func (r *ChatRepository) GetChats(ctx context.Context, userID uuid.UUID, querySt
 				cursorTimeMicro, err1 := strconv.ParseInt(parts[0], 10, 64)
 				cursorID, err2 := uuid.Parse(parts[1])
 				if err1 == nil && err2 == nil {
-					cursorTime := time.UnixMicro(cursorTimeMicro)
+					cursorTime := time.UnixMicro(cursorTimeMicro).UTC()
 					query = query.Where(
 						chat.Or(
 							chat.LastMessageAtLT(cursorTime),

@@ -180,7 +180,7 @@ ent/
 └── schema/           # Database schema definitions
 
 docs/                 # Generated Swagger + AsyncAPI specs
-test/                 # Integration tests
+integration/          # Integration tests (requires -tags=integration)
 ```
 
 ## Getting Started
@@ -231,11 +231,11 @@ Build and run each service separately:
 
 ```bash
 # API
-docker build -f Dockerfile.api -t atoitalk-api .
+docker build -f build/package/api/Dockerfile -t atoitalk-api .
 docker run --env-file .env -p 8080:8080 atoitalk-api
 
 # Scheduler
-docker build -f Dockerfile.scheduler -t atoitalk-scheduler .
+docker build -f build/package/scheduler/Dockerfile -t atoitalk-scheduler .
 docker run --env-file .env atoitalk-scheduler
 ```
 
@@ -331,8 +331,55 @@ Copy `.env.test.example` to `.env.test`. Uses a separate database and Redis DB t
 
 Full documentation is available [here](https://doc-atoitalk-api.netlify.app/). Raw specs are in `docs/swagger.json` and `docs/asyncapi.yaml`.
 
+## Development & Makefile
+
+```bash
+# Show available commands
+make help
+
+# Format and static analysis
+make fmt
+make vet
+make lint
+make security
+
+# Code and mock generation
+make generate
+make mock-verify
+
+# Run unit tests
+make test
+make test-race
+make coverage-unit
+make coverage-check
+
+# Run integration tests with local backing services
+make test-env-up
+cp integration/.env.example integration/.env.test
+make test-integration
+make test-env-down
+
+# Build binaries and docker images
+make build-api
+make build-scheduler
+make docker-build
+```
+
 ## Tests
 
 ```bash
-go test ./test/...
+# Unit tests
+make test
+
+# Unit tests with race detector
+make test-race
+
+# Integration tests
+make test-env-up
+make test-integration
+make test-env-down
+
+# Static analysis
+make vet
+make lint
 ```

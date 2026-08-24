@@ -14,10 +14,10 @@ import (
 )
 
 type GroupChatController struct {
-	groupChatService *service.GroupChatService
+	groupChatService service.GroupChatServicePort
 }
 
-func NewGroupChatController(groupChatService *service.GroupChatService) *GroupChatController {
+func NewGroupChatController(groupChatService service.GroupChatServicePort) *GroupChatController {
 	return &GroupChatController{
 		groupChatService: groupChatService,
 	}

@@ -24,18 +24,22 @@ import (
 
 type UserService struct {
 	client         *ent.Client
-	repo           *repository.Repository
+	userRepo       userReader
 	cfg            *config.AppConfig
 	validator      *validator.Validate
-	storageAdapter *adapter.StorageAdapter
-	wsHub          *websocket.Hub
-	redisAdapter   *adapter.RedisAdapter
+	storageAdapter userStorage
+	wsHub          websocket.Publisher
+	redisAdapter   userPresence
 }
 
-func NewUserService(client *ent.Client, repo *repository.Repository, cfg *config.AppConfig, validator *validator.Validate, storageAdapter *adapter.StorageAdapter, wsHub *websocket.Hub, redisAdapter *adapter.RedisAdapter) *UserService {
+type userReader = repository.UserReader
+type userStorage = adapter.PublicURLGenerator
+type userPresence = adapter.RedisPresence
+
+func NewUserService(client *ent.Client, repo userReader, cfg *config.AppConfig, validator *validator.Validate, storageAdapter userStorage, wsHub websocket.Publisher, redisAdapter userPresence) *UserService {
 	return &UserService{
 		client:         client,
-		repo:           repo,
+		userRepo:       repo,
 		cfg:            cfg,
 		validator:      validator,
 		storageAdapter: storageAdapter,
@@ -86,8 +90,7 @@ func (s *UserService) GetCurrentUser(ctx context.Context, userID uuid.UUID) (*mo
 	}
 
 	key := fmt.Sprintf("online:%s", u.ID)
-	exists, _ := s.redisAdapter.Client().Exists(ctx, key).Result()
-	isOnline := exists > 0
+	isOnline, _ := s.redisAdapter.Exists(ctx, key)
 
 	return &model.UserDTO{
 		ID:          u.ID,
@@ -165,8 +168,7 @@ func (s *UserService) GetUserProfile(ctx context.Context, currentUserID uuid.UUI
 	var lastSeenAt *string
 
 	key := fmt.Sprintf("online:%s", u.ID)
-	exists, _ := s.redisAdapter.Client().Exists(ctx, key).Result()
-	isOnline := exists > 0
+	isOnline, _ := s.redisAdapter.Exists(ctx, key)
 
 	username := ""
 	if u.Username != nil {
@@ -302,8 +304,7 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID uuid.UUID, req m
 	}
 
 	key := fmt.Sprintf("online:%s", u.ID)
-	exists, _ := s.redisAdapter.Client().Exists(ctx, key).Result()
-	isOnline := exists > 0
+	isOnline, _ := s.redisAdapter.Exists(ctx, key)
 
 	if !hasChanges {
 		avatarURL := ""
@@ -481,7 +482,7 @@ func (s *UserService) SearchUsers(ctx context.Context, currentUserID uuid.UUID, 
 		req.Limit = 10
 	}
 
-	users, nextCursor, hasNext, err := s.repo.User.SearchUsers(ctx, currentUserID, req.Query, req.Cursor, req.Limit, req.ExcludeChatID)
+	users, nextCursor, hasNext, err := s.userRepo.SearchUsers(ctx, currentUserID, req.Query, req.Cursor, req.Limit, req.ExcludeChatID)
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid cursor format") {
 			slog.Warn("Invalid cursor format in SearchUsers", "error", err)
@@ -585,7 +586,7 @@ func (s *UserService) GetBlockedUsers(ctx context.Context, currentUserID uuid.UU
 		req.Limit = 10
 	}
 
-	users, nextCursor, hasNext, err := s.repo.User.GetBlockedUsers(ctx, currentUserID, req.Query, req.Cursor, req.Limit)
+	users, nextCursor, hasNext, err := s.userRepo.GetBlockedUsers(ctx, currentUserID, req.Query, req.Cursor, req.Limit)
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid cursor format") {
 			slog.Warn("Invalid cursor format in GetBlockedUsers", "error", err)

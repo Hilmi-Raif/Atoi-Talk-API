@@ -18,10 +18,39 @@ type GroupMemberRepository struct {
 	client *ent.Client
 }
 
+type GroupMemberCount struct {
+	GroupChatID uuid.UUID `json:"group_chat_id"`
+	Count       int       `json:"count"`
+}
+
 func NewGroupMemberRepository(client *ent.Client) *GroupMemberRepository {
 	return &GroupMemberRepository{
 		client: client,
 	}
+}
+
+func (r *GroupMemberRepository) CountActiveMembersByGroupIDs(ctx context.Context, groupIDs ...uuid.UUID) (map[uuid.UUID]int, error) {
+	counts := make(map[uuid.UUID]int, len(groupIDs))
+	if len(groupIDs) == 0 {
+		return counts, nil
+	}
+
+	var rows []GroupMemberCount
+	err := r.client.GroupMember.Query().
+		Where(
+			groupmember.GroupChatIDIn(groupIDs...),
+			groupmember.HasUserWith(user.DeletedAtIsNil()),
+		).
+		GroupBy(groupmember.FieldGroupChatID).
+		Aggregate(ent.Count()).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		counts[row.GroupChatID] = row.Count
+	}
+	return counts, nil
 }
 
 func (r *GroupMemberRepository) SearchGroupMembers(ctx context.Context, groupID uuid.UUID, query, cursor string, limit int) ([]*ent.GroupMember, string, bool, error) {

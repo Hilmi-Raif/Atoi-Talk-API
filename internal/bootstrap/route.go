@@ -52,7 +52,7 @@ func NewRoute(cfg *config.AppConfig, chi *chi.Mux, authController *controller.Au
 
 func (route *Route) Register() {
 	route.chi.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Welcome to AtoiTalkAPI"))
+		_, _ = w.Write([]byte("Welcome to AtoiTalkAPI"))
 	})
 
 	route.chi.With(

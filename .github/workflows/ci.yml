@@ -5,10 +5,83 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
-  test:
-    name: Test
+  quality:
+    name: Quality and Security
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.13"
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Check formatting
+        shell: bash
+        run: test -z "$(gofmt -l .)"
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.12.0
+
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.22.8
+
+      - name: Run gosec
+        run: gosec -exclude=G104,G117 -exclude-dir=ent -exclude-dir=internal/adapter/mocks -exclude-dir=internal/repository/mocks -exclude-dir=internal/service/mocks -exclude-dir=internal/websocket/mocks ./...
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+
+      - name: Run govulncheck
+        run: govulncheck ./...
+
+      - name: Install mockery
+        run: go install github.com/vektra/mockery/v2@v2.53.6
+
+      - name: Verify generated mocks
+        run: make mock-verify
+
+  unit:
+    name: Unit Tests and Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.13"
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run unit tests with coverage
+        run: go test ./internal/... -covermode=atomic -coverprofile=coverage-unit.out -count=1
+
+      - name: Run race detector
+        run: go test -race ./internal/... -count=1
+
+      - name: Upload unit coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit
+          path: coverage-unit.out
+
+  integration:
+    name: Integration Tests and Coverage
     runs-on: ubuntu-latest
 
     services:
@@ -43,8 +116,8 @@ jobs:
         env:
           initialBuckets: test-public-bucket,test-private-bucket
 
-      mailhog:
-        image: mailhog/mailhog:latest
+      mailpit:
+        image: axllent/mailpit:latest
         ports:
           - 1025:1025
           - 8025:8025
@@ -95,24 +168,70 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25"
+          go-version: "1.25.13"
 
       - name: Download dependencies
         run: go mod download
 
-      - name: Run tests
-        run: go test ./test/... -v -count=1
+      - name: Run integration tests with coverage
+        run: go test -tags=integration -coverpkg=./... -covermode=atomic -coverprofile=coverage-integration.out ./integration/... -v -count=1
+
+      - name: Upload integration coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-integration
+          path: coverage-integration.out
+
+  coverage:
+    name: Combined Coverage Gate
+    runs-on: ubuntu-latest
+    needs: [unit, integration]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.13"
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Download unit coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-unit
+          path: coverage-artifacts/unit
+
+      - name: Download integration coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-integration
+          path: coverage-artifacts/integration
+
+      - name: Merge coverage profiles
+        run: go run ./scripts/merge-coverage -output coverage-merged.out coverage-artifacts/unit/coverage-unit.out coverage-artifacts/integration/coverage-integration.out
+
+      - name: Enforce coverage threshold
+        run: go run ./scripts/check-coverage -profile coverage-merged.out -min 85 -exclude internal/model,internal/bootstrap,scripts,ent,docs,cmd,internal/helper/mocks,internal/adapter/mocks,internal/repository/mocks,internal/service/mocks,internal/websocket/mocks
+
+      - name: Upload merged coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-merged
+          path: coverage-merged.out
 
   build:
     name: Build Docker Images
     runs-on: ubuntu-latest
-    needs: test
+    needs: [quality, unit, integration, coverage]
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Build API image
-        run: docker build -f Dockerfile.api -t atoitalk-api .
+        run: docker build -f build/package/api/Dockerfile -t atoitalk-api .
 
       - name: Build Scheduler image
-        run: docker build -f Dockerfile.scheduler -t atoitalk-scheduler .
+        run: docker build -f build/package/scheduler/Dockerfile -t atoitalk-scheduler .

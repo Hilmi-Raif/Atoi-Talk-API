@@ -28,7 +28,7 @@ type ResponseWithPagination struct {
 func WriteJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(payload)
+	_ = json.NewEncoder(w).Encode(payload)
 }
 
 func WriteSuccess(w http.ResponseWriter, data interface{}) {

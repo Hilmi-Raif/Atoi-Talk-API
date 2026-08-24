@@ -10,10 +10,10 @@ import (
 )
 
 type PrivateChatController struct {
-	privateChatService *service.PrivateChatService
+	privateChatService service.PrivateChatServicePort
 }
 
-func NewPrivateChatController(privateChatService *service.PrivateChatService) *PrivateChatController {
+func NewPrivateChatController(privateChatService service.PrivateChatServicePort) *PrivateChatController {
 	return &PrivateChatController{
 		privateChatService: privateChatService,
 	}

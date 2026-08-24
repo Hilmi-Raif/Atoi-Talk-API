@@ -9,7 +9,6 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
-	"path/filepath"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -31,6 +30,8 @@ type StorageObjectInfo struct {
 	Size        int64
 	ContentType string
 }
+
+const maxExternalDownloadBytes = 5 * 1024 * 1024
 
 func NewStorageAdapter(cfg *config.AppConfig, s3Client *s3.Client, httpClient *http.Client) *StorageAdapter {
 	var presignClient *s3.PresignClient
@@ -55,7 +56,7 @@ func (s *StorageAdapter) Store(file *multipart.FileHeader, path string, isPublic
 	if err != nil {
 		return err
 	}
-	defer fileOpened.Close()
+	defer func() { _ = fileOpened.Close() }()
 
 	contentType := file.Header.Get("Content-Type")
 	return s.StoreFromReader(fileOpened, contentType, path, isPublic)
@@ -71,7 +72,7 @@ func (s *StorageAdapter) StoreFromReader(reader io.Reader, contentType string, p
 		bucket = s.bucketPublic
 	}
 
-	s3Key := filepath.ToSlash(path)
+	s3Key := helper.NormalizeStoragePath(path)
 	if contentType == "" {
 		contentType = "application/octet-stream"
 	}
@@ -90,7 +91,10 @@ func (s *StorageAdapter) Download(url string) ([]byte, string, error) {
 		resp, err := s.httpClient.Get(url)
 		if helper.ShouldRetryHTTP(resp, err) {
 			if resp != nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
+			}
+			if err == nil && resp != nil {
+				err = fmt.Errorf("failed to download image, status code: %d", resp.StatusCode)
 			}
 			return nil, true, err
 		}
@@ -99,7 +103,7 @@ func (s *StorageAdapter) Download(url string) ([]byte, string, error) {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			return nil, false, fmt.Errorf("failed to download image, status code: %d", resp.StatusCode)
 		}
 
@@ -110,11 +114,18 @@ func (s *StorageAdapter) Download(url string) ([]byte, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
-	data, err := io.ReadAll(resp.Body)
+	if resp.ContentLength > maxExternalDownloadBytes {
+		return nil, "", fmt.Errorf("response body exceeds %d bytes", maxExternalDownloadBytes)
+	}
+
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxExternalDownloadBytes+1))
 	if err != nil {
 		return nil, "", err
+	}
+	if len(data) > maxExternalDownloadBytes {
+		return nil, "", fmt.Errorf("response body exceeds %d bytes", maxExternalDownloadBytes)
 	}
 
 	contentType := http.DetectContentType(data)
@@ -131,7 +142,7 @@ func (s *StorageAdapter) Delete(path string, isPublic bool) error {
 		bucket = s.bucketPublic
 	}
 
-	s3Key := filepath.ToSlash(path)
+	s3Key := helper.NormalizeStoragePath(path)
 	_, err := s.client.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(s3Key),
@@ -140,13 +151,11 @@ func (s *StorageAdapter) Delete(path string, isPublic bool) error {
 }
 
 func (s *StorageAdapter) GetPublicURL(path string) string {
-
 	if s.publicDomain != "" {
-
-		return fmt.Sprintf("%s/%s", s.publicDomain, filepath.ToSlash(path))
+		return fmt.Sprintf("%s/%s", s.publicDomain, helper.NormalizeStoragePath(path))
 	}
 
-	return fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.bucketPublic, s.region, filepath.ToSlash(path))
+	return fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.bucketPublic, s.region, helper.NormalizeStoragePath(path))
 }
 
 func (s *StorageAdapter) GetPresignedURL(path string, expiry time.Duration) (string, error) {
@@ -154,7 +163,7 @@ func (s *StorageAdapter) GetPresignedURL(path string, expiry time.Duration) (str
 		return "", errors.New("presign client is not initialized")
 	}
 
-	s3Key := filepath.ToSlash(path)
+	s3Key := helper.NormalizeStoragePath(path)
 	req, err := s.presignClient.PresignGetObject(context.TODO(), &s3.GetObjectInput{
 		Bucket: aws.String(s.bucketPrivate),
 		Key:    aws.String(s3Key),
@@ -182,7 +191,7 @@ func (s *StorageAdapter) GetPresignedPutURL(path string, contentType string, con
 		contentType = "application/octet-stream"
 	}
 
-	s3Key := filepath.ToSlash(path)
+	s3Key := helper.NormalizeStoragePath(path)
 	req, err := s.presignClient.PresignPutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket:        aws.String(bucket),
 		Key:           aws.String(s3Key),
@@ -209,7 +218,7 @@ func (s *StorageAdapter) Head(path string, isPublic bool) (*StorageObjectInfo, e
 		bucket = s.bucketPublic
 	}
 
-	s3Key := filepath.ToSlash(path)
+	s3Key := helper.NormalizeStoragePath(path)
 	resp, err := s.client.HeadObject(context.TODO(), &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(s3Key),

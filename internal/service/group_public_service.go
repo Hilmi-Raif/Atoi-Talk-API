@@ -32,7 +32,7 @@ func (s *GroupChatService) SearchPublicGroups(ctx context.Context, userID uuid.U
 		req.SortBy = "name"
 	}
 
-	groups, nextCursor, hasNext, err := s.repo.GroupChat.SearchPublicGroups(ctx, req.Query, req.Cursor, req.Limit, req.SortBy)
+	groups, nextCursor, hasNext, err := s.groupChatRepo.SearchPublicGroups(ctx, req.Query, req.Cursor, req.Limit, req.SortBy)
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid cursor format") {
 			slog.Warn("Invalid cursor format in SearchPublicGroups", "error", err)
@@ -68,18 +68,9 @@ func (s *GroupChatService) SearchPublicGroups(ctx context.Context, userID uuid.U
 
 	memberCounts := make(map[uuid.UUID]int)
 	if len(groupIDs) > 0 {
-		members, err := s.client.GroupMember.Query().
-			Where(
-				groupmember.GroupChatIDIn(groupIDs...),
-				groupmember.HasUserWith(user.DeletedAtIsNil()),
-			).
-			Select(groupmember.FieldGroupChatID).
-			All(ctx)
-		if err == nil {
-			for _, m := range members {
-				memberCounts[m.GroupChatID]++
-			}
-		} else {
+		var err error
+		memberCounts, err = s.groupMemberRepo.CountActiveMembersByGroupIDs(ctx, groupIDs...)
+		if err != nil {
 			slog.Error("Failed to batch count group members", "error", err)
 		}
 	}
@@ -116,7 +107,7 @@ func (s *GroupChatService) JoinPublicGroup(ctx context.Context, userID uuid.UUID
 		slog.Error("Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	gc, err := tx.GroupChat.Query().
 		Where(
@@ -187,7 +178,7 @@ func (s *GroupChatService) JoinPublicGroup(ctx context.Context, userID uuid.UUID
 		return nil, helper.NewInternalServerError("")
 	}
 
-	s.redisAdapter.Del(context.Background(), fmt.Sprintf("chat_members:%s", groupID))
+	_ = s.redisAdapter.Del(context.Background(), fmt.Sprintf("chat_members:%s", groupID))
 
 	fullMsg, err := s.client.Message.Query().
 		Where(message.ID(systemMsg.ID)).

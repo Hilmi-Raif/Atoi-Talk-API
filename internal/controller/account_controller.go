@@ -10,10 +10,10 @@ import (
 )
 
 type AccountController struct {
-	accountService *service.AccountService
+	accountService service.AccountServicePort
 }
 
-func NewAccountController(accountService *service.AccountService) *AccountController {
+func NewAccountController(accountService service.AccountServicePort) *AccountController {
 	return &AccountController{
 		accountService: accountService,
 	}
