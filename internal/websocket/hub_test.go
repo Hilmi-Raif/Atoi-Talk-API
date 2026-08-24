@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	gorilla "github.com/gorilla/websocket"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
@@ -110,17 +111,24 @@ func TestHubBroadcastToUserPublishesToRedis(t *testing.T) {
 	redisAdapter, err := adapter.NewRedisAdapter(&config.AppConfig{RedisHost: redisServer.Host(), RedisPort: redisServer.Port()})
 	require.NoError(t, err)
 	hub := newTestHub(client, redisAdapter)
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 	pubsub := redisAdapter.Client().Subscribe(ctx, pubSubChannel)
 	defer func() { _ = pubsub.Close() }()
-	require.NoError(t, pubsub.Ping(ctx))
+	subscription, err := pubsub.Receive(ctx)
+	require.NoError(t, err)
+	require.IsType(t, &redis.Subscription{}, subscription)
+	messages := pubsub.Channel()
 
 	userID := uuid.New()
 	hub.BroadcastToUser(userID, Event{Type: EventUserUpdate, Payload: map[string]string{"name": "updated"}})
 
-	message, err := pubsub.ReceiveMessage(ctx)
-	require.NoError(t, err)
-	require.Contains(t, message.Payload, userID.String())
+	select {
+	case message := <-messages:
+		require.Contains(t, message.Payload, userID.String())
+	case <-ctx.Done():
+		t.Fatal("timed out waiting for redis pubsub message")
+	}
 }
 
 func TestHubBroadcastToUserIgnoresUnmarshalableEvent(t *testing.T) {
