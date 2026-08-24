@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -45,4 +47,28 @@ func TestQueryIndexStatementsCoverSearchAndCleanupQueries(t *testing.T) {
 			t.Fatalf("query index statements missing %q", fragment)
 		}
 	}
+}
+
+func TestInitEntFatalOnInvalidConnection(t *testing.T) {
+	cmd := exec.Command(os.Args[0], "-test.run=^TestInitEntProcessHelper$")
+	cmd.Env = append(os.Environ(), "INIT_ENT_SUBPROCESS=1")
+	if err := cmd.Run(); err == nil {
+		t.Fatal("expected subprocess to exit with failure on invalid connection")
+	}
+}
+
+func TestInitEntProcessHelper(t *testing.T) {
+	if os.Getenv("INIT_ENT_SUBPROCESS") != "1" {
+		return
+	}
+	cfg := &AppConfig{
+		DBHost:     "127.0.0.1",
+		DBPort:     "1",
+		DBUser:     "invalid",
+		DBPassword: "invalid",
+		DBName:     "invalid",
+		DBSSLMode:  "disable",
+		DBMigrate:  true,
+	}
+	_ = InitEnt(cfg)
 }

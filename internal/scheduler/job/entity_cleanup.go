@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const cleanupBatchSize = 100
+
 func RunEntityCleanup(ctx context.Context, client *ent.Client, cfg *config.AppConfig) error {
 	retentionDays := cfg.SoftDeleteRetentionDays
 	if retentionDays < 0 {
@@ -19,40 +21,62 @@ func RunEntityCleanup(ctx context.Context, client *ent.Client, cfg *config.AppCo
 
 	slog.Info("Running Entity Cleanup", "cutoff", cutoff)
 
-	usersToDelete, err := client.User.Query().
-		Where(user.DeletedAtLT(cutoff)).
-		Select(user.FieldID).
-		All(ctx)
-	if err != nil {
-		slog.Error("Failed to query users for cleanup", "error", err)
-		return err
-	}
-
-	for _, u := range usersToDelete {
-		err := client.User.DeleteOneID(u.ID).Exec(ctx)
+	for {
+		usersToDelete, err := client.User.Query().
+			Where(user.DeletedAtLT(cutoff)).
+			Order(ent.Asc(user.FieldID)).
+			Select(user.FieldID).
+			Limit(cleanupBatchSize).
+			All(ctx)
 		if err != nil {
-			slog.Error("Failed to delete user", "userID", u.ID, "error", err)
-			continue
+			slog.Error("Failed to query users for cleanup", "error", err)
+			return err
 		}
-		slog.Info("Hard deleted user", "userID", u.ID)
+		if len(usersToDelete) == 0 {
+			break
+		}
+
+		deleted := 0
+		for _, u := range usersToDelete {
+			if err := client.User.DeleteOneID(u.ID).Exec(ctx); err != nil {
+				slog.Error("Failed to delete user", "userID", u.ID, "error", err)
+				continue
+			}
+			deleted++
+		}
+		if deleted == 0 {
+			slog.Warn("Stopping user cleanup because the current batch made no progress")
+			break
+		}
 	}
 
-	chatsToDelete, err := client.Chat.Query().
-		Where(chat.DeletedAtLT(cutoff)).
-		Select(chat.FieldID).
-		All(ctx)
-	if err != nil {
-		slog.Error("Failed to query chats for cleanup", "error", err)
-		return err
-	}
-
-	for _, c := range chatsToDelete {
-		err := client.Chat.DeleteOneID(c.ID).Exec(ctx)
+	for {
+		chatsToDelete, err := client.Chat.Query().
+			Where(chat.DeletedAtLT(cutoff)).
+			Order(ent.Asc(chat.FieldID)).
+			Select(chat.FieldID).
+			Limit(cleanupBatchSize).
+			All(ctx)
 		if err != nil {
-			slog.Error("Failed to delete chat", "chatID", c.ID, "error", err)
-			continue
+			slog.Error("Failed to query chats for cleanup", "error", err)
+			return err
 		}
-		slog.Info("Hard deleted chat", "chatID", c.ID)
+		if len(chatsToDelete) == 0 {
+			break
+		}
+
+		deleted := 0
+		for _, c := range chatsToDelete {
+			if err := client.Chat.DeleteOneID(c.ID).Exec(ctx); err != nil {
+				slog.Error("Failed to delete chat", "chatID", c.ID, "error", err)
+				continue
+			}
+			deleted++
+		}
+		if deleted == 0 {
+			slog.Warn("Stopping chat cleanup because the current batch made no progress")
+			break
+		}
 	}
 
 	return nil

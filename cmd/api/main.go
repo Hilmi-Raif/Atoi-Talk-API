@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 )
 
 func main() {
@@ -36,7 +37,15 @@ func main() {
 	addr := fmt.Sprintf(":%s", cfg.AppPort)
 	slog.Info("Starting AtoiTalkAPI", "port", cfg.AppPort)
 
-	if err := http.ListenAndServe(addr, chiMux); err != nil {
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           chiMux,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+	if err := server.ListenAndServe(); err != nil {
 		slog.Error("Failed to start server", "error", err)
 		os.Exit(1)
 	}

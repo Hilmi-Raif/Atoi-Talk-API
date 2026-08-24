@@ -5,7 +5,7 @@ import "github.com/google/uuid"
 type CreateGroupChatRequest struct {
 	Name          string      `json:"name" validate:"required,min=3,max=100"`
 	Description   string      `json:"description" validate:"max=255"`
-	MemberIDs     []uuid.UUID `json:"member_ids" validate:"required,min=1,dive"`
+	MemberIDs     []uuid.UUID `json:"member_ids" validate:"required,min=1,max=100,dive"`
 	AvatarMediaID *uuid.UUID  `json:"avatar_media_id" validate:"omitempty"`
 	IsPublic      bool        `json:"is_public"`
 }
@@ -33,7 +33,7 @@ type SearchPublicGroupsRequest struct {
 }
 
 type AddGroupMemberRequest struct {
-	UserIDs []uuid.UUID `json:"user_ids" validate:"required,min=1,dive"`
+	UserIDs []uuid.UUID `json:"user_ids" validate:"required,min=1,max=100,dive"`
 }
 
 type UpdateGroupMemberRoleRequest struct {

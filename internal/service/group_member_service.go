@@ -52,7 +52,7 @@ func (s *GroupChatService) SearchGroupMembers(ctx context.Context, userID uuid.U
 		}
 	}
 
-	members, nextCursor, hasNext, err := s.repo.GroupMember.SearchGroupMembers(ctx, gc.ID, req.Query, req.Cursor, req.Limit)
+	members, nextCursor, hasNext, err := s.groupMemberRepo.SearchGroupMembers(ctx, gc.ID, req.Query, req.Cursor, req.Limit)
 	if err != nil {
 		slog.Error("Failed to search group members", "error", err)
 		return nil, "", false, helper.NewInternalServerError("")

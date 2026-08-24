@@ -65,19 +65,19 @@ func (e *EmailAdapter) sendWithTimeout(to []string, msg []byte, timeout time.Dur
 	}
 
 	if err := conn.SetDeadline(time.Now().Add(timeout)); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return err
 	}
 
 	client, err := smtp.NewClient(conn, e.host)
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	if ok, _ := client.Extension("STARTTLS"); ok {
-		if err := client.StartTLS(&tls.Config{ServerName: e.host}); err != nil {
+		if err := client.StartTLS(&tls.Config{ServerName: e.host, MinVersion: tls.VersionTLS12}); err != nil {
 			return err
 		}
 	}

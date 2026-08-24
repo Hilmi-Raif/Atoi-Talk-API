@@ -6,12 +6,17 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+func NormalizeStoragePath(p string) string {
+	return path.Clean(strings.ReplaceAll(p, "\\", "/"))
+}
 
 func GenerateUniqueFileName(originalName string) string {
 	ext := filepath.Ext(originalName)

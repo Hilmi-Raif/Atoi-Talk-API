@@ -15,12 +15,13 @@ import (
 	"AtoiTalkAPI/internal/websocket"
 	"bytes"
 	"context"
+	crand "crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"math/rand"
+	"math/big"
 	"path/filepath"
 	"strings"
 	"time"
@@ -49,15 +50,24 @@ type AuthService struct {
 	client         *ent.Client
 	cfg            *config.AppConfig
 	validator      *validator.Validate
-	storageAdapter *adapter.StorageAdapter
-	captchaAdapter *adapter.CaptchaAdapter
-	redisAdapter   *adapter.RedisAdapter
-	otpService     *OTPService
-	repo           *repository.Repository
-	wsHub          *websocket.Hub
+	storageAdapter authStorage
+	captchaAdapter authCaptcha
+	redisAdapter   authRedis
+	otpService     authOTP
+	sessionStore   authSessionStore
+	wsHub          websocket.Publisher
 }
 
-func NewAuthService(client *ent.Client, cfg *config.AppConfig, validator *validator.Validate, storageAdapter *adapter.StorageAdapter, captchaAdapter *adapter.CaptchaAdapter, redisAdapter *adapter.RedisAdapter, otpService *OTPService, repo *repository.Repository, wsHub *websocket.Hub) *AuthService {
+type authOTP interface {
+	VerifyOTP(ctx context.Context, email string, code string, mode string) error
+}
+
+type authStorage = adapter.AuthStorage
+type authCaptcha = adapter.CaptchaVerifier
+type authRedis = adapter.RedisOAuthStore
+type authSessionStore = repository.SessionStore
+
+func NewAuthService(client *ent.Client, cfg *config.AppConfig, validator *validator.Validate, storageAdapter authStorage, captchaAdapter authCaptcha, redisAdapter authRedis, otpService authOTP, sessionStore authSessionStore, wsHub websocket.Publisher) *AuthService {
 	return &AuthService{
 		client:         client,
 		cfg:            cfg,
@@ -66,7 +76,7 @@ func NewAuthService(client *ent.Client, cfg *config.AppConfig, validator *valida
 		captchaAdapter: captchaAdapter,
 		redisAdapter:   redisAdapter,
 		otpService:     otpService,
-		repo:           repo,
+		sessionStore:   sessionStore,
 		wsHub:          wsHub,
 	}
 }
@@ -160,7 +170,7 @@ func (s *AuthService) Logout(ctx context.Context, tokenString string) error {
 		ttl = time.Duration(s.cfg.JWTExp) * time.Second
 	}
 
-	err = s.repo.Session.BlacklistToken(ctx, tokenString, ttl)
+	err = s.sessionStore.BlacklistToken(ctx, tokenString, ttl)
 	if err != nil {
 		slog.Error("Failed to blacklist token on logout", "error", err)
 		return helper.NewInternalServerError("")
@@ -174,7 +184,7 @@ func (s *AuthService) Logout(ctx context.Context, tokenString string) error {
 }
 
 func (s *AuthService) RevokeAllSessions(ctx context.Context, userID uuid.UUID) error {
-	return s.repo.Session.RevokeAllSessions(ctx, userID)
+	return s.sessionStore.RevokeAllSessions(ctx, userID)
 }
 
 func (s *AuthService) VerifyUser(ctx context.Context, tokenString string) (*model.UserDTO, error) {
@@ -199,12 +209,12 @@ func (s *AuthService) VerifyUser(ctx context.Context, tokenString string) (*mode
 		return nil, helper.NewUnauthorizedError("")
 	}
 
-	tokenIssuedAt := claims.IssuedAt.Time.UnixMilli()
+	tokenIssuedAt := claims.IssuedAt.UnixMilli()
 	if claims.IssuedAtMillis > 0 {
 		tokenIssuedAt = claims.IssuedAtMillis
 	}
 
-	isRevoked, err := s.repo.Session.IsUserRevoked(ctx, claims.UserID, tokenIssuedAt)
+	isRevoked, err := s.sessionStore.IsUserRevoked(ctx, claims.UserID, tokenIssuedAt)
 	if err != nil {
 		slog.Error("Failed to check user revoked session", "error", err, "userID", claims.UserID)
 		return nil, helper.NewServiceUnavailableError("Session service unavailable")
@@ -349,7 +359,7 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 	}
 
 	stateKey := fmt.Sprintf("%s%s", googleOAuthStateKeyPrefix, req.State)
-	payloadRaw, err := s.redisAdapter.Client().GetDel(ctx, stateKey).Result()
+	payloadRaw, err := s.redisAdapter.GetDel(ctx, stateKey)
 	if err != nil {
 		if err == redis.Nil {
 			return nil, helper.NewUnauthorizedError("Invalid or expired Google auth state")
@@ -379,7 +389,7 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 		return nil, helper.NewUnauthorizedError("Invalid authorization code")
 	}
 
-	oauth2Service, err := googleOAuth2.NewService(ctx, option.WithTokenSource(conf.TokenSource(ctx, oauthToken)))
+	oauth2Service, err := googleOAuth2.NewService(ctx, option.WithTokenSource(conf.TokenSource(ctx, oauthToken)), option.WithHTTPClient(oauth2.NewClient(ctx, conf.TokenSource(ctx, oauthToken))))
 	if err != nil {
 		slog.Error("Failed to create oauth2 service", "error", err)
 		return nil, helper.NewInternalServerError("")
@@ -509,8 +519,12 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 
 		var finalUsername string
 		for i := 0; i < 3; i++ {
-			randNum := rand.Intn(10000)
-			candidate := fmt.Sprintf("%s%04d", baseUsername, randNum)
+			randNum, randErr := crand.Int(crand.Reader, big.NewInt(10000))
+			if randErr != nil {
+				slog.Error("Failed to generate username suffix", "error", randErr)
+				return nil, helper.NewInternalServerError("")
+			}
+			candidate := fmt.Sprintf("%s%04d", baseUsername, randNum.Int64())
 
 			exists, existsErr := tx.User.Query().Where(user.UsernameEQ(candidate)).Exist(ctx)
 			if existsErr != nil {
@@ -706,6 +720,7 @@ func (s *AuthService) Register(ctx context.Context, req model.RegisterUserReques
 
 	if err != nil {
 		if ent.IsConstraintError(err) {
+			_ = tx.Rollback()
 
 			emailExists, existsErr := s.client.User.Query().
 				Where(user.Email(req.Email), user.DeletedAtIsNil()).
@@ -822,7 +837,7 @@ func (s *AuthService) ResetPassword(ctx context.Context, req model.ResetPassword
 		return helper.NewInternalServerError("")
 	}
 
-	revokeExpected, revokeSnapshot, err := helper.RevokeSessionsForTransaction(ctx, s.repo.Session, u.ID)
+	revokeExpected, revokeSnapshot, err := helper.RevokeSessionsForTransaction(ctx, s.sessionStore, u.ID)
 	if err != nil {
 		slog.Error("Failed to revoke sessions after password reset", "error", err, "userID", u.ID)
 		return helper.NewServiceUnavailableError("Session service unavailable")
@@ -830,7 +845,7 @@ func (s *AuthService) ResetPassword(ctx context.Context, req model.ResetPassword
 
 	if err := tx.Commit(); err != nil {
 		slog.Error("Failed to commit transaction", "error", err)
-		helper.RollbackSessionRevokeIfNeeded(s.repo.Session, u.ID, revokeExpected, revokeSnapshot)
+		helper.RollbackSessionRevokeIfNeeded(s.sessionStore, u.ID, revokeExpected, revokeSnapshot)
 		return helper.NewInternalServerError("")
 	}
 

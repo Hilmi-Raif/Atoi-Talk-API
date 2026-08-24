@@ -15,12 +15,12 @@ import (
 )
 
 type AdminController struct {
-	adminService     *service.AdminService
-	groupChatService *service.GroupChatService
+	adminService     service.AdminServicePort
+	groupChatService service.GroupChatServicePort
 	validator        *validator.Validate
 }
 
-func NewAdminController(adminService *service.AdminService, groupChatService *service.GroupChatService, validator *validator.Validate) *AdminController {
+func NewAdminController(adminService service.AdminServicePort, groupChatService service.GroupChatServicePort, validator *validator.Validate) *AdminController {
 	return &AdminController{
 		adminService:     adminService,
 		groupChatService: groupChatService,

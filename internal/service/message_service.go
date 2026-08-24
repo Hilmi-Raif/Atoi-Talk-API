@@ -11,6 +11,7 @@ import (
 	"AtoiTalkAPI/ent/userblock"
 	"AtoiTalkAPI/internal/adapter"
 	"AtoiTalkAPI/internal/config"
+	"AtoiTalkAPI/internal/constant"
 	"AtoiTalkAPI/internal/helper"
 	"AtoiTalkAPI/internal/model"
 	"AtoiTalkAPI/internal/repository"
@@ -28,17 +29,17 @@ import (
 
 type MessageService struct {
 	client         *ent.Client
-	repo           *repository.Repository
+	messageRepo    repository.MessageReader
 	cfg            *config.AppConfig
 	validator      *validator.Validate
-	storageAdapter *adapter.StorageAdapter
-	wsHub          *websocket.Hub
+	storageAdapter adapter.URLGenerator
+	wsHub          websocket.Publisher
 }
 
-func NewMessageService(client *ent.Client, repo *repository.Repository, cfg *config.AppConfig, validator *validator.Validate, storageAdapter *adapter.StorageAdapter, wsHub *websocket.Hub) *MessageService {
+func NewMessageService(client *ent.Client, messageRepo repository.MessageReader, cfg *config.AppConfig, validator *validator.Validate, storageAdapter adapter.URLGenerator, wsHub websocket.Publisher) *MessageService {
 	return &MessageService{
 		client:         client,
-		repo:           repo,
+		messageRepo:    messageRepo,
 		cfg:            cfg,
 		validator:      validator,
 		storageAdapter: storageAdapter,
@@ -49,6 +50,12 @@ func NewMessageService(client *ent.Client, repo *repository.Repository, cfg *con
 func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req model.SendMessageRequest) (*model.MessageResponse, error) {
 	if err := s.validator.Struct(req); err != nil {
 		slog.Warn("Validation failed", "error", err, "userID", userID)
+		return nil, helper.NewBadRequestError("")
+	}
+	if len(req.AttachmentIDs) > constant.MaxMessageAttachments {
+		return nil, helper.NewBadRequestError("")
+	}
+	if err := helper.EnsureUniqueUUIDs(req.AttachmentIDs); err != nil {
 		return nil, helper.NewBadRequestError("")
 	}
 
@@ -326,6 +333,14 @@ func (s *MessageService) EditMessage(ctx context.Context, userID uuid.UUID, mess
 		slog.Warn("Validation failed", "error", err, "userID", userID)
 		return nil, helper.NewBadRequestError("")
 	}
+	if len(req.AttachmentIDs) > constant.MaxMessageAttachments {
+		return nil, helper.NewBadRequestError("")
+	}
+	if req.HasAttachmentIDs {
+		if err := helper.EnsureUniqueUUIDs(req.AttachmentIDs); err != nil {
+			return nil, helper.NewBadRequestError("")
+		}
+	}
 
 	req.Content = strings.TrimSpace(req.Content)
 
@@ -590,7 +605,7 @@ func (s *MessageService) GetMessages(ctx context.Context, userID uuid.UUID, req 
 
 	if req.AroundMessageID != nil {
 
-		messages, errRepo = s.repo.Message.GetMessagesAround(ctx, req.ChatID, hiddenAt, *req.AroundMessageID, req.Limit)
+		messages, errRepo = s.messageRepo.GetMessagesAround(ctx, req.ChatID, hiddenAt, *req.AroundMessageID, req.Limit)
 	} else {
 
 		var cursorID uuid.UUID
@@ -604,7 +619,7 @@ func (s *MessageService) GetMessages(ctx context.Context, userID uuid.UUID, req 
 				return nil, "", false, "", false, helper.NewBadRequestError("Invalid cursor format")
 			}
 		}
-		messages, errRepo = s.repo.Message.GetMessages(ctx, req.ChatID, hiddenAt, cursorID, req.Limit, req.Direction)
+		messages, errRepo = s.messageRepo.GetMessages(ctx, req.ChatID, hiddenAt, cursorID, req.Limit, req.Direction)
 	}
 
 	if errRepo != nil {

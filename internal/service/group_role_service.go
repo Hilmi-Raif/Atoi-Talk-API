@@ -28,7 +28,7 @@ func (s *GroupChatService) UpdateMemberRole(ctx context.Context, requestorID uui
 		slog.Error("Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	gc, err := tx.GroupChat.Query().
 		Where(
@@ -133,7 +133,7 @@ func (s *GroupChatService) UpdateMemberRole(ctx context.Context, requestorID uui
 		return nil, helper.NewInternalServerError("")
 	}
 
-	s.redisAdapter.Del(context.Background(), fmt.Sprintf("chat_members:%s", groupID))
+	_ = s.redisAdapter.Del(context.Background(), fmt.Sprintf("chat_members:%s", groupID))
 
 	fullMsg, err := s.client.Message.Query().
 		Where(message.ID(systemMsg.ID)).
@@ -182,7 +182,7 @@ func (s *GroupChatService) TransferOwnership(ctx context.Context, requestorID uu
 		slog.Error("Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	gc, err := tx.GroupChat.Query().
 		Where(
@@ -284,7 +284,7 @@ func (s *GroupChatService) TransferOwnership(ctx context.Context, requestorID uu
 		return nil, helper.NewInternalServerError("")
 	}
 
-	s.redisAdapter.Del(context.Background(), fmt.Sprintf("chat_members:%s", groupID))
+	_ = s.redisAdapter.Del(context.Background(), fmt.Sprintf("chat_members:%s", groupID))
 
 	fullMsg, err := s.client.Message.Query().
 		Where(message.ID(systemMsg.ID)).

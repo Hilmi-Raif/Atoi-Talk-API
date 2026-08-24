@@ -20,33 +20,34 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 )
 
 type ChatService struct {
-	client         *ent.Client
-	repo           *repository.Repository
-	cfg            *config.AppConfig
-	validator      *validator.Validate
-	wsHub          *websocket.Hub
-	storageAdapter *adapter.StorageAdapter
-	redisAdapter   *adapter.RedisAdapter
+	client          *ent.Client
+	chatRepo        repository.ChatReader
+	groupMemberRepo repository.GroupMemberReader
+	cfg             *config.AppConfig
+	validator       *validator.Validate
+	wsHub           websocket.Publisher
+	storageAdapter  adapter.URLGenerator
+	redisAdapter    adapter.RedisOnlineStore
 }
 
-func NewChatService(client *ent.Client, repo *repository.Repository, cfg *config.AppConfig, validator *validator.Validate, wsHub *websocket.Hub, storageAdapter *adapter.StorageAdapter, redisAdapter *adapter.RedisAdapter) *ChatService {
+func NewChatService(client *ent.Client, chatRepo repository.ChatReader, groupMemberRepo repository.GroupMemberReader, cfg *config.AppConfig, validator *validator.Validate, wsHub websocket.Publisher, storageAdapter adapter.URLGenerator, redisAdapter adapter.RedisOnlineStore) *ChatService {
 	return &ChatService{
-		client:         client,
-		repo:           repo,
-		cfg:            cfg,
-		validator:      validator,
-		wsHub:          wsHub,
-		storageAdapter: storageAdapter,
-		redisAdapter:   redisAdapter,
+		client:          client,
+		chatRepo:        chatRepo,
+		groupMemberRepo: groupMemberRepo,
+		cfg:             cfg,
+		validator:       validator,
+		wsHub:           wsHub,
+		storageAdapter:  storageAdapter,
+		redisAdapter:    redisAdapter,
 	}
 }
 
 func (s *ChatService) GetChatByID(ctx context.Context, userID, chatID uuid.UUID) (*model.ChatListResponse, error) {
-	c, err := s.repo.Chat.GetChatByID(ctx, userID, chatID)
+	c, err := s.chatRepo.GetChatByID(ctx, userID, chatID)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("")
@@ -96,8 +97,8 @@ func (s *ChatService) GetChatByID(ctx context.Context, userID, chatID uuid.UUID)
 	onlineMap := make(map[uuid.UUID]bool)
 	if otherUserID != uuid.Nil {
 		key := fmt.Sprintf("online:%s", otherUserID)
-		exists, _ := s.redisAdapter.Client().Exists(ctx, key).Result()
-		onlineMap[otherUserID] = exists > 0
+		exists, _ := s.redisAdapter.Exists(ctx, key)
+		onlineMap[otherUserID] = exists
 	}
 
 	resp := helper.MapChatToResponse(userID, c, blockedMap, onlineMap, s.storageAdapter)
@@ -171,19 +172,6 @@ func (s *ChatService) GetChatByID(ctx context.Context, userID, chatID uuid.UUID)
 			}
 		}
 
-		if c.Type == chat.TypeGroup && c.Edges.GroupChat != nil {
-			count, err := s.client.GroupMember.Query().
-				Where(
-					groupmember.GroupChatID(c.Edges.GroupChat.ID),
-					groupmember.HasUserWith(user.DeletedAtIsNil()),
-				).
-				Count(ctx)
-			if err == nil {
-				resp.MemberCount = count
-			} else {
-				slog.Error("Failed to count group members", "error", err)
-			}
-		}
 	}
 
 	return resp, nil
@@ -200,7 +188,7 @@ func (s *ChatService) GetChats(ctx context.Context, userID uuid.UUID, req model.
 
 	req.Query = strings.TrimSpace(req.Query)
 
-	chats, nextCursor, hasNext, err := s.repo.Chat.GetChats(ctx, userID, req.Query, req.Cursor, req.Limit)
+	chats, nextCursor, hasNext, err := s.chatRepo.GetChats(ctx, userID, req.Query, req.Cursor, req.Limit)
 	if err != nil {
 		slog.Error("Failed to get chats", "error", err)
 		return nil, "", false, helper.NewInternalServerError("")
@@ -247,18 +235,14 @@ func (s *ChatService) GetChats(ctx context.Context, userID uuid.UUID, req model.
 
 	onlineMap := make(map[uuid.UUID]bool)
 	if len(otherUserIDs) > 0 {
-		results, err := s.redisAdapter.Client().Pipelined(ctx, func(pipe redis.Pipeliner) error {
-			for _, id := range otherUserIDs {
-				key := fmt.Sprintf("online:%s", id)
-				pipe.Exists(ctx, key)
-			}
-			return nil
-		})
+		keys := make([]string, 0, len(otherUserIDs))
+		for _, id := range otherUserIDs {
+			keys = append(keys, fmt.Sprintf("online:%s", id))
+		}
+		results, err := s.redisAdapter.ExistsMany(ctx, keys)
 		if err == nil {
-			for i, res := range results {
-				if intCmd, ok := res.(*redis.IntCmd); ok {
-					onlineMap[otherUserIDs[i]] = intCmd.Val() > 0
-				}
+			for i, id := range otherUserIDs {
+				onlineMap[id] = results[keys[i]]
 			}
 		}
 	}
@@ -304,15 +288,9 @@ func (s *ChatService) GetChats(ctx context.Context, userID uuid.UUID, req model.
 		}
 	}
 	if len(groupIDs) > 0 {
-		members, err := s.client.GroupMember.Query().
-			Where(groupmember.GroupChatIDIn(groupIDs...), groupmember.HasUserWith(user.DeletedAtIsNil())).
-			Select(groupmember.FieldGroupChatID).
-			All(ctx)
-		if err == nil {
-			for _, m := range members {
-				memberCounts[m.GroupChatID]++
-			}
-		} else {
+		var err error
+		memberCounts, err = s.groupMemberRepo.CountActiveMembersByGroupIDs(ctx, groupIDs...)
+		if err != nil {
 			slog.Error("Failed to batch count group members", "error", err)
 		}
 	}
@@ -364,14 +342,13 @@ func (s *ChatService) MarkAsRead(ctx context.Context, userID uuid.UUID, chatID u
 		slog.Error("Failed to start transaction", "error", err)
 		return helper.NewInternalServerError("")
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	c, err := tx.Chat.Query().
 		Where(
 			chat.ID(chatID),
 			chat.DeletedAtIsNil(),
 		).
-		ForUpdate().
 		WithPrivateChat().
 		WithGroupChat().
 		Only(ctx)

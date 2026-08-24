@@ -24,7 +24,7 @@ func (s *GroupChatService) JoinGroupByInvite(ctx context.Context, userID uuid.UU
 		slog.Error("Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	gc, err := tx.GroupChat.Query().
 		Where(
@@ -95,7 +95,7 @@ func (s *GroupChatService) JoinGroupByInvite(ctx context.Context, userID uuid.UU
 		return nil, helper.NewInternalServerError("")
 	}
 
-	s.redisAdapter.Del(context.Background(), fmt.Sprintf("chat_members:%s", gc.ChatID))
+	_ = s.redisAdapter.Del(context.Background(), fmt.Sprintf("chat_members:%s", gc.ChatID))
 
 	avatarURL := ""
 	if gc.Edges.Avatar != nil {
@@ -306,11 +306,17 @@ func (s *GroupChatService) ResetInviteCode(ctx context.Context, userID, groupID 
 				slog.Error("Failed to fetch invite reset recipients", "error", err, "groupID", gc.ID)
 				return
 			}
+			memberCount, err := s.client.GroupMember.Query().
+				Where(groupmember.GroupChatID(gc.ID), groupmember.HasUserWith(user.DeletedAtIsNil())).
+				Count(context.Background())
+			if err != nil {
+				slog.Error("Failed to count group members for invite reset event", "error", err, "groupID", gc.ID)
+			}
 
 			lastMessage := s.getGroupLastMessageResponse(context.Background(), gc.ChatID)
 			for _, m := range members {
 				role := m.Role
-				payload := s.buildGroupChatListResponse(context.Background(), updatedGroup, &role, lastMessage)
+				payload := s.buildGroupChatListResponse(updatedGroup, &role, lastMessage, memberCount)
 				s.wsHub.BroadcastToUser(m.UserID, websocket.Event{
 					Type:    websocket.EventChatUpdate,
 					Payload: payload,

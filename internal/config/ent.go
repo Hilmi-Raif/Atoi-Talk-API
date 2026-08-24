@@ -44,7 +44,7 @@ func ensureQueryIndexes(ctx context.Context, dsn string) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	for _, statement := range queryIndexStatements() {
 		if _, err := db.ExecContext(ctx, statement); err != nil {

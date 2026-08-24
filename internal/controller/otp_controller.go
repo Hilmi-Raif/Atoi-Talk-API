@@ -10,10 +10,10 @@ import (
 )
 
 type OTPController struct {
-	otpService *service.OTPService
+	otpService service.OTPServicePort
 }
 
-func NewOTPController(otpService *service.OTPService) *OTPController {
+func NewOTPController(otpService service.OTPServicePort) *OTPController {
 	return &OTPController{
 		otpService: otpService,
 	}

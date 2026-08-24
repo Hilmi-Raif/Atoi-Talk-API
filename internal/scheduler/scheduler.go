@@ -14,6 +14,8 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
+const schedulerJobTimeout = 15 * time.Minute
+
 type Scheduler struct {
 	cfg            *config.AppConfig
 	client         *ent.Client
@@ -25,7 +27,9 @@ func New(cfg *config.AppConfig, client *ent.Client, s3Client *s3.Client) *Schedu
 	httpClient := &http.Client{Timeout: 30 * time.Second}
 	storageAdapter := adapter.NewStorageAdapter(cfg, s3Client, httpClient)
 
-	c := cron.New()
+	c := cron.New(
+		cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)),
+	)
 
 	return &Scheduler{
 		cfg:            cfg,
@@ -53,7 +57,8 @@ func (s *Scheduler) Stop() {
 func (s *Scheduler) registerJobs() {
 	_, err := s.cron.AddFunc(s.cfg.EntityCleanupCron, func() {
 		slog.Info("Starting Entity Cleanup Job")
-		ctx := context.Background()
+		ctx, cancel := context.WithTimeout(context.Background(), schedulerJobTimeout)
+		defer cancel()
 		if err := job.RunEntityCleanup(ctx, s.client, s.cfg); err != nil {
 			slog.Error("Entity Cleanup Job failed", "error", err)
 		} else {
@@ -68,7 +73,8 @@ func (s *Scheduler) registerJobs() {
 
 	_, err = s.cron.AddFunc(s.cfg.PrivateChatCleanupCron, func() {
 		slog.Info("Starting Private Chat Cleanup Job")
-		ctx := context.Background()
+		ctx, cancel := context.WithTimeout(context.Background(), schedulerJobTimeout)
+		defer cancel()
 		if err := job.RunPrivateChatCleanup(ctx, s.client, s.cfg); err != nil {
 			slog.Error("Private Chat Cleanup Job failed", "error", err)
 		} else {
@@ -83,7 +89,8 @@ func (s *Scheduler) registerJobs() {
 
 	_, err = s.cron.AddFunc(s.cfg.MediaCleanupCron, func() {
 		slog.Info("Starting Media Cleanup Job")
-		ctx := context.Background()
+		ctx, cancel := context.WithTimeout(context.Background(), schedulerJobTimeout)
+		defer cancel()
 		if err := job.RunMediaCleanup(ctx, s.client, s.storageAdapter, s.cfg); err != nil {
 			slog.Error("Media Cleanup Job failed", "error", err)
 		} else {

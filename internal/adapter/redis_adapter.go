@@ -49,6 +49,39 @@ func (r *RedisAdapter) Del(ctx context.Context, key string) error {
 	return r.client.Del(ctx, key).Err()
 }
 
+func (r *RedisAdapter) Exists(ctx context.Context, key string) (bool, error) {
+	count, err := r.client.Exists(ctx, key).Result()
+	return count > 0, err
+}
+
+func (r *RedisAdapter) ExistsMany(ctx context.Context, keys []string) (map[string]bool, error) {
+	if len(keys) == 0 {
+		return map[string]bool{}, nil
+	}
+
+	results, err := r.client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+		for _, key := range keys {
+			pipe.Exists(ctx, key)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	statuses := make(map[string]bool, len(keys))
+	for i, result := range results {
+		if command, ok := result.(*redis.IntCmd); ok && i < len(keys) {
+			statuses[keys[i]] = command.Val() > 0
+		}
+	}
+	return statuses, nil
+}
+
+func (r *RedisAdapter) GetDel(ctx context.Context, key string) (string, error) {
+	return r.client.GetDel(ctx, key).Result()
+}
+
 func (r *RedisAdapter) Client() *redis.Client {
 	return r.client
 }

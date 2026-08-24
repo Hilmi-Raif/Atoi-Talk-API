@@ -11,6 +11,7 @@ import (
 	"AtoiTalkAPI/ent/userblock"
 	"AtoiTalkAPI/internal/adapter"
 	"AtoiTalkAPI/internal/config"
+	"AtoiTalkAPI/internal/constant"
 	"AtoiTalkAPI/internal/helper"
 	"AtoiTalkAPI/internal/model"
 	"AtoiTalkAPI/internal/repository"
@@ -26,16 +27,17 @@ import (
 )
 
 type GroupChatService struct {
-	client         *ent.Client
-	repo           *repository.Repository
-	cfg            *config.AppConfig
-	validator      *validator.Validate
-	wsHub          *websocket.Hub
-	storageAdapter *adapter.StorageAdapter
-	redisAdapter   *adapter.RedisAdapter
+	client          *ent.Client
+	groupMemberRepo repository.GroupMemberReader
+	groupChatRepo   repository.GroupChatReader
+	cfg             *config.AppConfig
+	validator       *validator.Validate
+	wsHub           websocket.Publisher
+	storageAdapter  adapter.URLGenerator
+	redisAdapter    adapter.RedisCache
 }
 
-func (s *GroupChatService) buildGroupChatListResponse(ctx context.Context, gc *ent.GroupChat, role *groupmember.Role, lastMessage *model.MessageResponse) model.ChatListResponse {
+func (s *GroupChatService) buildGroupChatListResponse(gc *ent.GroupChat, role *groupmember.Role, lastMessage *model.MessageResponse, memberCount int) model.ChatListResponse {
 	avatarURL := ""
 	if gc.Edges.Avatar != nil {
 		avatarURL = s.storageAdapter.GetPublicURL(gc.Edges.Avatar.FileName)
@@ -45,13 +47,6 @@ func (s *GroupChatService) buildGroupChatListResponse(ctx context.Context, gc *e
 	if gc.InviteExpiresAt != nil {
 		t := gc.InviteExpiresAt.Format(time.RFC3339)
 		inviteExpiresAt = &t
-	}
-
-	memberCount, err := s.client.GroupMember.Query().
-		Where(groupmember.GroupChatID(gc.ID), groupmember.HasUserWith(user.DeletedAtIsNil())).
-		Count(ctx)
-	if err != nil {
-		slog.Error("Failed to count group members", "error", err, "groupID", gc.ID)
 	}
 
 	resp := model.ChatListResponse{
@@ -101,15 +96,16 @@ func (s *GroupChatService) getGroupLastMessageResponse(ctx context.Context, chat
 	return helper.ToMessageResponse(lastMsg, s.storageAdapter, nil, "")
 }
 
-func NewGroupChatService(client *ent.Client, repo *repository.Repository, cfg *config.AppConfig, validator *validator.Validate, wsHub *websocket.Hub, storageAdapter *adapter.StorageAdapter, redisAdapter *adapter.RedisAdapter) *GroupChatService {
+func NewGroupChatService(client *ent.Client, groupMemberRepo repository.GroupMemberReader, groupChatRepo repository.GroupChatReader, cfg *config.AppConfig, validator *validator.Validate, wsHub websocket.Publisher, storageAdapter adapter.URLGenerator, redisAdapter adapter.RedisCache) *GroupChatService {
 	return &GroupChatService{
-		client:         client,
-		repo:           repo,
-		cfg:            cfg,
-		validator:      validator,
-		wsHub:          wsHub,
-		storageAdapter: storageAdapter,
-		redisAdapter:   redisAdapter,
+		client:          client,
+		groupMemberRepo: groupMemberRepo,
+		groupChatRepo:   groupChatRepo,
+		cfg:             cfg,
+		validator:       validator,
+		wsHub:           wsHub,
+		storageAdapter:  storageAdapter,
+		redisAdapter:    redisAdapter,
 	}
 }
 
@@ -117,6 +113,12 @@ func (s *GroupChatService) CreateGroupChat(ctx context.Context, creatorID uuid.U
 
 	if err := s.validator.Struct(req); err != nil {
 		slog.Warn("Validation failed for CreateGroupChat", "error", err)
+		return nil, helper.NewBadRequestError("")
+	}
+	if len(req.MemberIDs) > constant.MaxGroupMembers {
+		return nil, helper.NewBadRequestError("")
+	}
+	if err := helper.EnsureUniqueUUIDs(req.MemberIDs); err != nil {
 		return nil, helper.NewBadRequestError("")
 	}
 
@@ -173,7 +175,7 @@ func (s *GroupChatService) CreateGroupChat(ctx context.Context, creatorID uuid.U
 		slog.Error("Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	var avatarMedia *ent.Media
 
@@ -355,7 +357,7 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 		slog.Error("Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	gc, err := tx.GroupChat.Query().
 		Where(
@@ -506,7 +508,13 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 	}
 
 	if !hasChanges {
-		resp := s.buildGroupChatListResponse(ctx, gc, &requestorRole, nil)
+		memberCount, err := s.client.GroupMember.Query().
+			Where(groupmember.GroupChatID(gc.ID), groupmember.HasUserWith(user.DeletedAtIsNil())).
+			Count(ctx)
+		if err != nil {
+			slog.Error("Failed to count group members", "error", err, "groupID", gc.ID)
+		}
+		resp := s.buildGroupChatListResponse(gc, &requestorRole, nil, memberCount)
 		return &resp, nil
 	}
 
@@ -602,10 +610,16 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 				slog.Error("Failed to fetch group members for chat update broadcast", "error", err, "groupID", gc.ID)
 				return
 			}
+			memberCount, err := s.client.GroupMember.Query().
+				Where(groupmember.GroupChatID(gc.ID), groupmember.HasUserWith(user.DeletedAtIsNil())).
+				Count(context.Background())
+			if err != nil {
+				slog.Error("Failed to count group members for chat update broadcast", "error", err, "groupID", gc.ID)
+			}
 
 			for _, m := range members {
 				role := m.Role
-				payload := s.buildGroupChatListResponse(context.Background(), updatedGroupWithAvatar, &role, lastMsgResponse)
+				payload := s.buildGroupChatListResponse(updatedGroupWithAvatar, &role, lastMsgResponse, memberCount)
 				s.wsHub.BroadcastToUser(m.UserID, websocket.Event{
 					Type:    websocket.EventChatUpdate,
 					Payload: payload,
@@ -631,7 +645,13 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 	if len(createdSystemMessages) > 0 {
 		lastMsgResponse = s.getGroupLastMessageResponse(context.Background(), gc.ChatID)
 	}
-	resp := s.buildGroupChatListResponse(ctx, updatedGroupWithAvatar, &requestorRole, lastMsgResponse)
+	memberCount, err := s.client.GroupMember.Query().
+		Where(groupmember.GroupChatID(updatedGroupWithAvatar.ID), groupmember.HasUserWith(user.DeletedAtIsNil())).
+		Count(ctx)
+	if err != nil {
+		slog.Error("Failed to count group members for response", "error", err, "groupID", updatedGroupWithAvatar.ID)
+	}
+	resp := s.buildGroupChatListResponse(updatedGroupWithAvatar, &requestorRole, lastMsgResponse, memberCount)
 	return &resp, nil
 }
 
@@ -641,7 +661,7 @@ func (s *GroupChatService) DeleteGroup(ctx context.Context, userID, groupID uuid
 		slog.Error("Failed to start transaction", "error", err)
 		return helper.NewInternalServerError("")
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	gc, err := tx.GroupChat.Query().
 		Where(
@@ -690,7 +710,7 @@ func (s *GroupChatService) DeleteGroup(ctx context.Context, userID, groupID uuid
 	}
 
 	if s.redisAdapter != nil {
-		s.redisAdapter.Del(context.Background(), fmt.Sprintf("chat_members:%s", groupID))
+		_ = s.redisAdapter.Del(context.Background(), fmt.Sprintf("chat_members:%s", groupID))
 	}
 
 	members, err := s.client.GroupMember.Query().

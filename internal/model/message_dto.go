@@ -9,13 +9,13 @@ import (
 type SendMessageRequest struct {
 	ChatID        uuid.UUID   `json:"chat_id" validate:"required"`
 	Content       string      `json:"content" validate:"required_without=AttachmentIDs,max=4000"`
-	AttachmentIDs []uuid.UUID `json:"attachment_ids" validate:"omitempty,dive"`
+	AttachmentIDs []uuid.UUID `json:"attachment_ids" validate:"omitempty,max=20,dive"`
 	ReplyToID     *uuid.UUID  `json:"reply_to_id" validate:"omitempty"`
 }
 
 type EditMessageRequest struct {
 	Content          string      `json:"content" validate:"required_without=AttachmentIDs,max=4000"`
-	AttachmentIDs    []uuid.UUID `json:"attachment_ids" validate:"omitempty,dive"`
+	AttachmentIDs    []uuid.UUID `json:"attachment_ids" validate:"omitempty,max=20,dive"`
 	HasAttachmentIDs bool        `json:"-"`
 }
 

@@ -11,27 +11,36 @@ import (
 func RunPrivateChatCleanup(ctx context.Context, client *ent.Client, cfg *config.AppConfig) error {
 	slog.Info("Running Private Chat Cleanup (Garbage Collection)")
 
-	abandonedChats, err := client.PrivateChat.Query().
-		Where(
-			privatechat.User1IDIsNil(),
-			privatechat.User2IDIsNil(),
-		).
-		WithChat().
-		All(ctx)
-
-	if err != nil {
-		slog.Error("Failed to query abandoned private chats", "error", err)
-		return err
-	}
-
-	for _, pc := range abandonedChats {
-		chatID := pc.Edges.Chat.ID
-		err := client.Chat.DeleteOneID(chatID).Exec(ctx)
+	for {
+		abandonedChats, err := client.PrivateChat.Query().
+			Where(
+				privatechat.User1IDIsNil(),
+				privatechat.User2IDIsNil(),
+			).
+			Order(ent.Asc(privatechat.FieldID)).
+			Select(privatechat.FieldID, privatechat.FieldChatID).
+			Limit(cleanupBatchSize).
+			All(ctx)
 		if err != nil {
-			slog.Error("Failed to delete abandoned chat", "chatID", chatID, "privateChatID", pc.ID, "error", err)
-			continue
+			slog.Error("Failed to query abandoned private chats", "error", err)
+			return err
 		}
-		slog.Info("Deleted abandoned private chat", "chatID", chatID)
+		if len(abandonedChats) == 0 {
+			break
+		}
+
+		deleted := 0
+		for _, pc := range abandonedChats {
+			if err := client.Chat.DeleteOneID(pc.ChatID).Exec(ctx); err != nil {
+				slog.Error("Failed to delete abandoned chat", "chatID", pc.ChatID, "privateChatID", pc.ID, "error", err)
+				continue
+			}
+			deleted++
+		}
+		if deleted == 0 {
+			slog.Warn("Stopping private chat cleanup because the current batch made no progress")
+			break
+		}
 	}
 
 	return nil

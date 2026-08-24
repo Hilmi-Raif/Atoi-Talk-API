@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const maxCaptchaResponseBytes = 64 * 1024
+
 type CaptchaAdapter struct {
 	httpClient *http.Client
 	cfg        *config.AppConfig
@@ -46,7 +48,10 @@ func (c *CaptchaAdapter) Verify(token string, ip string) error {
 		resp, err := c.httpClient.Post(url, "application/json", bytes.NewBuffer(jsonPayload))
 		if helper.ShouldRetryHTTP(resp, err) {
 			if resp != nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
+			}
+			if err == nil && resp != nil {
+				err = fmt.Errorf("captcha verification failed with status: %d", resp.StatusCode)
 			}
 			return nil, true, err
 		}
@@ -55,7 +60,7 @@ func (c *CaptchaAdapter) Verify(token string, ip string) error {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			return nil, false, fmt.Errorf("captcha verification failed with status: %d", resp.StatusCode)
 		}
 
@@ -66,11 +71,14 @@ func (c *CaptchaAdapter) Verify(token string, ip string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxCaptchaResponseBytes+1))
 	if err != nil {
 		return fmt.Errorf("failed to read captcha response body: %w", err)
+	}
+	if len(body) > maxCaptchaResponseBytes {
+		return fmt.Errorf("captcha response body exceeds %d bytes", maxCaptchaResponseBytes)
 	}
 
 	var verifyResp turnstileVerifyResponse

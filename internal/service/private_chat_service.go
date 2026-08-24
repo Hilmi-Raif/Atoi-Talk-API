@@ -24,12 +24,15 @@ type PrivateChatService struct {
 	client         *ent.Client
 	cfg            *config.AppConfig
 	validator      *validator.Validate
-	wsHub          *websocket.Hub
-	redisAdapter   *adapter.RedisAdapter
-	storageAdapter *adapter.StorageAdapter
+	wsHub          websocket.Publisher
+	redisAdapter   privateChatCache
+	storageAdapter privateChatStorage
 }
 
-func NewPrivateChatService(client *ent.Client, cfg *config.AppConfig, validator *validator.Validate, wsHub *websocket.Hub, redisAdapter *adapter.RedisAdapter, storageAdapter *adapter.StorageAdapter) *PrivateChatService {
+type privateChatCache = adapter.RedisCache
+type privateChatStorage = adapter.PublicURLGenerator
+
+func NewPrivateChatService(client *ent.Client, cfg *config.AppConfig, validator *validator.Validate, wsHub websocket.Publisher, redisAdapter privateChatCache, storageAdapter privateChatStorage) *PrivateChatService {
 	return &PrivateChatService{
 		client:         client,
 		cfg:            cfg,
@@ -98,9 +101,10 @@ func (s *PrivateChatService) CreatePrivateChat(ctx context.Context, userID uuid.
 
 	var creator, targetUser *ent.User
 	for _, u := range users {
-		if u.ID == userID {
+		switch u.ID {
+		case userID:
 			creator = u
-		} else if u.ID == req.TargetUserID {
+		case req.TargetUserID:
 			targetUser = u
 		}
 	}
@@ -191,8 +195,8 @@ func (s *PrivateChatService) CreatePrivateChat(ctx context.Context, userID uuid.
 		return nil, helper.NewInternalServerError("")
 	}
 
-	s.redisAdapter.Del(context.Background(), fmt.Sprintf("contacts:%s", userID))
-	s.redisAdapter.Del(context.Background(), fmt.Sprintf("contacts:%s", req.TargetUserID))
+	_ = s.redisAdapter.Del(context.Background(), fmt.Sprintf("contacts:%s", userID))
+	_ = s.redisAdapter.Del(context.Background(), fmt.Sprintf("contacts:%s", req.TargetUserID))
 
 	if s.wsHub != nil {
 		go func() {
@@ -207,8 +211,7 @@ func (s *PrivateChatService) CreatePrivateChat(ctx context.Context, userID uuid.
 			}
 
 			keyCreator := fmt.Sprintf("online:%s", creator.ID)
-			existsCreator, _ := s.redisAdapter.Client().Exists(context.Background(), keyCreator).Result()
-			creatorIsOnline := existsCreator > 0
+			creatorIsOnline, _ := s.redisAdapter.Exists(context.Background(), keyCreator)
 
 			payloadForTarget := model.ChatListResponse{
 				ID:          newChat.ID,
@@ -237,8 +240,7 @@ func (s *PrivateChatService) CreatePrivateChat(ctx context.Context, userID uuid.
 			}
 
 			keyTarget := fmt.Sprintf("online:%s", targetUser.ID)
-			existsTarget, _ := s.redisAdapter.Client().Exists(context.Background(), keyTarget).Result()
-			targetUserIsOnline := existsTarget > 0
+			targetUserIsOnline, _ := s.redisAdapter.Exists(context.Background(), keyTarget)
 
 			payloadForCreator := model.ChatListResponse{
 				ID:          newChat.ID,

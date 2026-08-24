@@ -36,19 +36,19 @@ func Init(appConfig *config.AppConfig, client *ent.Client, validator *validator.
 
 	otpService := service.NewOTPService(client, appConfig, validator, emailAdapter, captchaAdapter, redisAdapter, repo.RateLimit)
 
-	authService := service.NewAuthService(client, appConfig, validator, storageAdapter, captchaAdapter, redisAdapter, otpService, repo, wsHub)
+	authService := service.NewAuthService(client, appConfig, validator, storageAdapter, captchaAdapter, redisAdapter, otpService, repo.Session, wsHub)
 
-	accountService := service.NewAccountService(client, appConfig, validator, wsHub, otpService, redisAdapter, repo)
+	accountService := service.NewAccountService(client, appConfig, validator, wsHub, otpService, repo.Session)
 
-	userService := service.NewUserService(client, repo, appConfig, validator, storageAdapter, wsHub, redisAdapter)
-	chatService := service.NewChatService(client, repo, appConfig, validator, wsHub, storageAdapter, redisAdapter)
+	userService := service.NewUserService(client, repo.User, appConfig, validator, storageAdapter, wsHub, redisAdapter)
+	chatService := service.NewChatService(client, repo.Chat, repo.GroupMember, appConfig, validator, wsHub, storageAdapter, redisAdapter)
 	privateChatService := service.NewPrivateChatService(client, appConfig, validator, wsHub, redisAdapter, storageAdapter)
-	groupChatService := service.NewGroupChatService(client, repo, appConfig, validator, wsHub, storageAdapter, redisAdapter)
-	messageService := service.NewMessageService(client, repo, appConfig, validator, storageAdapter, wsHub)
+	groupChatService := service.NewGroupChatService(client, repo.GroupMember, repo.GroupChat, appConfig, validator, wsHub, storageAdapter, redisAdapter)
+	messageService := service.NewMessageService(client, repo.Message, appConfig, validator, storageAdapter, wsHub)
 	mediaService := service.NewMediaService(client, appConfig, validator, storageAdapter, captchaAdapter)
 	reportService := service.NewReportService(client, appConfig, validator, storageAdapter)
 
-	adminService := service.NewAdminService(client, appConfig, validator, wsHub, repo, storageAdapter)
+	adminService := service.NewAdminService(client, appConfig, validator, wsHub, repo.Session, repo.GroupMember, storageAdapter)
 
 	authController := controller.NewAuthController(authService)
 	otpController := controller.NewOTPController(otpService)

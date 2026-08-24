@@ -14,12 +14,14 @@ import (
 	"time"
 )
 
+type rateLimitStore = repository.RateLimiter
+
 type RateLimitMiddleware struct {
-	repo              *repository.RateLimitRepository
+	repo              rateLimitStore
 	trustedProxyCIDRs []*net.IPNet
 }
 
-func NewRateLimitMiddleware(repo *repository.RateLimitRepository, cfg *config.AppConfig) *RateLimitMiddleware {
+func NewRateLimitMiddleware(repo rateLimitStore, cfg *config.AppConfig) *RateLimitMiddleware {
 	return &RateLimitMiddleware{
 		repo:              repo,
 		trustedProxyCIDRs: parseTrustedProxyCIDRs(cfg.TrustedProxyCIDRs),

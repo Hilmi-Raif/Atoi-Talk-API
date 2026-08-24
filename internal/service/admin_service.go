@@ -26,22 +26,24 @@ import (
 )
 
 type AdminService struct {
-	client         *ent.Client
-	cfg            *config.AppConfig
-	validator      *validator.Validate
-	wsHub          *websocket.Hub
-	repo           *repository.Repository
-	storageAdapter *adapter.StorageAdapter
+	client          *ent.Client
+	cfg             *config.AppConfig
+	validator       *validator.Validate
+	wsHub           websocket.Publisher
+	sessionStore    repository.SessionStore
+	groupMemberRepo repository.GroupMemberReader
+	storageAdapter  adapter.URLGenerator
 }
 
-func NewAdminService(client *ent.Client, cfg *config.AppConfig, validator *validator.Validate, wsHub *websocket.Hub, repo *repository.Repository, storageAdapter *adapter.StorageAdapter) *AdminService {
+func NewAdminService(client *ent.Client, cfg *config.AppConfig, validator *validator.Validate, wsHub websocket.Publisher, sessionStore repository.SessionStore, groupMemberRepo repository.GroupMemberReader, storageAdapter adapter.URLGenerator) *AdminService {
 	return &AdminService{
-		client:         client,
-		cfg:            cfg,
-		validator:      validator,
-		wsHub:          wsHub,
-		repo:           repo,
-		storageAdapter: storageAdapter,
+		client:          client,
+		cfg:             cfg,
+		validator:       validator,
+		wsHub:           wsHub,
+		sessionStore:    sessionStore,
+		groupMemberRepo: groupMemberRepo,
+		storageAdapter:  storageAdapter,
 	}
 }
 
@@ -85,7 +87,7 @@ func (s *AdminService) BanUser(ctx context.Context, adminID uuid.UUID, req model
 		slog.Error("Failed to start transaction", "error", err)
 		return helper.NewInternalServerError("")
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	update := tx.User.UpdateOneID(req.TargetUserID).
 		SetIsBanned(true).
@@ -102,7 +104,7 @@ func (s *AdminService) BanUser(ctx context.Context, adminID uuid.UUID, req model
 		return helper.NewInternalServerError("")
 	}
 
-	revokeExpected, revokeSnapshot, err := helper.RevokeSessionsForTransaction(ctx, s.repo.Session, req.TargetUserID)
+	revokeExpected, revokeSnapshot, err := helper.RevokeSessionsForTransaction(ctx, s.sessionStore, req.TargetUserID)
 	if err != nil {
 		slog.Error("Failed to revoke sessions for banned user", "error", err, "userID", req.TargetUserID)
 		return helper.NewServiceUnavailableError("Session service unavailable")
@@ -110,7 +112,7 @@ func (s *AdminService) BanUser(ctx context.Context, adminID uuid.UUID, req model
 
 	if err := tx.Commit(); err != nil {
 		slog.Error("Failed to commit transaction for banning user", "error", err)
-		helper.RollbackSessionRevokeIfNeeded(s.repo.Session, req.TargetUserID, revokeExpected, revokeSnapshot)
+		helper.RollbackSessionRevokeIfNeeded(s.sessionStore, req.TargetUserID, revokeExpected, revokeSnapshot)
 		return helper.NewInternalServerError("")
 	}
 
@@ -869,19 +871,10 @@ func (s *AdminService) GetGroups(ctx context.Context, req model.AdminGetGroupLis
 		groupIDs = append(groupIDs, g.ID)
 	}
 	if len(groupIDs) > 0 {
-		members, err := s.client.GroupMember.Query().
-			Where(
-				groupmember.GroupChatIDIn(groupIDs...),
-				groupmember.HasUserWith(user.DeletedAtIsNil()),
-			).
-			Select(groupmember.FieldGroupChatID).
-			All(ctx)
+		memberCounts, err = s.groupMemberRepo.CountActiveMembersByGroupIDs(ctx, groupIDs...)
 		if err != nil {
 			slog.Error("Failed to count group members", "error", err)
 			return nil, "", false, helper.NewInternalServerError("Failed to fetch groups")
-		}
-		for _, member := range members {
-			memberCounts[member.GroupChatID]++
 		}
 	}
 

@@ -13,10 +13,10 @@ import (
 )
 
 type MediaController struct {
-	mediaService *service.MediaService
+	mediaService service.MediaServicePort
 }
 
-func NewMediaController(mediaService *service.MediaService) *MediaController {
+func NewMediaController(mediaService service.MediaServicePort) *MediaController {
 	return &MediaController{
 		mediaService: mediaService,
 	}
