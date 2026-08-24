@@ -2,96 +2,86 @@ name: Release and Publish
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: write
   packages: write
 
 jobs:
-  release:
-    name: Create GitHub Release
+  release-please:
+    name: Create or update release pull request
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
-
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: googleapis/release-please-action@v4
+        id: release
         with:
-          fetch-depth: 0
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          draft: false
-          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
 
   publish-images:
-    name: Build and Publish Multi-Arch Container Images
+    name: Publish release images
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
-    needs: [release]
-
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          fetch-depth: 0
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata for API image
-        id: meta_api
-        uses: docker/metadata-action@v5
+      - uses: docker/metadata-action@v5
+        id: api-metadata
         with:
           images: ghcr.io/${{ github.repository_owner }}/atoitalk-api
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha
+            type=raw,value=${{ needs.release-please.outputs.version }}
             type=raw,value=latest
+            type=sha
 
-      - name: Build and push API image
-        uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v6
         with:
           context: .
           file: build/package/api/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta_api.outputs.tags }}
-          labels: ${{ steps.meta_api.outputs.labels }}
+          tags: ${{ steps.api-metadata.outputs.tags }}
+          labels: ${{ steps.api-metadata.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Extract metadata for Scheduler image
-        id: meta_scheduler
-        uses: docker/metadata-action@v5
+      - uses: docker/metadata-action@v5
+        id: scheduler-metadata
         with:
           images: ghcr.io/${{ github.repository_owner }}/atoitalk-scheduler
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha
+            type=raw,value=${{ needs.release-please.outputs.version }}
             type=raw,value=latest
+            type=sha
 
-      - name: Build and push Scheduler image
-        uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v6
         with:
           context: .
           file: build/package/scheduler/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta_scheduler.outputs.tags }}
-          labels: ${{ steps.meta_scheduler.outputs.labels }}
+          tags: ${{ steps.scheduler-metadata.outputs.tags }}
+          labels: ${{ steps.scheduler-metadata.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

@@ -61,11 +61,11 @@ coverage-check: ## verify unit coverage threshold for production packages
 
 .PHONY: test-env-up
 test-env-up: ## start local test backing services with docker compose
-	docker compose -f docker-compose.test.yml up -d
+	docker compose -f integration/docker-compose.yml up -d
 
 .PHONY: test-env-down
 test-env-down: ## stop and remove local test backing services
-	docker compose -f docker-compose.test.yml down -v
+	docker compose -f integration/docker-compose.yml down -v
 
 .PHONY: build-api
 build-api: ## build api server binary

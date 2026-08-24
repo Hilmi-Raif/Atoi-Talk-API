@@ -10,7 +10,6 @@ vendor/
 .env
 .env.test
 .env.example
-.env.test.example
 main
 *.exe
 *.dll
