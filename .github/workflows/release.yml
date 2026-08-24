@@ -1,8 +1,9 @@
 name: Release and Publish
 
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -10,16 +11,31 @@ permissions:
   pull-requests: write
   packages: write
 
+concurrency:
+  group: release-please-main
+  cancel-in-progress: false
+
 jobs:
   release-please:
     name: Create or update release pull request
-    if: ${{ github.ref == 'refs/heads/main' }}
+    if: >-
+      (github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
       version: ${{ steps.release.outputs.version }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+
       - uses: googleapis/release-please-action@v4
         id: release
         with:
