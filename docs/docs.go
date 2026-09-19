@@ -4408,34 +4408,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/ws": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Upgrade HTTP connection to WebSocket. Requires Bearer token in Authorization header or 'token' query param.",
-                "tags": [
-                    "websocket"
-                ],
-                "summary": "WebSocket Connection",
-                "responses": {
-                    "101": {
-                        "description": "Switching Protocols",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {

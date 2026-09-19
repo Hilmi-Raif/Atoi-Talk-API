@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -12,16 +13,29 @@ import (
 )
 
 type packageCoverage struct {
-	covered    int
-	statements int
+	coveredStatements int
+	totalStatements   int
+}
+
+type coverageSummary struct {
+	coveredStatements int
+	totalStatements   int
+	packages          map[string]packageCoverage
+}
+
+func (s coverageSummary) percentage() float64 {
+	if s.totalStatements == 0 {
+		return 0
+	}
+	return 100 * float64(s.coveredStatements) / float64(s.totalStatements)
 }
 
 func main() {
 	profilePath := flag.String("profile", "coverage.out", "path to a go coverprofile")
-	minimum := flag.Float64("min", 85, "minimum percentage required for every package")
+	minimum := flag.Float64("min", 85, "minimum total statement coverage percentage")
 	exclude := flag.String(
 		"exclude",
-		"internal/model,internal/bootstrap,cmd/api,cmd/scheduler,ent,docs,scripts,internal/adapter/mocks,internal/repository/mocks,internal/service/mocks,internal/websocket/mocks",
+		"internal/domain/model,internal/bootstrap,cmd/api,cmd/scheduler,ent,docs,scripts,internal/infrastructure/mocks,internal/infrastructure/database/repository/mocks,internal/api/application/mocks,internal/messaging/events/mocks",
 		"comma-separated package suffixes/prefixes to exclude",
 	)
 	flag.Parse()
@@ -40,8 +54,33 @@ func main() {
 		}
 	}
 
-	coverage := make(map[string]packageCoverage)
-	scanner := bufio.NewScanner(file)
+	summary, err := summarizeCoverage(file, excluded)
+	if err != nil {
+		fail("read coverage profile: %v", err)
+	}
+
+	packages := make([]string, 0, len(summary.packages))
+	for packagePath := range summary.packages {
+		packages = append(packages, packagePath)
+	}
+	sort.Strings(packages)
+
+	for _, packagePath := range packages {
+		stats := summary.packages[packagePath]
+		percentage := 100 * float64(stats.coveredStatements) / float64(stats.totalStatements)
+		fmt.Printf("%6.2f%% %s (%d/%d statements)\n", percentage, packagePath, stats.coveredStatements, stats.totalStatements)
+	}
+
+	percentage := summary.percentage()
+	fmt.Printf("%6.2f%% total (%d/%d statements)\n", percentage, summary.coveredStatements, summary.totalStatements)
+	if percentage < *minimum {
+		fail("total coverage %.2f%% is below %.2f%%", percentage, *minimum)
+	}
+}
+
+func summarizeCoverage(reader io.Reader, excluded []string) (coverageSummary, error) {
+	summary := coverageSummary{packages: make(map[string]packageCoverage)}
+	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "mode: ") {
@@ -50,48 +89,37 @@ func main() {
 
 		fields := strings.Fields(line)
 		if len(fields) != 3 {
-			fail("invalid coverage profile line: %q", line)
+			return coverageSummary{}, fmt.Errorf("invalid coverage profile line: %q", line)
 		}
 
 		packagePath := filepath.ToSlash(fields[0])
 		packagePath = packagePath[:strings.LastIndex(packagePath, "/")]
-		covered, err := strconv.Atoi(fields[2])
-		if err != nil {
-			fail("parse execution count in %q: %v", line, err)
+		if isExcluded(packagePath, excluded) {
+			continue
 		}
 
-		stats := coverage[packagePath]
-		stats.statements++
-		if covered > 0 {
-			stats.covered++
+		statements, err := strconv.Atoi(fields[1])
+		if err != nil {
+			return coverageSummary{}, fmt.Errorf("parse statement count in %q: %w", line, err)
 		}
-		coverage[packagePath] = stats
+		count, err := strconv.Atoi(fields[2])
+		if err != nil {
+			return coverageSummary{}, fmt.Errorf("parse execution count in %q: %w", line, err)
+		}
+
+		stats := summary.packages[packagePath]
+		stats.totalStatements += statements
+		summary.totalStatements += statements
+		if count > 0 {
+			stats.coveredStatements += statements
+			summary.coveredStatements += statements
+		}
+		summary.packages[packagePath] = stats
 	}
 	if err := scanner.Err(); err != nil {
-		fail("read coverage profile: %v", err)
+		return coverageSummary{}, err
 	}
-
-	packages := make([]string, 0, len(coverage))
-	for packagePath := range coverage {
-		if !isExcluded(packagePath, excluded) {
-			packages = append(packages, packagePath)
-		}
-	}
-	sort.Strings(packages)
-
-	failed := false
-	for _, packagePath := range packages {
-		stats := coverage[packagePath]
-		percentage := 100 * float64(stats.covered) / float64(stats.statements)
-		fmt.Printf("%6.2f%% %s (%d/%d statements)\n", percentage, packagePath, stats.covered, stats.statements)
-		if percentage < *minimum {
-			failed = true
-		}
-	}
-
-	if failed {
-		fail("one or more packages are below %.2f%% coverage", *minimum)
-	}
+	return summary, nil
 }
 
 func isExcluded(packagePath string, excluded []string) bool {

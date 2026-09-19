@@ -6,12 +6,11 @@ import (
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/message"
 	"AtoiTalkAPI/ent/user"
-	"AtoiTalkAPI/internal/helper"
-	"AtoiTalkAPI/internal/model"
-	"AtoiTalkAPI/internal/websocket"
+	"AtoiTalkAPI/internal/domain/helper"
+	"AtoiTalkAPI/internal/domain/model"
+	websocket "AtoiTalkAPI/internal/messaging/events"
 	"context"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -21,7 +20,7 @@ import (
 )
 
 func TestAdminWS_ResetGroupInfo(t *testing.T) {
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 
 	admin := createTestUser(t, "admin_ws")
@@ -88,7 +87,7 @@ func TestAdminWS_ResetGroupInfo(t *testing.T) {
 }
 
 func TestAdminWS_ResolveReport_DeleteMessage(t *testing.T) {
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 
 	admin := createTestUser(t, "admin_rr")

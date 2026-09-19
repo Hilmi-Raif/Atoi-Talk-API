@@ -4,8 +4,8 @@ package integration
 
 import (
 	"AtoiTalkAPI/ent/user"
-	"AtoiTalkAPI/internal/helper"
-	"AtoiTalkAPI/internal/model"
+	"AtoiTalkAPI/internal/domain/helper"
+	"AtoiTalkAPI/internal/domain/model"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -30,7 +30,6 @@ func TestRateLimit_Public(t *testing.T) {
 		newBody, _ := json.Marshal(reqBody)
 		req, _ := http.NewRequest("POST", "/api/otp/send", bytes.NewBuffer(newBody))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-Forwarded-For", "192.168.1.100")
 
 		rr := executeRequest(req)
 		assert.NotEqual(t, http.StatusTooManyRequests, rr.Code)
@@ -40,7 +39,6 @@ func TestRateLimit_Public(t *testing.T) {
 	newBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("POST", "/api/otp/send", bytes.NewBuffer(newBody))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Forwarded-For", "192.168.1.100")
 
 	rr := executeRequest(req)
 	assert.Equal(t, http.StatusTooManyRequests, rr.Code)
@@ -68,7 +66,6 @@ func TestRateLimit_Authenticated(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/api/media/upload", bytes.NewBuffer(body))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+token)
-		req.Header.Set("X-Forwarded-For", fmt.Sprintf("192.168.1.%d", i))
 
 		rr := executeRequest(req)
 		assert.NotEqual(t, http.StatusTooManyRequests, rr.Code)
@@ -78,7 +75,6 @@ func TestRateLimit_Authenticated(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/api/media/upload", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("X-Forwarded-For", "192.168.1.99")
 
 	rr := executeRequest(req)
 	assert.Equal(t, http.StatusTooManyRequests, rr.Code)

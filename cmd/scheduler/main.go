@@ -1,8 +1,10 @@
 package main
 
 import (
-	"AtoiTalkAPI/internal/config"
+	"AtoiTalkAPI/internal/bootstrap"
+	"AtoiTalkAPI/internal/infrastructure/config"
 	"AtoiTalkAPI/internal/scheduler"
+	"context"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -14,6 +16,9 @@ func main() {
 	slog.SetDefault(logger)
 
 	cfg := config.LoadAppConfig()
+
+	shutdownTelemetry := bootstrap.InitTelemetry(context.Background(), cfg, cfg.OTelServiceName+"-scheduler")
+	defer shutdownTelemetry()
 
 	cfg.DBMigrate = false
 

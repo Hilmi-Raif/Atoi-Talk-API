@@ -7,7 +7,7 @@ info:
     
     **Connection:**
     Connect to `/ws` endpoint. Authentication is required via Query Parameter `token`.
-    Example: `ws://api.atoitalk.com/ws?token=YOUR_JWT_TOKEN`
+    Example: `ws://gateway.atoitalk.com/ws?token=YOUR_JWT_TOKEN`
     
     **Message Structure:**
     All messages inherit from the `BaseEvent` schema, ensuring a consistent envelope structure:
@@ -27,7 +27,7 @@ servers:
     security:
       - $ref: '#/components/securitySchemes/queryToken'
   local:
-    host: localhost:8080
+    host: localhost:8081
     protocol: ws
     pathname: /ws
     security:

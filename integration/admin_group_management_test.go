@@ -6,9 +6,11 @@ import (
 	"AtoiTalkAPI/ent/chat"
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/user"
-	"AtoiTalkAPI/internal/helper"
-	"AtoiTalkAPI/internal/model"
+	apiresponse "AtoiTalkAPI/internal/api/http/response"
+	"AtoiTalkAPI/internal/domain/helper"
+	"AtoiTalkAPI/internal/domain/model"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -139,6 +141,80 @@ func TestAdminGetGroupDetail(t *testing.T) {
 
 	t.Run("Fail Forbidden for Regular User", func(t *testing.T) {
 		rr := makeRequest("GET", fmt.Sprintf("/api/admin/groups/%s", gc.ChatID), nil, regularToken)
+		assert.Equal(t, http.StatusForbidden, rr.Code)
+	})
+}
+
+func TestAdminGetGroupMembers(t *testing.T) {
+	clearDatabase(context.Background())
+
+	hashedPassword, _ := helper.HashPassword("Password123!")
+	admin := testClient.User.Create().
+		SetEmail("admin_group_members@test.com").
+		SetUsername("admin_group_members").
+		SetFullName("Admin Group Members").
+		SetPasswordHash(hashedPassword).
+		SetRole(user.RoleAdmin).
+		SaveX(context.Background())
+	regularUser := testClient.User.Create().
+		SetEmail("regular_group_members@test.com").
+		SetUsername("regular_group_members").
+		SetFullName("Regular Group Members").
+		SetPasswordHash(hashedPassword).
+		SaveX(context.Background())
+	secondMember := testClient.User.Create().
+		SetEmail("second_group_member@test.com").
+		SetUsername("second_group_member").
+		SetFullName("Second Group Member").
+		SetPasswordHash(hashedPassword).
+		SaveX(context.Background())
+
+	chatEntity := testClient.Chat.Create().SetType(chat.TypeGroup).SaveX(context.Background())
+	gc := testClient.GroupChat.Create().
+		SetChat(chatEntity).
+		SetCreator(regularUser).
+		SetName("Members Test Group").
+		SetInviteCode("MEMBERSTEST").
+		SaveX(context.Background())
+	testClient.GroupMember.Create().SetGroupChat(gc).SetUser(regularUser).SetRole(groupmember.RoleOwner).SaveX(context.Background())
+	testClient.GroupMember.Create().SetGroupChat(gc).SetUser(secondMember).SetRole(groupmember.RoleMember).SaveX(context.Background())
+
+	adminToken, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, admin.ID)
+	regularToken, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, regularUser.ID)
+
+	t.Run("Success - Admin Lists Members", func(t *testing.T) {
+		rr := makeRequest("GET", fmt.Sprintf("/api/admin/groups/%s/members?limit=1", chatEntity.ID), nil, adminToken)
+		assert.Equal(t, http.StatusOK, rr.Code)
+
+		members := parseResponse[[]model.GroupMemberDTO](t, rr)
+		assert.Len(t, members, 1)
+
+		var raw apiresponse.ResponseWithPagination
+		assert.NoError(t, json.Unmarshal(rr.Body.Bytes(), &raw))
+		assert.True(t, raw.Meta.HasNext)
+		assert.NotEmpty(t, raw.Meta.NextCursor)
+
+		rrNext := makeRequest("GET", fmt.Sprintf("/api/admin/groups/%s/members?limit=1&cursor=%s", chatEntity.ID, raw.Meta.NextCursor), nil, adminToken)
+		assert.Equal(t, http.StatusOK, rrNext.Code)
+		assert.Len(t, parseResponse[[]model.GroupMemberDTO](t, rrNext), 1)
+	})
+
+	t.Run("Success - Admin Searches Members", func(t *testing.T) {
+		rr := makeRequest("GET", fmt.Sprintf("/api/admin/groups/%s/members?query=second", chatEntity.ID), nil, adminToken)
+		assert.Equal(t, http.StatusOK, rr.Code)
+
+		members := parseResponse[[]model.GroupMemberDTO](t, rr)
+		assert.Len(t, members, 1)
+		assert.Equal(t, secondMember.ID, members[0].UserID)
+	})
+
+	t.Run("Fail - Group Not Found", func(t *testing.T) {
+		rr := makeRequest("GET", "/api/admin/groups/01900000-0000-7000-8000-000000000001/members", nil, adminToken)
+		assert.Equal(t, http.StatusNotFound, rr.Code)
+	})
+
+	t.Run("Fail - Regular User Forbidden", func(t *testing.T) {
+		rr := makeRequest("GET", fmt.Sprintf("/api/admin/groups/%s/members", chatEntity.ID), nil, regularToken)
 		assert.Equal(t, http.StatusForbidden, rr.Code)
 	})
 }

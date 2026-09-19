@@ -3,8 +3,8 @@ package job
 import (
 	"AtoiTalkAPI/ent/enttest"
 	"AtoiTalkAPI/ent/media"
-	"AtoiTalkAPI/internal/adapter"
-	"AtoiTalkAPI/internal/config"
+	"AtoiTalkAPI/internal/infrastructure/config"
+	objectstorage "AtoiTalkAPI/internal/infrastructure/object_storage"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -166,7 +166,7 @@ func TestRunMediaCleanupReturnsQueryErrorOnCancelledContext(t *testing.T) {
 	require.Error(t, err)
 }
 
-func newMediaCleanupStorage(t *testing.T, server *httptest.Server) *adapter.StorageAdapter {
+func newMediaCleanupStorage(t *testing.T, server *httptest.Server) *objectstorage.StorageAdapter {
 	t.Helper()
 	client := config.NewS3Client(&config.AppConfig{
 		S3Region:    "us-east-1",
@@ -174,7 +174,7 @@ func newMediaCleanupStorage(t *testing.T, server *httptest.Server) *adapter.Stor
 		S3SecretKey: "secret",
 		S3Endpoint:  server.URL,
 	})
-	return adapter.NewStorageAdapter(&config.AppConfig{
+	return objectstorage.NewStorageAdapter(&config.AppConfig{
 		S3BucketPublic:  "public",
 		S3BucketPrivate: "private",
 		S3Region:        "us-east-1",

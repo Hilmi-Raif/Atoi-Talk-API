@@ -1,0 +1,117 @@
+services:
+  zookeeper:
+    image: bitnamilegacy/zookeeper:3.9.3
+    container_name: signoz-zookeeper
+    user: root
+    environment:
+      - ZOO_SERVER_USERS=guest
+      - ZOO_SERVER_PASSWORDS=guest
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    volumes:
+      - zookeeper_data:/bitnami/zookeeper
+    healthcheck:
+      test: ["CMD-SHELL", "echo srvr | nc -w 2 127.0.0.1 2181 | grep -q 'Mode:'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  clickhouse:
+    build:
+      context: ./clickhouse
+      dockerfile: Dockerfile
+    image: atoitalk/clickhouse:24.1.2-histogram
+    container_name: signoz-clickhouse
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse-cluster.xml:/etc/clickhouse-server/config.d/cluster.xml:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "0.0.0.0:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  signoz-otel-collector:
+    image: signoz/signoz-otel-collector:0.102.0
+    container_name: signoz-otel-collector
+    restart: unless-stopped
+    user: "0:0"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      otel-collector-migrator:
+        condition: service_completed_successfully
+      signoz-query-service:
+        condition: service_healthy
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=signoz-otel-collector
+      - DOCKER_MULTI_NODE_CLUSTER=false
+      - LOW_CARDINAL_EXCEPTION_GROUPING=false
+    command:
+      - "--config=/etc/otel/config.yaml"
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel/config.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  otel-collector-migrator:
+    image: signoz/signoz-schema-migrator:0.102.0
+    container_name: signoz-otel-collector-migrator
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    command:
+      - "--dsn=tcp://clickhouse:9000"
+
+  signoz-query-service:
+    image: signoz/query-service:0.48.0
+    container_name: signoz-query-service
+    restart: unless-stopped
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      otel-collector-migrator:
+        condition: service_completed_successfully
+    environment:
+      ClickHouseUrl: tcp://clickhouse:9000
+      SIGNOZ_LOCAL_DB_PATH: /var/lib/signoz/signoz.db
+      DASHBOARDS_PATH: /root/config/dashboards
+      STORAGE: clickhouse
+      GODEBUG: netdns=go
+      TELEMETRY_ENABLED: "true"
+      DEPLOYMENT_TYPE: docker-standalone-amd
+    volumes:
+      - signoz_data:/var/lib/signoz
+      - ./prometheus.yml:/root/config/prometheus.yml:ro
+      - ./dashboards:/root/config/dashboards:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "0.0.0.0:8080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  signoz-frontend:
+    image: signoz/frontend:0.48.0
+    container_name: signoz-frontend
+    restart: unless-stopped
+    depends_on:
+      signoz-query-service:
+        condition: service_healthy
+    ports:
+      - "3301:3301"
+    volumes:
+      - ./nginx-config.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  zookeeper_data:
+  clickhouse_data:
+  signoz_data:
+
+networks:
+  default:
+    name: atoitalk-network
+    external: true

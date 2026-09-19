@@ -3,14 +3,14 @@ package job
 import (
 	"AtoiTalkAPI/ent"
 	"AtoiTalkAPI/ent/media"
-	"AtoiTalkAPI/internal/adapter"
-	"AtoiTalkAPI/internal/config"
+	"AtoiTalkAPI/internal/infrastructure/config"
+	objectstorage "AtoiTalkAPI/internal/infrastructure/object_storage"
 	"context"
 	"log/slog"
 	"time"
 )
 
-func RunMediaCleanup(ctx context.Context, client *ent.Client, storage *adapter.StorageAdapter, cfg *config.AppConfig) error {
+func RunMediaCleanup(ctx context.Context, client *ent.Client, storage *objectstorage.StorageAdapter, cfg *config.AppConfig) error {
 	retentionDays := cfg.MediaRetentionDays
 	if retentionDays < 0 {
 		retentionDays = 7.0
@@ -56,8 +56,8 @@ func RunMediaCleanup(ctx context.Context, client *ent.Client, storage *adapter.S
 		deleted := 0
 		for _, m := range orphans {
 			isPublic := m.Category == media.CategoryUserAvatar || m.Category == media.CategoryGroupAvatar
-			if err := storage.Delete(m.FileName, isPublic); err != nil {
-				if fallbackErr := storage.Delete(m.FileName, !isPublic); fallbackErr != nil {
+			if err := storage.DeleteContext(ctx, m.FileName, isPublic); err != nil {
+				if fallbackErr := storage.DeleteContext(ctx, m.FileName, !isPublic); fallbackErr != nil {
 					slog.Error("Failed to delete S3 file", "mediaID", m.ID, "key", m.FileName, "error", err, "fallback_error", fallbackErr)
 					continue
 				}

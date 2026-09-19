@@ -8,6 +8,7 @@ import (
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/media"
 	"AtoiTalkAPI/ent/message"
+	"AtoiTalkAPI/ent/messageoutbox"
 	"AtoiTalkAPI/ent/privatechat"
 	"AtoiTalkAPI/ent/report"
 	"AtoiTalkAPI/ent/user"
@@ -82,16 +83,17 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			chat.Table:         chat.ValidColumn,
-			groupchat.Table:    groupchat.ValidColumn,
-			groupmember.Table:  groupmember.ValidColumn,
-			media.Table:        media.ValidColumn,
-			message.Table:      message.ValidColumn,
-			privatechat.Table:  privatechat.ValidColumn,
-			report.Table:       report.ValidColumn,
-			user.Table:         user.ValidColumn,
-			userblock.Table:    userblock.ValidColumn,
-			useridentity.Table: useridentity.ValidColumn,
+			chat.Table:          chat.ValidColumn,
+			groupchat.Table:     groupchat.ValidColumn,
+			groupmember.Table:   groupmember.ValidColumn,
+			media.Table:         media.ValidColumn,
+			message.Table:       message.ValidColumn,
+			messageoutbox.Table: messageoutbox.ValidColumn,
+			privatechat.Table:   privatechat.ValidColumn,
+			report.Table:        report.ValidColumn,
+			user.Table:          user.ValidColumn,
+			userblock.Table:     userblock.ValidColumn,
+			useridentity.Table:  useridentity.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

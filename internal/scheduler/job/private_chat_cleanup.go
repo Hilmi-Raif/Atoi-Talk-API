@@ -3,7 +3,7 @@ package job
 import (
 	"AtoiTalkAPI/ent"
 	"AtoiTalkAPI/ent/privatechat"
-	"AtoiTalkAPI/internal/config"
+	"AtoiTalkAPI/internal/infrastructure/config"
 	"context"
 	"log/slog"
 )

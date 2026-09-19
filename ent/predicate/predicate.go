@@ -21,6 +21,9 @@ type Media func(*sql.Selector)
 // Message is the predicate function for message builders.
 type Message func(*sql.Selector)
 
+// MessageOutbox is the predicate function for messageoutbox builders.
+type MessageOutbox func(*sql.Selector)
+
 // PrivateChat is the predicate function for privatechat builders.
 type PrivateChat func(*sql.Selector)
 

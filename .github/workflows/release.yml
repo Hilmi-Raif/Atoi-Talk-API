@@ -101,3 +101,43 @@ jobs:
           labels: ${{ steps.scheduler-metadata.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - uses: docker/metadata-action@v5
+        id: worker-metadata
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/atoitalk-message-worker
+          tags: |
+            type=raw,value=${{ needs.release-please.outputs.version }}
+            type=raw,value=latest
+            type=sha
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: build/package/message_worker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.worker-metadata.outputs.tags }}
+          labels: ${{ steps.worker-metadata.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - uses: docker/metadata-action@v5
+        id: gateway-metadata
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/atoitalk-websocket-gateway
+          tags: |
+            type=raw,value=${{ needs.release-please.outputs.version }}
+            type=raw,value=latest
+            type=sha
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: build/package/websocket_gateway/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.gateway-metadata.outputs.tags }}
+          labels: ${{ steps.gateway-metadata.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

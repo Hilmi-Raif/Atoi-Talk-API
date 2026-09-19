@@ -10,8 +10,8 @@ import (
 	"AtoiTalkAPI/ent/message"
 	"AtoiTalkAPI/ent/report"
 	"AtoiTalkAPI/ent/user"
-	"AtoiTalkAPI/internal/helper"
-	"AtoiTalkAPI/internal/model"
+	"AtoiTalkAPI/internal/domain/helper"
+	"AtoiTalkAPI/internal/domain/model"
 	"context"
 	"fmt"
 	"net/http"
@@ -413,6 +413,38 @@ func TestAdminDashboard(t *testing.T) {
 
 	t.Run("Get Reports - User Forbidden", func(t *testing.T) {
 		rr := makeRequest("GET", "/api/admin/reports", nil, userToken)
+		assert.Equal(t, http.StatusForbidden, rr.Code)
+	})
+
+	t.Run("Get Report Detail - Admin Success", func(t *testing.T) {
+		rpt, err := testClient.Report.Query().
+			Where(report.ReporterID(user1.ID), report.TargetUserID(user2.ID)).
+			First(context.Background())
+		assert.NoError(t, err)
+
+		rr := makeRequest("GET", fmt.Sprintf("/api/admin/reports/%s", rpt.ID), nil, adminToken)
+		assert.Equal(t, http.StatusOK, rr.Code)
+
+		detail := parseResponse[model.ReportDetailResponse](t, rr)
+		assert.Equal(t, rpt.ID, detail.ID)
+		assert.Equal(t, "user", detail.TargetType)
+		assert.Equal(t, user2.ID, *detail.TargetID)
+		assert.False(t, detail.TargetIsDeleted)
+		assert.False(t, detail.TargetIsBanned)
+		assert.Equal(t, user1.ID, detail.ReporterID)
+		assert.False(t, detail.ReporterIsDeleted)
+	})
+
+	t.Run("Get Report Detail - Not Found", func(t *testing.T) {
+		rr := makeRequest("GET", fmt.Sprintf("/api/admin/reports/%s", uuid.New()), nil, adminToken)
+		assert.Equal(t, http.StatusNotFound, rr.Code)
+	})
+
+	t.Run("Get Report Detail - User Forbidden", func(t *testing.T) {
+		rpt, err := testClient.Report.Query().First(context.Background())
+		assert.NoError(t, err)
+
+		rr := makeRequest("GET", fmt.Sprintf("/api/admin/reports/%s", rpt.ID), nil, userToken)
 		assert.Equal(t, http.StatusForbidden, rr.Code)
 	})
 

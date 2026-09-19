@@ -4,8 +4,9 @@ package integration
 
 import (
 	"AtoiTalkAPI/ent/user"
-	"AtoiTalkAPI/internal/helper"
-	"AtoiTalkAPI/internal/model"
+	apiresponse "AtoiTalkAPI/internal/api/http/response"
+	"AtoiTalkAPI/internal/domain/helper"
+	"AtoiTalkAPI/internal/domain/model"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -99,7 +100,7 @@ func TestAdminGetUsers(t *testing.T) {
 		resp := parseResponse[[]model.AdminUserListResponse](t, rr)
 		assert.Len(t, resp, 2)
 
-		var raw helper.ResponseWithPagination
+		var raw apiresponse.ResponseWithPagination
 		_ = json.Unmarshal(rr.Body.Bytes(), &raw)
 		assert.True(t, raw.Meta.HasNext)
 		assert.NotEmpty(t, raw.Meta.NextCursor)

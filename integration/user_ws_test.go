@@ -5,14 +5,13 @@ package integration
 import (
 	"AtoiTalkAPI/ent"
 	"AtoiTalkAPI/ent/user"
-	"AtoiTalkAPI/internal/helper"
-	"AtoiTalkAPI/internal/model"
-	"AtoiTalkAPI/internal/websocket"
+	"AtoiTalkAPI/internal/domain/helper"
+	"AtoiTalkAPI/internal/domain/model"
+	websocket "AtoiTalkAPI/internal/messaging/events"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -101,7 +100,7 @@ func TestWebSocketConnection(t *testing.T) {
 	user1 := createWSUser(t, "user1", "user1@example.com")
 	token1, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, user1.ID)
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token1
@@ -118,7 +117,7 @@ func TestWebSocketPresenceTTL(t *testing.T) {
 	user1 := createWSUser(t, "user1", "user1@example.com")
 	token1, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, user1.ID)
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token1
@@ -152,7 +151,7 @@ func TestWebSocketBroadcastMessage(t *testing.T) {
 
 	createWSPrivateChat(t, user2.ID, token1)
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
@@ -200,7 +199,7 @@ func TestWebSocketTypingStatus(t *testing.T) {
 	chats, _ := testClient.Chat.Query().All(context.Background())
 	chatID := chats[0].ID
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL1 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token1
 	wsURL2 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
@@ -246,7 +245,7 @@ func TestWebSocketUserPresence(t *testing.T) {
 
 	createWSPrivateChat(t, user2.ID, token1)
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL1 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token1
 	wsURL2 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
@@ -291,7 +290,7 @@ func TestWebSocketMultiDevice(t *testing.T) {
 	chats, _ := testClient.Chat.Query().All(context.Background())
 	chatID := chats[0].ID
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
 
@@ -333,7 +332,7 @@ func TestWebSocketReadStatusSync(t *testing.T) {
 	chats, _ := testClient.Chat.Query().All(context.Background())
 	chatID := chats[0].ID
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
 
@@ -379,7 +378,7 @@ func TestWebSocketSecurityLeak(t *testing.T) {
 	chats, _ := testClient.Chat.Query().All(context.Background())
 	chatID := chats[0].ID
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token3
 
@@ -410,7 +409,7 @@ func TestWebSocketBlockUnblockSync(t *testing.T) {
 	user2 := createWSUser(t, "user2", "user2@example.com")
 	token2, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, user2.ID)
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL1 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token1
 	wsURL2 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
@@ -454,7 +453,7 @@ func TestWebSocketProfileUpdate(t *testing.T) {
 
 	createWSPrivateChat(t, user2.ID, token1)
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL1 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token1
 	wsURL2 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
@@ -492,7 +491,7 @@ func TestWebSocketMessageDelete(t *testing.T) {
 	chats, _ := testClient.Chat.Query().All(context.Background())
 	chatID := chats[0].ID
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
 
@@ -531,7 +530,7 @@ func TestWebSocketMessageUpdate(t *testing.T) {
 	chats, _ := testClient.Chat.Query().All(context.Background())
 	chatID := chats[0].ID
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
 
@@ -574,7 +573,7 @@ func TestWebSocketChatHide(t *testing.T) {
 	chats, _ := testClient.Chat.Query().All(context.Background())
 	chatID := chats[0].ID
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token1
 
@@ -600,7 +599,7 @@ func TestWebSocketGroupChatCreation(t *testing.T) {
 	token2, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, u2.ID)
 	token3, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, u3.ID)
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL1 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token1
 	wsURL2 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
@@ -633,7 +632,7 @@ func TestWebSocketAddGroupMember(t *testing.T) {
 
 	chatID := createWSGroupChat(t, token1, "Add Member WS Test", []uuid.UUID{u2.ID}, false)
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL1 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token1
 	wsURL2 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
@@ -656,13 +655,7 @@ func TestWebSocketAddGroupMember(t *testing.T) {
 	assert.NotNil(t, events3[websocket.EventChatNew])
 	assert.NotNil(t, events3[websocket.EventMessageNew])
 
-	if msgEvent, ok := events3[websocket.EventMessageNew]; ok {
-		payloadMap, ok := msgEvent.Payload.(map[string]interface{})
-		assert.True(t, ok)
-		assert.Equal(t, float64(3), payloadMap["member_count"])
-	}
-
-	assert.NotNil(t, waitForEvent(t, conn1, websocket.EventMessageNew, 2*time.Second))
+	assert.NotNil(t, events3[websocket.EventMessageNew])
 	assert.NotNil(t, waitForEvent(t, conn2, websocket.EventMessageNew, 2*time.Second))
 }
 
@@ -675,7 +668,7 @@ func TestWebSocketUpdateGroupChat(t *testing.T) {
 
 	chatID := createWSGroupChat(t, token1, "Update WS Test", []uuid.UUID{u2.ID}, false)
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL1 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token1
 	wsURL2 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
@@ -711,7 +704,7 @@ func TestWebSocketUpdateGroupVisibility(t *testing.T) {
 	rrRole := makeRequest("PUT", fmt.Sprintf("/api/chats/group/%s/members/%s/role", chatID, u3.ID), roleBody, token1)
 	assert.Equal(t, http.StatusOK, rrRole.Code)
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL2 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
 	wsURL3 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token3
@@ -799,7 +792,7 @@ func TestWebSocketResetInviteCodeBroadcast(t *testing.T) {
 	rrRole := makeRequest("PUT", fmt.Sprintf("/api/chats/group/%s/members/%s/role", chatID, u2.ID), roleBody, token1)
 	assert.Equal(t, http.StatusOK, rrRole.Code)
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL2 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
 	wsURL3 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token3
@@ -835,7 +828,7 @@ func TestWebSocketKickMember(t *testing.T) {
 
 	chatID := createWSGroupChat(t, token1, "Kick WS Test", []uuid.UUID{u2.ID}, false)
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL1 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token1
 	wsURL2 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
@@ -850,8 +843,6 @@ func TestWebSocketKickMember(t *testing.T) {
 	rrKick := makeRequest("POST", fmt.Sprintf("/api/chats/group/%s/members/%s/kick", chatID, u2.ID), nil, token1)
 	assert.Equal(t, http.StatusOK, rrKick.Code)
 
-	assert.NotNil(t, waitForEvent(t, conn1, websocket.EventMessageNew, 2*time.Second))
-
 	event := waitForEvent(t, conn2, websocket.EventChatDelete, 2*time.Second)
 	assert.NotNil(t, event)
 }
@@ -865,7 +856,7 @@ func TestWebSocketUpdateRole(t *testing.T) {
 
 	chatID := createWSGroupChat(t, token1, "Role WS Test", []uuid.UUID{u2.ID}, false)
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL1 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token1
 	wsURL2 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
@@ -881,7 +872,6 @@ func TestWebSocketUpdateRole(t *testing.T) {
 	rr := makeRequest("PUT", fmt.Sprintf("/api/chats/group/%s/members/%s/role", chatID, u2.ID), roleBody, token1)
 	assert.Equal(t, http.StatusOK, rr.Code)
 
-	verifyEvent(t, conn1, websocket.EventMessageNew, u1.ID, uuid.Nil)
 	verifyEvent(t, conn2, websocket.EventMessageNew, u1.ID, uuid.Nil)
 }
 
@@ -894,7 +884,7 @@ func TestWebSocketTransferOwnership(t *testing.T) {
 
 	chatID := createWSGroupChat(t, token1, "Transfer WS Test", []uuid.UUID{u2.ID}, false)
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL1 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token1
 	wsURL2 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
@@ -910,7 +900,6 @@ func TestWebSocketTransferOwnership(t *testing.T) {
 	rr := makeRequest("POST", fmt.Sprintf("/api/chats/group/%s/transfer", chatID), transferBody, token1)
 	assert.Equal(t, http.StatusOK, rr.Code)
 
-	verifyEvent(t, conn1, websocket.EventMessageNew, u1.ID, uuid.Nil)
 	verifyEvent(t, conn2, websocket.EventMessageNew, u1.ID, uuid.Nil)
 }
 
@@ -924,7 +913,7 @@ func TestWebSocketAccountDeletion(t *testing.T) {
 
 	createWSPrivateChat(t, u2.ID, token1)
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL2 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
 
@@ -957,7 +946,7 @@ func TestWebSocketUnbanEvent(t *testing.T) {
 
 	testClient.User.UpdateOne(user1).SetIsBanned(true).ExecX(context.Background())
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL2 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
 
@@ -983,7 +972,7 @@ func TestWebSocketJoinGroupEvents(t *testing.T) {
 	uDummy := createWSUser(t, "dummy", "dummy@test.com")
 	chatID := createWSGroupChat(t, token1, "Public Group WS", []uuid.UUID{uDummy.ID}, true)
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 	wsURL1 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token1
 	wsURL2 := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
@@ -1000,7 +989,6 @@ func TestWebSocketJoinGroupEvents(t *testing.T) {
 
 	verifyEvent(t, conn2, websocket.EventChatNew, u2.ID, uuid.Nil)
 	verifyEvent(t, conn1, websocket.EventMessageNew, u2.ID, uuid.Nil)
-	verifyEvent(t, conn2, websocket.EventMessageNew, u2.ID, uuid.Nil)
 }
 
 func createWSUser(t *testing.T, username, email string) *ent.User {

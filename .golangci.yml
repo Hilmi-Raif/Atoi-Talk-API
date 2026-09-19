@@ -13,10 +13,10 @@ linters:
 formatters:
   exclusions:
     paths:
-      - "^internal/adapter/mocks/"
-      - "^internal/repository/mocks/"
-      - "^internal/service/mocks/"
-      - "^internal/controller/mocks/"
+      - "^internal/infrastructure/mocks/"
+      - "^internal/infrastructure/database/repository/mocks/"
+      - "^internal/api/application/mocks/"
+      - "^internal/messaging/events/mocks/"
 
 issues:
   max-issues-per-linter: 0

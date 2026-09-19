@@ -220,6 +220,42 @@ var (
 			},
 		},
 	}
+	// MessageOutboxesColumns holds the columns for the "message_outboxes" table.
+	MessageOutboxesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime, Default: "CURRENT_TIMESTAMP"},
+		{Name: "updated_at", Type: field.TypeTime, Default: "CURRENT_TIMESTAMP"},
+		{Name: "event_type", Type: field.TypeString},
+		{Name: "message_id", Type: field.TypeUUID},
+		{Name: "chat_id", Type: field.TypeUUID},
+		{Name: "sender_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "payload", Type: field.TypeJSON, Nullable: true},
+		{Name: "attempt_count", Type: field.TypeInt, Default: 0},
+		{Name: "available_at", Type: field.TypeTime},
+		{Name: "locked_at", Type: field.TypeTime, Nullable: true},
+		{Name: "lock_token", Type: field.TypeUUID, Nullable: true},
+		{Name: "projected_at", Type: field.TypeTime, Nullable: true},
+		{Name: "published_at", Type: field.TypeTime, Nullable: true},
+		{Name: "last_error", Type: field.TypeString, Nullable: true, Size: 2147483647},
+	}
+	// MessageOutboxesTable holds the schema information for the "message_outboxes" table.
+	MessageOutboxesTable = &schema.Table{
+		Name:       "message_outboxes",
+		Columns:    MessageOutboxesColumns,
+		PrimaryKey: []*schema.Column{MessageOutboxesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "messageoutbox_published_at_available_at_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{MessageOutboxesColumns[13], MessageOutboxesColumns[9], MessageOutboxesColumns[1]},
+			},
+			{
+				Name:    "messageoutbox_message_id_event_type",
+				Unique:  false,
+				Columns: []*schema.Column{MessageOutboxesColumns[4], MessageOutboxesColumns[3]},
+			},
+		},
+	}
 	// PrivateChatsColumns holds the columns for the "private_chats" table.
 	PrivateChatsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -493,6 +529,7 @@ var (
 		GroupMembersTable,
 		MediaTable,
 		MessagesTable,
+		MessageOutboxesTable,
 		PrivateChatsTable,
 		ReportsTable,
 		UsersTable,

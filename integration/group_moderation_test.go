@@ -6,12 +6,11 @@ import (
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/message"
 	"AtoiTalkAPI/ent/user"
-	"AtoiTalkAPI/internal/helper"
-	"AtoiTalkAPI/internal/websocket"
+	"AtoiTalkAPI/internal/domain/helper"
+	websocket "AtoiTalkAPI/internal/messaging/events"
 	"context"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -57,7 +56,7 @@ func TestGroupModeration_DeleteMessage(t *testing.T) {
 		SetContent("Admin Message").
 		SaveX(context.Background())
 
-	server := httptest.NewServer(testRouter)
+	server := newWebSocketTestServer()
 	defer server.Close()
 
 	t.Run("Admin Can Delete Member Message", func(t *testing.T) {

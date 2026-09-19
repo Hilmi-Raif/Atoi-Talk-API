@@ -68,6 +68,18 @@ func (f MessageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MessageMutation", m)
 }
 
+// The MessageOutboxFunc type is an adapter to allow the use of ordinary
+// function as MessageOutbox mutator.
+type MessageOutboxFunc func(context.Context, *ent.MessageOutboxMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f MessageOutboxFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.MessageOutboxMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MessageOutboxMutation", m)
+}
+
 // The PrivateChatFunc type is an adapter to allow the use of ordinary
 // function as PrivateChat mutator.
 type PrivateChatFunc func(context.Context, *ent.PrivateChatMutation) (ent.Value, error)
