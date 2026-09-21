@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/Hilmi-Raif/Atoi-Talk-API/compare/atoitalk-api-v0.1.1...atoitalk-api-v0.1.2) (2026-09-21)
+
+
+### Features
+
+* **perf:** add observability, load testing, and query optimizations ([fd3151f](https://github.com/Hilmi-Raif/Atoi-Talk-API/commit/fd3151f48733b2887b1aa2c5aa20b14b37369fbe))
+
 ## [0.1.1](https://github.com/Hilmi-Raif/Atoi-Talk-API/compare/atoitalk-api-v0.1.0...atoitalk-api-v0.1.1) (2026-08-24)
 
 
