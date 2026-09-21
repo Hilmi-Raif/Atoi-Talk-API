@@ -5,8 +5,8 @@ package integration
 import (
 	"AtoiTalkAPI/ent/chat"
 	"AtoiTalkAPI/ent/privatechat"
-	"AtoiTalkAPI/internal/helper"
-	"AtoiTalkAPI/internal/model"
+	"AtoiTalkAPI/internal/domain/helper"
+	"AtoiTalkAPI/internal/domain/model"
 	"context"
 	"fmt"
 	"sync"

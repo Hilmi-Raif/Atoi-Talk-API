@@ -8,15 +8,15 @@ import (
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/media"
 	"AtoiTalkAPI/ent/message"
+	"AtoiTalkAPI/ent/messageoutbox"
 	"AtoiTalkAPI/ent/privatechat"
 	"AtoiTalkAPI/ent/report"
 	"AtoiTalkAPI/ent/schema"
 	"AtoiTalkAPI/ent/user"
 	"AtoiTalkAPI/ent/userblock"
 	"AtoiTalkAPI/ent/useridentity"
-	"time"
-
 	"github.com/google/uuid"
+	"time"
 )
 
 // The init function reads all schema descriptors with runtime code
@@ -198,6 +198,33 @@ func init() {
 	messageDescID := messageFields[0].Descriptor()
 	// message.DefaultID holds the default value on creation for the id field.
 	message.DefaultID = messageDescID.Default.(func() uuid.UUID)
+	messageoutboxMixin := schema.MessageOutbox{}.Mixin()
+	messageoutboxMixinFields0 := messageoutboxMixin[0].Fields()
+	_ = messageoutboxMixinFields0
+	messageoutboxFields := schema.MessageOutbox{}.Fields()
+	_ = messageoutboxFields
+	// messageoutboxDescCreatedAt is the schema descriptor for created_at field.
+	messageoutboxDescCreatedAt := messageoutboxMixinFields0[0].Descriptor()
+	// messageoutbox.DefaultCreatedAt holds the default value on creation for the created_at field.
+	messageoutbox.DefaultCreatedAt = messageoutboxDescCreatedAt.Default.(func() time.Time)
+	// messageoutboxDescUpdatedAt is the schema descriptor for updated_at field.
+	messageoutboxDescUpdatedAt := messageoutboxMixinFields0[1].Descriptor()
+	// messageoutbox.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	messageoutbox.DefaultUpdatedAt = messageoutboxDescUpdatedAt.Default.(func() time.Time)
+	// messageoutbox.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	messageoutbox.UpdateDefaultUpdatedAt = messageoutboxDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// messageoutboxDescAttemptCount is the schema descriptor for attempt_count field.
+	messageoutboxDescAttemptCount := messageoutboxFields[6].Descriptor()
+	// messageoutbox.DefaultAttemptCount holds the default value on creation for the attempt_count field.
+	messageoutbox.DefaultAttemptCount = messageoutboxDescAttemptCount.Default.(int)
+	// messageoutboxDescAvailableAt is the schema descriptor for available_at field.
+	messageoutboxDescAvailableAt := messageoutboxFields[7].Descriptor()
+	// messageoutbox.DefaultAvailableAt holds the default value on creation for the available_at field.
+	messageoutbox.DefaultAvailableAt = messageoutboxDescAvailableAt.Default.(func() time.Time)
+	// messageoutboxDescID is the schema descriptor for id field.
+	messageoutboxDescID := messageoutboxFields[0].Descriptor()
+	// messageoutbox.DefaultID holds the default value on creation for the id field.
+	messageoutbox.DefaultID = messageoutboxDescID.Default.(func() uuid.UUID)
 	privatechatHooks := schema.PrivateChat{}.Hooks()
 	privatechat.Hooks[0] = privatechatHooks[0]
 	privatechatFields := schema.PrivateChat{}.Fields()

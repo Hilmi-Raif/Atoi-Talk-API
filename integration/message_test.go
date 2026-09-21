@@ -4,11 +4,11 @@ package integration
 
 import (
 	"AtoiTalkAPI/ent/chat"
-	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/message"
 	"AtoiTalkAPI/ent/privatechat"
-	"AtoiTalkAPI/internal/helper"
-	"AtoiTalkAPI/internal/model"
+	apiresponse "AtoiTalkAPI/internal/api/http/response"
+	"AtoiTalkAPI/internal/domain/helper"
+	"AtoiTalkAPI/internal/domain/model"
 	"bytes"
 	"context"
 	"encoding/base64"
@@ -56,9 +56,7 @@ func TestSendMessage(t *testing.T) {
 		assert.Equal(t, "regular", dataMap.Type)
 		assert.Empty(t, dataMap.Attachments)
 
-		pc, _ := testClient.PrivateChat.Query().Where(privatechat.ChatID(chatEntity.ID)).Only(context.Background())
-		assert.Equal(t, 0, pc.User1UnreadCount)
-		assert.Equal(t, 1, pc.User2UnreadCount)
+		waitForPrivateUnreadCount(t, chatEntity.ID, 0, 1)
 	})
 
 	t.Run("Success - Send Text Message with Whitespace", func(t *testing.T) {
@@ -204,9 +202,7 @@ func TestSendMessage(t *testing.T) {
 		attachedMedia, _ := msg.QueryAttachments().Only(context.Background())
 		assert.Equal(t, m.ID, attachedMedia.ID)
 
-		pc, _ := testClient.PrivateChat.Query().Where(privatechat.ChatID(chatEntity.ID)).Only(context.Background())
-		assert.Equal(t, 0, pc.User1UnreadCount)
-		assert.Equal(t, 4, pc.User2UnreadCount)
+		waitForPrivateUnreadCount(t, chatEntity.ID, 0, 4)
 	})
 
 	t.Run("Fail - Attachment Belongs to Another User", func(t *testing.T) {
@@ -276,13 +272,9 @@ func TestSendMessage(t *testing.T) {
 		rr := makeRequest("POST", "/api/messages", reqBody, token1)
 		assert.Equal(t, http.StatusOK, rr.Code)
 
-		gm1, _ := testClient.GroupMember.Query().Where(groupmember.GroupChatID(gc.ID), groupmember.UserID(u1.ID)).Only(context.Background())
-		gm2, _ := testClient.GroupMember.Query().Where(groupmember.GroupChatID(gc.ID), groupmember.UserID(u2.ID)).Only(context.Background())
-		gm3, _ := testClient.GroupMember.Query().Where(groupmember.GroupChatID(gc.ID), groupmember.UserID(u3.ID)).Only(context.Background())
-
-		assert.Equal(t, 0, gm1.UnreadCount)
-		assert.Equal(t, 1, gm2.UnreadCount)
-		assert.Equal(t, 1, gm3.UnreadCount)
+		waitForGroupUnreadCount(t, gc.ID, u1.ID, 0)
+		waitForGroupUnreadCount(t, gc.ID, u2.ID, 1)
+		waitForGroupUnreadCount(t, gc.ID, u3.ID, 1)
 	})
 
 	t.Run("Fail - Group Non-Member", func(t *testing.T) {
@@ -391,7 +383,7 @@ func TestGetMessages(t *testing.T) {
 		rr := makeRequest("GET", fmt.Sprintf("/api/chats/%s/messages?limit=2", chatEntity.ID), nil, token1)
 		assert.Equal(t, http.StatusOK, rr.Code)
 
-		var resp helper.ResponseWithPagination
+		var resp apiresponse.ResponseWithPagination
 		json.Unmarshal(rr.Body.Bytes(), &resp)
 		dataList := parseResponse[[]model.MessageResponse](t, rr)
 
@@ -418,14 +410,14 @@ func TestGetMessages(t *testing.T) {
 		rr := makeRequest("GET", fmt.Sprintf("/api/chats/%s/messages?limit=2&cursor=%s&direction=newer", chatEntity.ID, cursor), nil, token1)
 		assert.Equal(t, http.StatusOK, rr.Code)
 
-		var resp helper.ResponseWithPagination
+		var resp apiresponse.ResponseWithPagination
 		json.Unmarshal(rr.Body.Bytes(), &resp)
 		dataList := parseResponse[[]model.MessageResponse](t, rr)
 
 		assert.Len(t, dataList, 2)
 		assert.Equal(t, msgIDs[2], dataList[0].ID)
 		assert.Equal(t, msgIDs[3], dataList[1].ID)
-		assert.True(t, resp.Meta.HasNext)
+		assert.False(t, resp.Meta.HasNext)
 		assert.True(t, resp.Meta.HasPrev)
 	})
 
@@ -485,7 +477,7 @@ func TestGetMessages(t *testing.T) {
 		rr := makeRequest("GET", fmt.Sprintf("/api/chats/%s/messages?limit=2", pChat.ID), nil, pToken1)
 		assert.Equal(t, http.StatusOK, rr.Code)
 
-		var resp helper.ResponseWithPagination
+		var resp apiresponse.ResponseWithPagination
 		json.Unmarshal(rr.Body.Bytes(), &resp)
 		dataList := parseResponse[[]model.MessageResponse](t, rr)
 		assert.Len(t, dataList, 2)
@@ -501,7 +493,7 @@ func TestGetMessages(t *testing.T) {
 		rr = makeRequest("GET", fmt.Sprintf("/api/chats/%s/messages?limit=2&cursor=%s", pChat.ID, cursor), nil, pToken1)
 		assert.Equal(t, http.StatusOK, rr.Code)
 
-		var resp2 helper.ResponseWithPagination
+		var resp2 apiresponse.ResponseWithPagination
 		json.Unmarshal(rr.Body.Bytes(), &resp2)
 		dataList = parseResponse[[]model.MessageResponse](t, rr)
 		assert.Len(t, dataList, 2)
@@ -514,7 +506,7 @@ func TestGetMessages(t *testing.T) {
 		rr = makeRequest("GET", fmt.Sprintf("/api/chats/%s/messages?limit=2&cursor=%s", pChat.ID, cursor), nil, pToken1)
 		assert.Equal(t, http.StatusOK, rr.Code)
 
-		var resp3 helper.ResponseWithPagination
+		var resp3 apiresponse.ResponseWithPagination
 		json.Unmarshal(rr.Body.Bytes(), &resp3)
 		dataList = parseResponse[[]model.MessageResponse](t, rr)
 		assert.Len(t, dataList, 2)

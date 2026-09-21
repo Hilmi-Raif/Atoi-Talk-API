@@ -2,7 +2,7 @@ package scheduler
 
 import (
 	"AtoiTalkAPI/ent/enttest"
-	"AtoiTalkAPI/internal/config"
+	"AtoiTalkAPI/internal/infrastructure/config"
 	"testing"
 
 	"entgo.io/ent/dialect"

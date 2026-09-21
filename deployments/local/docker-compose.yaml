@@ -1,0 +1,268 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: atoitalk-local-postgres
+    command: ["postgres", "-c", "max_connections=300", "-c", "shared_buffers=512MB", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "track_io_timing=on"]
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-atoitalk_dev}
+    ports:
+      - "${DB_PORT:-5434}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: atoitalk-local-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  s3mock:
+    image: adobe/s3mock:latest
+    container_name: atoitalk-local-s3mock
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: ${S3_BUCKET_PUBLIC:-public-bucket},${S3_BUCKET_PRIVATE:-private-bucket}
+    ports:
+      - "9090:9090"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: atoitalk-local-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  api:
+    build:
+      context: ../..
+      dockerfile: build/package/api/Dockerfile
+    container_name: atoitalk-local-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      APP_PORT: ${APP_PORT:-8080}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-false}
+      CAPTCHA_ENABLED: ${CAPTCHA_ENABLED:-false}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-atoitalk_dev}
+      DB_SSLMODE: disable
+      DB_MIGRATE: "true"
+      DB_MAX_OPEN_CONNS: ${DB_MAX_OPEN_CONNS:-180}
+      DB_MAX_IDLE_CONNS: ${DB_MAX_IDLE_CONNS:-90}
+      DB_CONN_MAX_LIFETIME: ${DB_CONN_MAX_LIFETIME:-30m}
+      DB_CONN_MAX_IDLE_TIME: ${DB_CONN_MAX_IDLE_TIME:-5m}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: "0"
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_key_at_least_32_chars_long}
+      JWT_EXP: 86400
+      OTP_SECRET: ${OTP_SECRET:-dev_otp_secret_key}
+      OTP_EXP: 300
+      OTP_RATE_LIMIT_SECONDS: 60
+      S3_ENDPOINT: http://s3mock:9090
+      S3_PRESIGN_ENDPOINT: ${S3_PRESIGN_ENDPOINT:-http://localhost:9090}
+      S3_PUBLIC_DOMAIN: ${S3_PUBLIC_DOMAIN:-http://localhost:9090/public-bucket}
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY: dummy
+      S3_SECRET_KEY: dummy
+      S3_BUCKET_PUBLIC: ${S3_BUCKET_PUBLIC:-public-bucket}
+      S3_BUCKET_PRIVATE: ${S3_BUCKET_PRIVATE:-private-bucket}
+      S3_FORCE_PATH_STYLE: "true"
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_FROM_EMAIL: noreply@atoitalk.local
+      SMTP_FROM_NAME: AtoiTalk
+      SMTP_REQUIRE_TLS: "false"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-dev_google_client_id}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-dev_google_client_secret}
+      GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL:-http://localhost:8080/api/auth/google/callback}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-1x0000000000000000000000000000000AA}
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_SERVICE_NAME: atoitalk-api
+      OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-0.1.1}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-signoz-otel-collector:4317}
+      OTEL_EXPORTER_OTLP_INSECURE: ${OTEL_EXPORTER_OTLP_INSECURE:-true}
+      OTEL_SAMPLING_RATIO: ${OTEL_SAMPLING_RATIO:-0.1}
+      OTEL_METRIC_EXPORT_INTERVAL: ${OTEL_METRIC_EXPORT_INTERVAL:-5000}
+      ENABLE_PPROF: ${ENABLE_PPROF:-true}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/readyz >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  scheduler:
+    build:
+      context: ../..
+      dockerfile: build/package/scheduler/Dockerfile
+    container_name: atoitalk-local-scheduler
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-atoitalk_dev}
+      DB_SSLMODE: disable
+      DB_MAX_OPEN_CONNS: ${SCHEDULER_DB_MAX_OPEN_CONNS:-5}
+      DB_MAX_IDLE_CONNS: ${SCHEDULER_DB_MAX_IDLE_CONNS:-2}
+      DB_CONN_MAX_LIFETIME: ${DB_CONN_MAX_LIFETIME:-30m}
+      DB_CONN_MAX_IDLE_TIME: ${DB_CONN_MAX_IDLE_TIME:-5m}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: "0"
+      S3_ENDPOINT: http://s3mock:9090
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY: dummy
+      S3_SECRET_KEY: dummy
+      S3_BUCKET_PUBLIC: ${S3_BUCKET_PUBLIC:-public-bucket}
+      S3_BUCKET_PRIVATE: ${S3_BUCKET_PRIVATE:-private-bucket}
+      S3_FORCE_PATH_STYLE: "true"
+      SOFT_DELETE_RETENTION_DAYS: 30
+      MEDIA_RETENTION_DAYS: 7
+      ENTITY_CLEANUP_CRON: "0 2 * * *"
+      PRIVATE_CHAT_CLEANUP_CRON: "30 2 * * *"
+      MEDIA_CLEANUP_CRON: "0 3 * * *"
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-atoitalk-scheduler}
+      OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-0.1.1}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-signoz-otel-collector:4317}
+      OTEL_EXPORTER_OTLP_INSECURE: ${OTEL_EXPORTER_OTLP_INSECURE:-true}
+      OTEL_METRIC_EXPORT_INTERVAL: ${OTEL_METRIC_EXPORT_INTERVAL:-5000}
+
+  message-worker:
+    build:
+      context: ../..
+      dockerfile: build/package/message_worker/Dockerfile
+    container_name: atoitalk-local-message-worker
+    depends_on:
+      api:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-atoitalk_dev}
+      DB_SSLMODE: disable
+      DB_MAX_OPEN_CONNS: ${MESSAGE_WORKER_DB_MAX_OPEN_CONNS:-10}
+      DB_MAX_IDLE_CONNS: ${MESSAGE_WORKER_DB_MAX_IDLE_CONNS:-5}
+      DB_CONN_MAX_LIFETIME: ${DB_CONN_MAX_LIFETIME:-30m}
+      DB_CONN_MAX_IDLE_TIME: ${DB_CONN_MAX_IDLE_TIME:-5m}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: "0"
+      S3_ENDPOINT: http://s3mock:9090
+      S3_PRESIGN_ENDPOINT: ${S3_PRESIGN_ENDPOINT:-http://localhost:9090}
+      S3_PUBLIC_DOMAIN: ${S3_PUBLIC_DOMAIN:-http://localhost:9090/public-bucket}
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY: dummy
+      S3_SECRET_KEY: dummy
+      S3_BUCKET_PUBLIC: ${S3_BUCKET_PUBLIC:-public-bucket}
+      S3_BUCKET_PRIVATE: ${S3_BUCKET_PRIVATE:-private-bucket}
+      S3_FORCE_PATH_STYLE: "true"
+      MESSAGE_WORKER_BATCH_SIZE: ${MESSAGE_WORKER_BATCH_SIZE:-100}
+      MESSAGE_WORKER_CONCURRENCY: ${MESSAGE_WORKER_CONCURRENCY:-5}
+      MESSAGE_WORKER_LEASE_DURATION: ${MESSAGE_WORKER_LEASE_DURATION:-5m}
+      MESSAGE_WORKER_POLL_INTERVAL: ${MESSAGE_WORKER_POLL_INTERVAL:-1s}
+      MESSAGE_WORKER_BACKLOG_INTERVAL: ${MESSAGE_WORKER_BACKLOG_INTERVAL:-5s}
+      MESSAGE_EVENT_STREAM: ${MESSAGE_EVENT_STREAM:-events:messages}
+      MESSAGE_EVENT_STREAM_MAX_LEN: ${MESSAGE_EVENT_STREAM_MAX_LEN:-10000}
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-atoitalk-message-worker}
+      OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-0.1.1}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-signoz-otel-collector:4317}
+      OTEL_EXPORTER_OTLP_INSECURE: ${OTEL_EXPORTER_OTLP_INSECURE:-true}
+      OTEL_METRIC_EXPORT_INTERVAL: ${OTEL_METRIC_EXPORT_INTERVAL:-5000}
+
+  websocket-gateway:
+    build:
+      context: ../..
+      dockerfile: build/package/websocket_gateway/Dockerfile
+    container_name: atoitalk-local-websocket-gateway
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${REALTIME_PORT:-8081}:8081"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      REALTIME_PORT: 8081
+      REALTIME_INSTANCE_ID: ${REALTIME_INSTANCE_ID:-realtime-1}
+      REALTIME_CONSUMER_GROUP: ${REALTIME_CONSUMER_GROUP:-}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-atoitalk_dev}
+      DB_SSLMODE: disable
+      DB_MAX_OPEN_CONNS: ${REALTIME_DB_MAX_OPEN_CONNS:-10}
+      DB_MAX_IDLE_CONNS: ${REALTIME_DB_MAX_IDLE_CONNS:-5}
+      DB_CONN_MAX_LIFETIME: ${DB_CONN_MAX_LIFETIME:-30m}
+      DB_CONN_MAX_IDLE_TIME: ${DB_CONN_MAX_IDLE_TIME:-5m}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: "0"
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_key_at_least_32_chars_long}
+      JWT_EXP: 86400
+      S3_BUCKET_PUBLIC: ${S3_BUCKET_PUBLIC:-public-bucket}
+      S3_BUCKET_PRIVATE: ${S3_BUCKET_PRIVATE:-private-bucket}
+      MESSAGE_EVENT_STREAM: ${MESSAGE_EVENT_STREAM:-events:messages}
+      MESSAGE_EVENT_STREAM_MAX_LEN: ${MESSAGE_EVENT_STREAM_MAX_LEN:-10000}
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-atoitalk-websocket-gateway}
+      OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-0.1.1}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-signoz-otel-collector:4317}
+      OTEL_EXPORTER_OTLP_INSECURE: ${OTEL_EXPORTER_OTLP_INSECURE:-true}
+      OTEL_METRIC_EXPORT_INTERVAL: ${OTEL_METRIC_EXPORT_INTERVAL:-5000}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8081/healthz >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: atoitalk-network

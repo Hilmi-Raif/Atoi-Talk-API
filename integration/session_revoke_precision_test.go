@@ -3,7 +3,7 @@
 package integration
 
 import (
-	"AtoiTalkAPI/internal/helper"
+	"AtoiTalkAPI/internal/domain/helper"
 	"context"
 	"fmt"
 	"net/http"

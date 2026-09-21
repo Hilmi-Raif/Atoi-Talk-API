@@ -8,24 +8,42 @@ outpkg: mocks
 filename: "{{.InterfaceName | snakecase}}.go"
 mockname: "Mock{{.InterfaceName}}"
 packages:
-  AtoiTalkAPI/internal/adapter:
+  AtoiTalkAPI/internal/infrastructure/captcha:
+    interfaces:
+      Verifier: {}
+    config:
+      dir: "internal/infrastructure/mocks"
+      outpkg: mocks
+      mockname: "Mock{{.InterfaceName}}"
+  AtoiTalkAPI/internal/infrastructure/email:
+    interfaces:
+      Sender: {}
+    config:
+      dir: "internal/infrastructure/mocks"
+      outpkg: mocks
+      mockname: "Mock{{.InterfaceName}}"
+  AtoiTalkAPI/internal/infrastructure/object_storage:
     interfaces:
       PublicURLGenerator: {}
       AuthStorage: {}
       MediaStorage: {}
-      CaptchaVerifier: {}
-      EmailSender: {}
-      RedisStore: {}
-      RedisOAuthStore: {}
-      RedisPresence: {}
-      RedisOnlineStore: {}
-      RedisCache: {}
       URLGenerator: {}
     config:
-      dir: "{{.InterfaceDir}}/mocks"
+      dir: "internal/infrastructure/mocks"
       outpkg: mocks
       mockname: "Mock{{.InterfaceName}}"
-  AtoiTalkAPI/internal/repository:
+  AtoiTalkAPI/internal/infrastructure/redis:
+    interfaces:
+      Store: {}
+      OAuthStore: {}
+      Presence: {}
+      OnlineStore: {}
+      Cache: {}
+    config:
+      dir: "internal/infrastructure/mocks"
+      outpkg: mocks
+      mockname: "Mock{{.InterfaceName}}"
+  AtoiTalkAPI/internal/infrastructure/database/repository:
     interfaces:
       UserReader: {}
       SessionStore: {}
@@ -36,10 +54,10 @@ packages:
       GroupChatReader: {}
       MessageReader: {}
     config:
-      dir: "{{.InterfaceDir}}/mocks"
+      dir: "internal/infrastructure/database/repository/mocks"
       outpkg: mocks
       mockname: "Mock{{.InterfaceName}}"
-  AtoiTalkAPI/internal/service:
+  AtoiTalkAPI/internal/api/application:
     interfaces:
       authOTP: {}
       AuthVerifier: {}
@@ -54,7 +72,7 @@ packages:
       MediaServicePort: {}
       ReportServicePort: {}
       AdminServicePort: {}
-  AtoiTalkAPI/internal/websocket:
+  AtoiTalkAPI/internal/messaging/events:
     interfaces:
       Publisher: {}
     config:

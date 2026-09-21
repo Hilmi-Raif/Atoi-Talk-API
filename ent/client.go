@@ -16,6 +16,7 @@ import (
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/media"
 	"AtoiTalkAPI/ent/message"
+	"AtoiTalkAPI/ent/messageoutbox"
 	"AtoiTalkAPI/ent/privatechat"
 	"AtoiTalkAPI/ent/report"
 	"AtoiTalkAPI/ent/user"
@@ -44,6 +45,8 @@ type Client struct {
 	Media *MediaClient
 	// Message is the client for interacting with the Message builders.
 	Message *MessageClient
+	// MessageOutbox is the client for interacting with the MessageOutbox builders.
+	MessageOutbox *MessageOutboxClient
 	// PrivateChat is the client for interacting with the PrivateChat builders.
 	PrivateChat *PrivateChatClient
 	// Report is the client for interacting with the Report builders.
@@ -70,6 +73,7 @@ func (c *Client) init() {
 	c.GroupMember = NewGroupMemberClient(c.config)
 	c.Media = NewMediaClient(c.config)
 	c.Message = NewMessageClient(c.config)
+	c.MessageOutbox = NewMessageOutboxClient(c.config)
 	c.PrivateChat = NewPrivateChatClient(c.config)
 	c.Report = NewReportClient(c.config)
 	c.User = NewUserClient(c.config)
@@ -165,18 +169,19 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:          ctx,
-		config:       cfg,
-		Chat:         NewChatClient(cfg),
-		GroupChat:    NewGroupChatClient(cfg),
-		GroupMember:  NewGroupMemberClient(cfg),
-		Media:        NewMediaClient(cfg),
-		Message:      NewMessageClient(cfg),
-		PrivateChat:  NewPrivateChatClient(cfg),
-		Report:       NewReportClient(cfg),
-		User:         NewUserClient(cfg),
-		UserBlock:    NewUserBlockClient(cfg),
-		UserIdentity: NewUserIdentityClient(cfg),
+		ctx:           ctx,
+		config:        cfg,
+		Chat:          NewChatClient(cfg),
+		GroupChat:     NewGroupChatClient(cfg),
+		GroupMember:   NewGroupMemberClient(cfg),
+		Media:         NewMediaClient(cfg),
+		Message:       NewMessageClient(cfg),
+		MessageOutbox: NewMessageOutboxClient(cfg),
+		PrivateChat:   NewPrivateChatClient(cfg),
+		Report:        NewReportClient(cfg),
+		User:          NewUserClient(cfg),
+		UserBlock:     NewUserBlockClient(cfg),
+		UserIdentity:  NewUserIdentityClient(cfg),
 	}, nil
 }
 
@@ -194,18 +199,19 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:          ctx,
-		config:       cfg,
-		Chat:         NewChatClient(cfg),
-		GroupChat:    NewGroupChatClient(cfg),
-		GroupMember:  NewGroupMemberClient(cfg),
-		Media:        NewMediaClient(cfg),
-		Message:      NewMessageClient(cfg),
-		PrivateChat:  NewPrivateChatClient(cfg),
-		Report:       NewReportClient(cfg),
-		User:         NewUserClient(cfg),
-		UserBlock:    NewUserBlockClient(cfg),
-		UserIdentity: NewUserIdentityClient(cfg),
+		ctx:           ctx,
+		config:        cfg,
+		Chat:          NewChatClient(cfg),
+		GroupChat:     NewGroupChatClient(cfg),
+		GroupMember:   NewGroupMemberClient(cfg),
+		Media:         NewMediaClient(cfg),
+		Message:       NewMessageClient(cfg),
+		MessageOutbox: NewMessageOutboxClient(cfg),
+		PrivateChat:   NewPrivateChatClient(cfg),
+		Report:        NewReportClient(cfg),
+		User:          NewUserClient(cfg),
+		UserBlock:     NewUserBlockClient(cfg),
+		UserIdentity:  NewUserIdentityClient(cfg),
 	}, nil
 }
 
@@ -235,8 +241,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Chat, c.GroupChat, c.GroupMember, c.Media, c.Message, c.PrivateChat, c.Report,
-		c.User, c.UserBlock, c.UserIdentity,
+		c.Chat, c.GroupChat, c.GroupMember, c.Media, c.Message, c.MessageOutbox,
+		c.PrivateChat, c.Report, c.User, c.UserBlock, c.UserIdentity,
 	} {
 		n.Use(hooks...)
 	}
@@ -246,8 +252,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Chat, c.GroupChat, c.GroupMember, c.Media, c.Message, c.PrivateChat, c.Report,
-		c.User, c.UserBlock, c.UserIdentity,
+		c.Chat, c.GroupChat, c.GroupMember, c.Media, c.Message, c.MessageOutbox,
+		c.PrivateChat, c.Report, c.User, c.UserBlock, c.UserIdentity,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -266,6 +272,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Media.mutate(ctx, m)
 	case *MessageMutation:
 		return c.Message.mutate(ctx, m)
+	case *MessageOutboxMutation:
+		return c.MessageOutbox.mutate(ctx, m)
 	case *PrivateChatMutation:
 		return c.PrivateChat.mutate(ctx, m)
 	case *ReportMutation:
@@ -1295,6 +1303,139 @@ func (c *MessageClient) mutate(ctx context.Context, m *MessageMutation) (Value, 
 		return (&MessageDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Message mutation op: %q", m.Op())
+	}
+}
+
+// MessageOutboxClient is a client for the MessageOutbox schema.
+type MessageOutboxClient struct {
+	config
+}
+
+// NewMessageOutboxClient returns a client for the MessageOutbox from the given config.
+func NewMessageOutboxClient(c config) *MessageOutboxClient {
+	return &MessageOutboxClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `messageoutbox.Hooks(f(g(h())))`.
+func (c *MessageOutboxClient) Use(hooks ...Hook) {
+	c.hooks.MessageOutbox = append(c.hooks.MessageOutbox, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `messageoutbox.Intercept(f(g(h())))`.
+func (c *MessageOutboxClient) Intercept(interceptors ...Interceptor) {
+	c.inters.MessageOutbox = append(c.inters.MessageOutbox, interceptors...)
+}
+
+// Create returns a builder for creating a MessageOutbox entity.
+func (c *MessageOutboxClient) Create() *MessageOutboxCreate {
+	mutation := newMessageOutboxMutation(c.config, OpCreate)
+	return &MessageOutboxCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of MessageOutbox entities.
+func (c *MessageOutboxClient) CreateBulk(builders ...*MessageOutboxCreate) *MessageOutboxCreateBulk {
+	return &MessageOutboxCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *MessageOutboxClient) MapCreateBulk(slice any, setFunc func(*MessageOutboxCreate, int)) *MessageOutboxCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &MessageOutboxCreateBulk{err: fmt.Errorf("calling to MessageOutboxClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*MessageOutboxCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &MessageOutboxCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for MessageOutbox.
+func (c *MessageOutboxClient) Update() *MessageOutboxUpdate {
+	mutation := newMessageOutboxMutation(c.config, OpUpdate)
+	return &MessageOutboxUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *MessageOutboxClient) UpdateOne(_m *MessageOutbox) *MessageOutboxUpdateOne {
+	mutation := newMessageOutboxMutation(c.config, OpUpdateOne, withMessageOutbox(_m))
+	return &MessageOutboxUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *MessageOutboxClient) UpdateOneID(id uuid.UUID) *MessageOutboxUpdateOne {
+	mutation := newMessageOutboxMutation(c.config, OpUpdateOne, withMessageOutboxID(id))
+	return &MessageOutboxUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for MessageOutbox.
+func (c *MessageOutboxClient) Delete() *MessageOutboxDelete {
+	mutation := newMessageOutboxMutation(c.config, OpDelete)
+	return &MessageOutboxDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *MessageOutboxClient) DeleteOne(_m *MessageOutbox) *MessageOutboxDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *MessageOutboxClient) DeleteOneID(id uuid.UUID) *MessageOutboxDeleteOne {
+	builder := c.Delete().Where(messageoutbox.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &MessageOutboxDeleteOne{builder}
+}
+
+// Query returns a query builder for MessageOutbox.
+func (c *MessageOutboxClient) Query() *MessageOutboxQuery {
+	return &MessageOutboxQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeMessageOutbox},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a MessageOutbox entity by its id.
+func (c *MessageOutboxClient) Get(ctx context.Context, id uuid.UUID) (*MessageOutbox, error) {
+	return c.Query().Where(messageoutbox.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *MessageOutboxClient) GetX(ctx context.Context, id uuid.UUID) *MessageOutbox {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *MessageOutboxClient) Hooks() []Hook {
+	return c.hooks.MessageOutbox
+}
+
+// Interceptors returns the client interceptors.
+func (c *MessageOutboxClient) Interceptors() []Interceptor {
+	return c.inters.MessageOutbox
+}
+
+func (c *MessageOutboxClient) mutate(ctx context.Context, m *MessageOutboxMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&MessageOutboxCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&MessageOutboxUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&MessageOutboxUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&MessageOutboxDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown MessageOutbox mutation op: %q", m.Op())
 	}
 }
 
@@ -2351,11 +2492,11 @@ func (c *UserIdentityClient) mutate(ctx context.Context, m *UserIdentityMutation
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Chat, GroupChat, GroupMember, Media, Message, PrivateChat, Report, User,
-		UserBlock, UserIdentity []ent.Hook
+		Chat, GroupChat, GroupMember, Media, Message, MessageOutbox, PrivateChat,
+		Report, User, UserBlock, UserIdentity []ent.Hook
 	}
 	inters struct {
-		Chat, GroupChat, GroupMember, Media, Message, PrivateChat, Report, User,
-		UserBlock, UserIdentity []ent.Interceptor
+		Chat, GroupChat, GroupMember, Media, Message, MessageOutbox, PrivateChat,
+		Report, User, UserBlock, UserIdentity []ent.Interceptor
 	}
 )

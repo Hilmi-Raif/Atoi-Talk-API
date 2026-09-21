@@ -7,15 +7,15 @@ import (
 	"AtoiTalkAPI/ent/groupchat"
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/message"
-	"AtoiTalkAPI/internal/helper"
-	"AtoiTalkAPI/internal/model"
-	"AtoiTalkAPI/internal/websocket"
+	apiresponse "AtoiTalkAPI/internal/api/http/response"
+	"AtoiTalkAPI/internal/domain/helper"
+	"AtoiTalkAPI/internal/domain/model"
+	websocket "AtoiTalkAPI/internal/messaging/events"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -433,7 +433,7 @@ func TestSearchGroupMembers(t *testing.T) {
 		rr := makeRequest("GET", fmt.Sprintf("/api/chats/group/%s/members", chatEntity.ID), nil, token1)
 		assert.Equal(t, http.StatusOK, rr.Code)
 
-		var resp helper.ResponseWithPagination
+		var resp apiresponse.ResponseWithPagination
 		json.Unmarshal(rr.Body.Bytes(), &resp)
 		dataList := parseResponse[[]model.GroupMemberDTO](t, rr)
 		assert.Len(t, dataList, 3)
@@ -462,7 +462,7 @@ func TestSearchGroupMembers(t *testing.T) {
 		rr1 := makeRequest("GET", fmt.Sprintf("/api/chats/group/%s/members?limit=2", chatEntity.ID), nil, token1)
 		assert.Equal(t, http.StatusOK, rr1.Code)
 
-		var resp1 helper.ResponseWithPagination
+		var resp1 apiresponse.ResponseWithPagination
 		json.Unmarshal(rr1.Body.Bytes(), &resp1)
 		dataList1 := parseResponse[[]model.GroupMemberDTO](t, rr1)
 		assert.Len(t, dataList1, 2)
@@ -472,7 +472,7 @@ func TestSearchGroupMembers(t *testing.T) {
 		rr2 := makeRequest("GET", fmt.Sprintf("/api/chats/group/%s/members?limit=2&cursor=%s", chatEntity.ID, resp1.Meta.NextCursor), nil, token1)
 		assert.Equal(t, http.StatusOK, rr2.Code)
 
-		var resp2 helper.ResponseWithPagination
+		var resp2 apiresponse.ResponseWithPagination
 		json.Unmarshal(rr2.Body.Bytes(), &resp2)
 		dataList2 := parseResponse[[]model.GroupMemberDTO](t, rr2)
 		assert.Len(t, dataList2, 1)
@@ -824,7 +824,7 @@ func TestDeleteGroup(t *testing.T) {
 	testClient.GroupMember.Create().SetGroupChat(gc).SetUser(u2).SetRole(groupmember.RoleMember).SaveX(context.Background())
 
 	t.Run("Success - Owner Deletes Group", func(t *testing.T) {
-		server := httptest.NewServer(testRouter)
+		server := newWebSocketTestServer()
 		defer server.Close()
 		wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?token=" + token2
 		conn, _, _ := ws.DefaultDialer.Dial(wsURL, nil)
@@ -957,7 +957,7 @@ func TestSearchPublicGroups(t *testing.T) {
 		rr := makeRequest("GET", "/api/chats/group/public?sort_by=member_count&limit=2", nil, token1)
 		assert.Equal(t, http.StatusOK, rr.Code)
 
-		var resp helper.ResponseWithPagination
+		var resp apiresponse.ResponseWithPagination
 		json.Unmarshal(rr.Body.Bytes(), &resp)
 		dataList := parseResponse[[]model.PublicGroupDTO](t, rr)
 		assert.Len(t, dataList, 2)
@@ -970,7 +970,7 @@ func TestSearchPublicGroups(t *testing.T) {
 		rr2 := makeRequest("GET", fmt.Sprintf("/api/chats/group/public?sort_by=member_count&limit=2&cursor=%s", resp.Meta.NextCursor), nil, token1)
 		assert.Equal(t, http.StatusOK, rr2.Code)
 
-		var resp2 helper.ResponseWithPagination
+		var resp2 apiresponse.ResponseWithPagination
 		json.Unmarshal(rr2.Body.Bytes(), &resp2)
 		dataList2 := parseResponse[[]model.PublicGroupDTO](t, rr2)
 		assert.Len(t, dataList2, 1)

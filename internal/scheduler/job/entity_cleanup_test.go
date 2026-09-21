@@ -4,7 +4,7 @@ import (
 	"AtoiTalkAPI/ent"
 	"AtoiTalkAPI/ent/chat"
 	"AtoiTalkAPI/ent/enttest"
-	"AtoiTalkAPI/internal/config"
+	"AtoiTalkAPI/internal/infrastructure/config"
 	"context"
 	"errors"
 	"testing"

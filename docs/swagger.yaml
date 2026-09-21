@@ -3565,22 +3565,4 @@ paths:
       summary: Get Blocked Users
       tags:
       - user
-  /ws:
-    get:
-      description: Upgrade HTTP connection to WebSocket. Requires Bearer token in
-        Authorization header or 'token' query param.
-      responses:
-        "101":
-          description: Switching Protocols
-          schema:
-            type: string
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/helper.ResponseError'
-      security:
-      - BearerAuth: []
-      summary: WebSocket Connection
-      tags:
-      - websocket
 swagger: "2.0"

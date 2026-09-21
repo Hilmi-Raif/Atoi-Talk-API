@@ -8,8 +8,9 @@ import (
 	"AtoiTalkAPI/ent/message"
 	"AtoiTalkAPI/ent/privatechat"
 	"AtoiTalkAPI/ent/userblock"
-	"AtoiTalkAPI/internal/helper"
-	"AtoiTalkAPI/internal/model"
+	apiresponse "AtoiTalkAPI/internal/api/http/response"
+	"AtoiTalkAPI/internal/domain/helper"
+	"AtoiTalkAPI/internal/domain/model"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -81,7 +82,7 @@ func TestGetChats(t *testing.T) {
 		rr := makeRequest("GET", "/api/chats?limit=2", nil, token1)
 		assert.Equal(t, http.StatusOK, rr.Code)
 
-		var resp helper.ResponseWithPagination
+		var resp apiresponse.ResponseWithPagination
 		json.Unmarshal(rr.Body.Bytes(), &resp)
 		dataList := parseResponse[[]model.ChatListResponse](t, rr)
 		assert.Len(t, dataList, 2)
@@ -505,13 +506,9 @@ func TestGroupUnreadConsistency(t *testing.T) {
 	rr := makeRequest("POST", "/api/messages", reqBody, token1)
 	assert.Equal(t, http.StatusOK, rr.Code)
 
-	gm1, _ := testClient.GroupMember.Query().Where(groupmember.GroupChatID(gc.ID), groupmember.UserID(u1.ID)).Only(context.Background())
-	gm2, _ := testClient.GroupMember.Query().Where(groupmember.GroupChatID(gc.ID), groupmember.UserID(u2.ID)).Only(context.Background())
-	gm3, _ := testClient.GroupMember.Query().Where(groupmember.GroupChatID(gc.ID), groupmember.UserID(u3.ID)).Only(context.Background())
-
-	assert.Equal(t, 0, gm1.UnreadCount)
-	assert.Equal(t, 1, gm2.UnreadCount)
-	assert.Equal(t, 1, gm3.UnreadCount)
+	waitForGroupUnreadCount(t, gc.ID, u1.ID, 0)
+	waitForGroupUnreadCount(t, gc.ID, u2.ID, 1)
+	waitForGroupUnreadCount(t, gc.ID, u3.ID, 1)
 
 	rrRead := makeRequest("POST", fmt.Sprintf("/api/chats/%s/read", chatGroup.ID), nil, token2)
 	assert.Equal(t, http.StatusOK, rrRead.Code)

@@ -2,7 +2,8 @@ package main
 
 import (
 	"AtoiTalkAPI/internal/bootstrap"
-	"AtoiTalkAPI/internal/config"
+	"AtoiTalkAPI/internal/infrastructure/config"
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -15,6 +16,9 @@ func main() {
 	slog.SetDefault(logger)
 
 	cfg := config.LoadAppConfig()
+
+	shutdownTelemetry := bootstrap.InitTelemetry(context.Background(), cfg, cfg.OTelServiceName)
+	defer shutdownTelemetry()
 
 	client := config.InitEnt(cfg)
 	defer func() {

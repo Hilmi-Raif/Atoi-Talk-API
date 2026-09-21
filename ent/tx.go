@@ -22,6 +22,8 @@ type Tx struct {
 	Media *MediaClient
 	// Message is the client for interacting with the Message builders.
 	Message *MessageClient
+	// MessageOutbox is the client for interacting with the MessageOutbox builders.
+	MessageOutbox *MessageOutboxClient
 	// PrivateChat is the client for interacting with the PrivateChat builders.
 	PrivateChat *PrivateChatClient
 	// Report is the client for interacting with the Report builders.
@@ -168,6 +170,7 @@ func (tx *Tx) init() {
 	tx.GroupMember = NewGroupMemberClient(tx.config)
 	tx.Media = NewMediaClient(tx.config)
 	tx.Message = NewMessageClient(tx.config)
+	tx.MessageOutbox = NewMessageOutboxClient(tx.config)
 	tx.PrivateChat = NewPrivateChatClient(tx.config)
 	tx.Report = NewReportClient(tx.config)
 	tx.User = NewUserClient(tx.config)

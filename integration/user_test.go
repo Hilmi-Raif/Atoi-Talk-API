@@ -9,8 +9,9 @@ import (
 	"AtoiTalkAPI/ent/message"
 	"AtoiTalkAPI/ent/user"
 	"AtoiTalkAPI/ent/userblock"
-	"AtoiTalkAPI/internal/helper"
-	"AtoiTalkAPI/internal/model"
+	apiresponse "AtoiTalkAPI/internal/api/http/response"
+	"AtoiTalkAPI/internal/domain/helper"
+	"AtoiTalkAPI/internal/domain/model"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -555,7 +556,7 @@ func TestSearchUsers(t *testing.T) {
 		rr := makeRequest("GET", "/api/users?query=User&limit=2", nil, token)
 		assert.Equal(t, http.StatusOK, rr.Code)
 
-		var resp helper.ResponseWithPagination
+		var resp apiresponse.ResponseWithPagination
 		json.Unmarshal(rr.Body.Bytes(), &resp)
 		dataList := parseResponse[[]model.UserDTO](t, rr)
 		assert.Len(t, dataList, 2)
@@ -701,7 +702,7 @@ func TestSearchUsers(t *testing.T) {
 		rr := makeRequest("GET", "/api/users?query=zoro", nil, token)
 		assert.Equal(t, http.StatusOK, rr.Code)
 
-		var resp helper.ResponseWithPagination
+		var resp apiresponse.ResponseWithPagination
 		json.Unmarshal(rr.Body.Bytes(), &resp)
 		dataList := parseResponse[[]model.UserDTO](t, rr)
 		assert.Len(t, dataList, 0)

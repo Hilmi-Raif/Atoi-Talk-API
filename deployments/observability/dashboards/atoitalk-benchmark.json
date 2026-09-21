@@ -1,0 +1,1325 @@
+{
+  "id": "atoitalk-benchmark",
+  "uuid": "7a2dbb1c-7e0a-4fc6-b7a9-2d4b9c8e6f10",
+  "title": "AtoiTalk Runtime Benchmark",
+  "description": "Live runtime dashboard for HTTP, PostgreSQL pool pressure, message worker backlog, scheduler activity, and service telemetry. Redis Stream pending and lag are validated with XINFO GROUPS because the current application does not export them as OTel metrics.",
+  "tags": [
+    "atoitalk",
+    "benchmark",
+    "runtime"
+  ],
+  "variables": {},
+  "layout": [
+    {
+      "h": 4,
+      "i": "http-rate",
+      "moved": false,
+      "static": false,
+      "w": 12,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "h": 4,
+      "i": "http-latency-p95",
+      "moved": false,
+      "static": false,
+      "w": 12,
+      "x": 12,
+      "y": 0
+    },
+    {
+      "h": 4,
+      "i": "http-latency-p99",
+      "moved": false,
+      "static": false,
+      "w": 12,
+      "x": 0,
+      "y": 4
+    },
+    {
+      "h": 4,
+      "i": "http-active",
+      "moved": false,
+      "static": false,
+      "w": 12,
+      "x": 12,
+      "y": 4
+    },
+    {
+      "h": 4,
+      "i": "http-status",
+      "moved": false,
+      "static": false,
+      "w": 12,
+      "x": 0,
+      "y": 8
+    },
+    {
+      "h": 4,
+      "i": "db-pool",
+      "moved": false,
+      "static": false,
+      "w": 12,
+      "x": 12,
+      "y": 8
+    },
+    {
+      "h": 4,
+      "i": "db-wait",
+      "moved": false,
+      "static": false,
+      "w": 12,
+      "x": 0,
+      "y": 12
+    },
+    {
+      "h": 4,
+      "i": "worker-backlog",
+      "moved": false,
+      "static": false,
+      "w": 12,
+      "x": 12,
+      "y": 12
+    },
+    {
+      "h": 4,
+      "i": "worker-throughput",
+      "moved": false,
+      "static": false,
+      "w": 12,
+      "x": 0,
+      "y": 16
+    },
+    {
+      "h": 4,
+      "i": "worker-failures",
+      "moved": false,
+      "static": false,
+      "w": 12,
+      "x": 12,
+      "y": 16
+    },
+    {
+      "h": 4,
+      "i": "worker-batch-latency",
+      "moved": false,
+      "static": false,
+      "w": 12,
+      "x": 0,
+      "y": 20
+    },
+    {
+      "h": 4,
+      "i": "scheduler-activity",
+      "moved": false,
+      "static": false,
+      "w": 12,
+      "x": 12,
+      "y": 20
+    },
+    {
+      "h": 4,
+      "i": "container-cpu-utilization",
+      "moved": false,
+      "static": false,
+      "w": 12,
+      "x": 0,
+      "y": 24
+    },
+    {
+      "h": 4,
+      "i": "container-memory-usage",
+      "moved": false,
+      "static": false,
+      "w": 12,
+      "x": 12,
+      "y": 24
+    }
+  ],
+  "widgets": [
+    {
+      "id": "http-rate",
+      "title": "Observed HTTP request rate",
+      "description": "Observed requests per second grouped by service",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "cps",
+      "query": {
+        "id": "query-http-rate",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "queryName": "A",
+              "expression": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "sum_rate",
+              "aggregateAttribute": {
+                "dataType": "float64",
+                "id": "http_server_request_duration_count--float64--Sum--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "http_server_request_duration_count",
+                "type": ""
+              },
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "service_name--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "service_name",
+                  "type": "tag"
+                }
+              ],
+              "filters": {
+                "items": [
+                  {
+                    "id": "http-rate-service",
+                    "key": {
+                      "dataType": "string",
+                      "id": "service_name--string--tag--false",
+                      "isColumn": false,
+                      "isJSON": false,
+                      "key": "service_name",
+                      "type": "tag"
+                    },
+                    "op": "=",
+                    "value": "atoitalk-api"
+                  }
+                ],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "{{service_name}}",
+              "reduceTo": "avg",
+              "stepInterval": 10,
+              "disabled": false
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [],
+        "promql": []
+      }
+    },
+    {
+      "id": "http-latency-p95",
+      "title": "HTTP latency P95",
+      "description": "95th percentile request duration in seconds grouped by normalized route",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "s",
+      "query": {
+        "id": "query-http-latency-p95",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "queryName": "A",
+              "expression": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "hist_quantile_95",
+              "aggregateAttribute": {
+                "dataType": "float64",
+                "id": "http_server_request_duration_bucket--float64--histogram--false",
+                "isColumn": false,
+                "isJSON": false,
+                "key": "http_server_request_duration_bucket",
+                "type": ""
+              },
+              "timeAggregation": "rate",
+              "spaceAggregation": "p95",
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "http_route--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "http_route",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "le--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "le",
+                  "type": "tag"
+                }
+              ],
+              "filters": {
+                "items": [
+                  {
+                    "id": "http-p95-service",
+                    "key": {
+                      "dataType": "string",
+                      "id": "service_name--string--tag--false",
+                      "isColumn": false,
+                      "isJSON": false,
+                      "key": "service_name",
+                      "type": "tag"
+                    },
+                    "op": "=",
+                    "value": "atoitalk-api"
+                  }
+                ],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "{{http_route}}",
+              "reduceTo": "avg",
+              "stepInterval": 10,
+              "disabled": false
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [],
+        "promql": []
+      }
+    },
+    {
+      "id": "http-latency-p99",
+      "title": "HTTP latency P99",
+      "description": "99th percentile request duration in seconds grouped by normalized route",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "s",
+      "query": {
+        "id": "query-http-latency-p99",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "queryName": "A",
+              "expression": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "hist_quantile_99",
+              "aggregateAttribute": {
+                "dataType": "float64",
+                "id": "http_server_request_duration_bucket--float64--histogram--false",
+                "isColumn": false,
+                "isJSON": false,
+                "key": "http_server_request_duration_bucket",
+                "type": ""
+              },
+              "timeAggregation": "rate",
+              "spaceAggregation": "p99",
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "http_route--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "http_route",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "le--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "le",
+                  "type": "tag"
+                }
+              ],
+              "filters": {
+                "items": [
+                  {
+                    "id": "http-p99-service",
+                    "key": {
+                      "dataType": "string",
+                      "id": "service_name--string--tag--false",
+                      "isColumn": false,
+                      "isJSON": false,
+                      "key": "service_name",
+                      "type": "tag"
+                    },
+                    "op": "=",
+                    "value": "atoitalk-api"
+                  }
+                ],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "{{http_route}}",
+              "reduceTo": "avg",
+              "stepInterval": 10,
+              "disabled": false
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [],
+        "promql": []
+      }
+    },
+    {
+      "id": "http-active",
+      "title": "Active HTTP requests",
+      "description": "Maximum active requests grouped by service",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "requests",
+      "query": {
+        "id": "query-http-active",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "queryName": "A",
+              "expression": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "max",
+              "aggregateAttribute": {
+                "dataType": "int64",
+                "id": "http_server_active_requests--int64--Sum--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "http_server_active_requests",
+                "type": "Sum"
+              },
+              "timeAggregation": "latest",
+              "spaceAggregation": "sum",
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "service_name--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "service_name",
+                  "type": "tag"
+                }
+              ],
+              "filters": {
+                "items": [
+                  {
+                    "id": "http-active-service",
+                    "key": {
+                      "dataType": "string",
+                      "id": "service_name--string--tag--false",
+                      "isColumn": false,
+                      "isJSON": false,
+                      "key": "service_name",
+                      "type": "tag"
+                    },
+                    "op": "=",
+                    "value": "atoitalk-api"
+                  }
+                ],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "{{service_name}}",
+              "reduceTo": "max",
+              "stepInterval": 10,
+              "disabled": false
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [],
+        "promql": []
+      }
+    },
+    {
+      "id": "http-status",
+      "title": "HTTP requests by status",
+      "description": "Request rate grouped by HTTP status code",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": true,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "cps",
+      "query": {
+        "id": "query-http-status",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "queryName": "A",
+              "expression": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "sum_rate",
+              "aggregateAttribute": {
+                "dataType": "float64",
+                "id": "http_server_request_duration_count--float64--Sum--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "http_server_request_duration_count",
+                "type": ""
+              },
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "http_status_code--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "http_status_code",
+                  "type": "tag"
+                }
+              ],
+              "filters": {
+                "items": [
+                  {
+                    "id": "http-status-service",
+                    "key": {
+                      "dataType": "string",
+                      "id": "service_name--string--tag--false",
+                      "isColumn": false,
+                      "isJSON": false,
+                      "key": "service_name",
+                      "type": "tag"
+                    },
+                    "op": "=",
+                    "value": "atoitalk-api"
+                  }
+                ],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "{{http_status_code}}",
+              "reduceTo": "avg",
+              "stepInterval": 10,
+              "disabled": false
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [],
+        "promql": []
+      }
+    },
+    {
+      "id": "db-pool",
+      "title": "PostgreSQL pool connections",
+      "description": "Open and configured maximum database connections grouped by service",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "connections",
+      "query": {
+        "id": "query-db-pool",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "queryName": "A",
+              "expression": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "max",
+              "aggregateAttribute": {
+                "dataType": "int64",
+                "id": "db_sql_connection_open--int64--Sum--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "db_sql_connection_open",
+                "type": "Sum"
+              },
+              "timeAggregation": "latest",
+              "spaceAggregation": "sum",
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "service_name--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "service_name",
+                  "type": "tag"
+                }
+              ],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "open {{service_name}}",
+              "reduceTo": "max",
+              "stepInterval": 10,
+              "disabled": false
+            },
+            {
+              "queryName": "B",
+              "expression": "B",
+              "dataSource": "metrics",
+              "aggregateOperator": "max",
+              "aggregateAttribute": {
+                "dataType": "int64",
+                "id": "db_sql_connection_max_open--int64--Sum--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "db_sql_connection_max_open",
+                "type": "Sum"
+              },
+              "timeAggregation": "latest",
+              "spaceAggregation": "max",
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "service_name--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "service_name",
+                  "type": "tag"
+                }
+              ],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "max {{service_name}}",
+              "reduceTo": "max",
+              "stepInterval": 10,
+              "disabled": false
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [],
+        "promql": []
+      }
+    },
+    {
+      "id": "db-wait",
+      "title": "PostgreSQL pool wait",
+      "description": "Connection wait rate and accumulated wait duration grouped by service",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "cps",
+      "query": {
+        "id": "query-db-wait",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "queryName": "A",
+              "expression": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "rate",
+              "aggregateAttribute": {
+                "dataType": "int64",
+                "id": "db_sql_connection_wait--int64--Sum--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "db_sql_connection_wait",
+                "type": "Sum"
+              },
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "service_name--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "service_name",
+                  "type": "tag"
+                }
+              ],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "waits {{service_name}}",
+              "reduceTo": "avg",
+              "stepInterval": 10,
+              "disabled": false
+            },
+            {
+              "queryName": "B",
+              "expression": "B",
+              "dataSource": "metrics",
+              "aggregateOperator": "rate",
+              "aggregateAttribute": {
+                "dataType": "float64",
+                "id": "db_sql_connection_wait_duration--float64--Sum--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "db_sql_connection_wait_duration",
+                "type": "Sum"
+              },
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "service_name--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "service_name",
+                  "type": "tag"
+                }
+              ],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "wait duration {{service_name}}",
+              "reduceTo": "avg",
+              "stepInterval": 10,
+              "disabled": false
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [],
+        "promql": []
+      }
+    },
+    {
+      "id": "worker-backlog",
+      "title": "Message worker outbox backlog",
+      "description": "Current pending, locked, unprojected, and unpublished outbox records",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "records",
+      "query": {
+        "id": "query-worker-backlog",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "queryName": "A",
+              "expression": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "max",
+              "aggregateAttribute": {
+                "dataType": "int64",
+                "id": "message_worker_outbox_pending--int64--Gauge--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "message_worker_outbox_pending",
+                "type": "Gauge"
+              },
+              "timeAggregation": "latest",
+              "spaceAggregation": "max",
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "service_name--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "service_name",
+                  "type": "tag"
+                }
+              ],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "pending",
+              "reduceTo": "max",
+              "stepInterval": 10,
+              "disabled": false
+            },
+            {
+              "queryName": "B",
+              "expression": "B",
+              "dataSource": "metrics",
+              "aggregateOperator": "max",
+              "aggregateAttribute": {
+                "dataType": "int64",
+                "id": "message_worker_outbox_locked--int64--Gauge--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "message_worker_outbox_locked",
+                "type": "Gauge"
+              },
+              "timeAggregation": "latest",
+              "spaceAggregation": "max",
+              "groupBy": [],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "locked",
+              "reduceTo": "max",
+              "stepInterval": 10,
+              "disabled": false
+            },
+            {
+              "queryName": "C",
+              "expression": "C",
+              "dataSource": "metrics",
+              "aggregateOperator": "max",
+              "aggregateAttribute": {
+                "dataType": "int64",
+                "id": "message_worker_outbox_unprojected--int64--Gauge--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "message_worker_outbox_unprojected",
+                "type": "Gauge"
+              },
+              "timeAggregation": "latest",
+              "spaceAggregation": "max",
+              "groupBy": [],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "unprojected",
+              "reduceTo": "max",
+              "stepInterval": 10,
+              "disabled": false
+            },
+            {
+              "queryName": "D",
+              "expression": "D",
+              "dataSource": "metrics",
+              "aggregateOperator": "max",
+              "aggregateAttribute": {
+                "dataType": "int64",
+                "id": "message_worker_outbox_unpublished--int64--Gauge--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "message_worker_outbox_unpublished",
+                "type": "Gauge"
+              },
+              "timeAggregation": "latest",
+              "spaceAggregation": "max",
+              "groupBy": [],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "unpublished",
+              "reduceTo": "max",
+              "stepInterval": 10,
+              "disabled": false
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [],
+        "promql": []
+      }
+    },
+    {
+      "id": "worker-throughput",
+      "title": "Message worker throughput",
+      "description": "Claimed and processed outbox records per second",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "records/s",
+      "query": {
+        "id": "query-worker-throughput",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "queryName": "A",
+              "expression": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "rate",
+              "aggregateAttribute": {
+                "dataType": "int64",
+                "id": "message_worker_records_claimed--int64--Sum--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "message_worker_records_claimed",
+                "type": "Sum"
+              },
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "groupBy": [],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "claimed",
+              "reduceTo": "avg",
+              "stepInterval": 10,
+              "disabled": false
+            },
+            {
+              "queryName": "B",
+              "expression": "B",
+              "dataSource": "metrics",
+              "aggregateOperator": "rate",
+              "aggregateAttribute": {
+                "dataType": "int64",
+                "id": "message_worker_records_processed--int64--Sum--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "message_worker_records_processed",
+                "type": "Sum"
+              },
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "groupBy": [],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "processed",
+              "reduceTo": "avg",
+              "stepInterval": 10,
+              "disabled": false
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [],
+        "promql": []
+      }
+    },
+    {
+      "id": "worker-failures",
+      "title": "Message worker failures",
+      "description": "Failed records and worker failures per second",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "cps",
+      "query": {
+        "id": "query-worker-failures",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "queryName": "A",
+              "expression": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "rate",
+              "aggregateAttribute": {
+                "dataType": "int64",
+                "id": "message_worker_records_failed--int64--Sum--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "message_worker_records_failed",
+                "type": "Sum"
+              },
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "groupBy": [],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "failed records",
+              "reduceTo": "avg",
+              "stepInterval": 10,
+              "disabled": false
+            },
+            {
+              "queryName": "B",
+              "expression": "B",
+              "dataSource": "metrics",
+              "aggregateOperator": "rate",
+              "aggregateAttribute": {
+                "dataType": "int64",
+                "id": "message_worker_failures--int64--Sum--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "message_worker_failures",
+                "type": "Sum"
+              },
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "groupBy": [],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "worker failures",
+              "reduceTo": "avg",
+              "stepInterval": 10,
+              "disabled": false
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [],
+        "promql": []
+      }
+    },
+    {
+      "id": "worker-batch-latency",
+      "title": "Message worker batch latency P95",
+      "description": "95th percentile worker batch duration",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "s",
+      "query": {
+        "id": "query-worker-batch-latency",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "queryName": "A",
+              "expression": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "hist_quantile_95",
+              "aggregateAttribute": {
+                "dataType": "float64",
+                "id": "message_worker_batch_duration_bucket--float64--histogram--false",
+                "isColumn": false,
+                "isJSON": false,
+                "key": "message_worker_batch_duration_bucket",
+                "type": ""
+              },
+              "timeAggregation": "rate",
+              "spaceAggregation": "p95",
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "le--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "le",
+                  "type": "tag"
+                }
+              ],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "batch duration",
+              "reduceTo": "avg",
+              "stepInterval": 10,
+              "disabled": false
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [],
+        "promql": []
+      }
+    },
+    {
+      "id": "scheduler-activity",
+      "title": "Scheduler activity",
+      "description": "Scheduler job run and completion rates grouped by job",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "cps",
+      "query": {
+        "id": "query-scheduler-activity",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "queryName": "A",
+              "expression": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "rate",
+              "aggregateAttribute": {
+                "dataType": "int64",
+                "id": "scheduler_job_runs--int64--Sum--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "scheduler_job_runs",
+                "type": "Sum"
+              },
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "scheduler_job_name--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "scheduler_job_name",
+                  "type": "tag"
+                }
+              ],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "runs {{scheduler_job_name}}",
+              "reduceTo": "avg",
+              "stepInterval": 10,
+              "disabled": false
+            },
+            {
+              "queryName": "B",
+              "expression": "B",
+              "dataSource": "metrics",
+              "aggregateOperator": "rate",
+              "aggregateAttribute": {
+                "dataType": "int64",
+                "id": "scheduler_job_completed--int64--Sum--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "scheduler_job_completed",
+                "type": "Sum"
+              },
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "scheduler_job_name--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "scheduler_job_name",
+                  "type": "tag"
+                }
+              ],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "completed {{scheduler_job_name}}",
+              "reduceTo": "avg",
+              "stepInterval": 10,
+              "disabled": false
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [],
+        "promql": []
+      }
+    },
+    {
+      "id": "container-cpu-utilization",
+      "title": "Container CPU Utilization (%)",
+      "description": "True OS container CPU utilization percentage collected by OTel Collector docker_stats",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "%",
+      "query": {
+        "id": "query-container-cpu-utilization",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "queryName": "A",
+              "expression": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "avg",
+              "aggregateAttribute": {
+                "dataType": "float64",
+                "id": "container_cpu_utilization--float64--Gauge--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "container_cpu_utilization",
+                "type": "Gauge"
+              },
+              "timeAggregation": "latest",
+              "spaceAggregation": "avg",
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "container_name--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "container_name",
+                  "type": "tag"
+                }
+              ],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "{{container_name}}",
+              "reduceTo": "avg",
+              "stepInterval": 5,
+              "disabled": false
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [],
+        "promql": []
+      }
+    },
+    {
+      "id": "container-memory-usage",
+      "title": "Container Memory (RAM) Usage",
+      "description": "True OS container memory usage collected by OTel Collector docker_stats",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "bytes",
+      "query": {
+        "id": "query-container-memory-usage",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "queryName": "A",
+              "expression": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "avg",
+              "aggregateAttribute": {
+                "dataType": "int64",
+                "id": "container_memory_usage_total--int64--Sum--true",
+                "isColumn": true,
+                "isJSON": false,
+                "key": "container_memory_usage_total",
+                "type": "Sum"
+              },
+              "timeAggregation": "latest",
+              "spaceAggregation": "avg",
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "container_name--string--tag--false",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "container_name",
+                  "type": "tag"
+                }
+              ],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "having": [],
+              "orderBy": [],
+              "limit": null,
+              "legend": "{{container_name}}",
+              "reduceTo": "avg",
+              "stepInterval": 5,
+              "disabled": false
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [],
+        "promql": []
+      }
+    }
+  ],
+  "version": "v4",
+  "uploadedGrafana": false
+}

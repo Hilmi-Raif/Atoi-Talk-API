@@ -1,0 +1,53 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+  docker_stats:
+    endpoint: unix:///var/run/docker.sock
+    collection_interval: 5s
+    timeout: 5s
+    excluded_images:
+      - signoz/*
+      - atoitalk/clickhouse:*
+      - bitnamilegacy/zookeeper:*
+      - grafana/k6:*
+    metrics:
+      container.cpu.utilization:
+        enabled: true
+      container.memory.usage.total:
+        enabled: true
+
+processors:
+  batch:
+    timeout: 10s
+
+exporters:
+  clickhousetraces:
+    datasource: tcp://clickhouse:9000/signoz_traces
+    docker_multi_node_cluster: ${DOCKER_MULTI_NODE_CLUSTER}
+    low_cardinal_exception_grouping: ${LOW_CARDINAL_EXCEPTION_GROUPING}
+  clickhousemetricswrite:
+    endpoint: tcp://clickhouse:9000/signoz_metrics
+    resource_to_telemetry_conversion:
+      enabled: true
+  clickhouselogsexporter:
+    dsn: tcp://clickhouse:9000/signoz_logs
+    timeout: 10s
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [clickhousetraces]
+    metrics:
+      receivers: [otlp, docker_stats]
+      processors: [batch]
+      exporters: [clickhousemetricswrite]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [clickhouselogsexporter]
