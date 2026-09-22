@@ -166,10 +166,47 @@ func TestLoadAppConfigReadsMessageWorkerConfiguration(t *testing.T) {
 	t.Setenv("MESSAGE_WORKER_BACKLOG_INTERVAL", "5s")
 	t.Setenv("MESSAGE_EVENT_STREAM", "events:test")
 	t.Setenv("MESSAGE_EVENT_STREAM_MAX_LEN", "5000")
+	t.Setenv("MESSAGE_WORKER_MAX_ATTEMPTS", "7")
+	t.Setenv("MESSAGE_WORKER_RETRY_BASE_DELAY", "2s")
+	t.Setenv("MESSAGE_WORKER_RETRY_MAX_DELAY", "2m")
 
 	cfg := LoadAppConfig()
-	if cfg.MessageWorkerBatchSize != 25 || cfg.MessageWorkerConcurrency != 8 || cfg.MessageWorkerLeaseDuration != 2*time.Minute || cfg.MessageWorkerPollInterval != 750*time.Millisecond || cfg.MessageWorkerBacklogInterval != 5*time.Second || cfg.MessageEventStream != "events:test" || cfg.MessageEventStreamMaxLen != 5000 {
+	if cfg.MessageWorkerBatchSize != 25 || cfg.MessageWorkerConcurrency != 8 || cfg.MessageWorkerLeaseDuration != 2*time.Minute || cfg.MessageWorkerPollInterval != 750*time.Millisecond || cfg.MessageWorkerBacklogInterval != 5*time.Second || cfg.MessageEventStream != "events:test" || cfg.MessageEventStreamMaxLen != 5000 || cfg.MessageWorkerMaxAttempts != 7 || cfg.MessageWorkerRetryBaseDelay != 2*time.Second || cfg.MessageWorkerRetryMaxDelay != 2*time.Minute {
 		t.Fatalf("unexpected message worker configuration: %+v", cfg)
+	}
+}
+
+func TestLoadAppConfigReadsRetryAndSchedulerConfiguration(t *testing.T) {
+	setCompleteAppConfigEnvironment(t)
+	t.Setenv("CAPTCHA_MAX_RETRIES", "2")
+	t.Setenv("CAPTCHA_RETRY_DELAY", "250ms")
+	t.Setenv("STORAGE_DOWNLOAD_MAX_RETRIES", "2")
+	t.Setenv("STORAGE_DOWNLOAD_RETRY_DELAY", "300ms")
+	t.Setenv("SMTP_MAX_RETRIES", "1")
+	t.Setenv("SMTP_RETRY_DELAY", "500ms")
+	t.Setenv("SCHEDULER_TIMEZONE", "Asia/Jakarta")
+
+	cfg := LoadAppConfig()
+	if cfg.CaptchaMaxRetries != 2 || cfg.CaptchaRetryDelay != 250*time.Millisecond || cfg.StorageDownloadMaxRetries != 2 || cfg.StorageDownloadRetryDelay != 300*time.Millisecond || cfg.SMTPMaxRetries != 1 || cfg.SMTPRetryDelay != 500*time.Millisecond || cfg.SchedulerTimezone != "Asia/Jakarta" {
+		t.Fatalf("unexpected retry or scheduler configuration: %+v", cfg)
+	}
+}
+
+func TestLoadAppConfigNormalizesInvalidRetryConfiguration(t *testing.T) {
+	setCompleteAppConfigEnvironment(t)
+	t.Setenv("CAPTCHA_MAX_RETRIES", "-1")
+	t.Setenv("CAPTCHA_RETRY_DELAY", "0s")
+	t.Setenv("STORAGE_DOWNLOAD_MAX_RETRIES", "-1")
+	t.Setenv("STORAGE_DOWNLOAD_RETRY_DELAY", "-1s")
+	t.Setenv("SMTP_MAX_RETRIES", "-1")
+	t.Setenv("SMTP_RETRY_DELAY", "0s")
+	t.Setenv("MESSAGE_WORKER_MAX_ATTEMPTS", "0")
+	t.Setenv("MESSAGE_WORKER_RETRY_BASE_DELAY", "0s")
+	t.Setenv("MESSAGE_WORKER_RETRY_MAX_DELAY", "1s")
+
+	cfg := LoadAppConfig()
+	if cfg.CaptchaMaxRetries != 0 || cfg.CaptchaRetryDelay != 250*time.Millisecond || cfg.StorageDownloadMaxRetries != 0 || cfg.StorageDownloadRetryDelay != 250*time.Millisecond || cfg.SMTPMaxRetries != 0 || cfg.SMTPRetryDelay != 500*time.Millisecond || cfg.MessageWorkerMaxAttempts != 10 || cfg.MessageWorkerRetryBaseDelay != time.Second || cfg.MessageWorkerRetryMaxDelay != time.Second {
+		t.Fatalf("unexpected normalized retry configuration: %+v", cfg)
 	}
 }
 

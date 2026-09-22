@@ -162,6 +162,28 @@ func TestEntOutboxStoreRejectsStaleOwnerAndTruncatesRetryError(t *testing.T) {
 	require.Nil(t, stored.LockedAt)
 }
 
+func TestEntOutboxStoreDeadLettersRecordAndExcludesItFromClaims(t *testing.T) {
+	client := newMessageWorkerEntClient(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	now := time.Date(2026, time.January, 1, 12, 0, 0, 0, time.UTC)
+	record := createOutboxRecord(t, client, now)
+	store := NewEntOutboxStoreWithDialect(client, dialect.SQLite)
+	store.now = func() time.Time { return now }
+
+	claimed, err := store.Claim(ctx, 1, time.Minute)
+	require.NoError(t, err)
+	require.Len(t, claimed, 1)
+
+	err = store.MarkDeadLetter(ctx, record.ID, claimed[0].LockToken, errors.New("permanent failure"), now)
+	require.NoError(t, err)
+
+	claimed, err = store.Claim(ctx, 1, time.Minute)
+	require.NoError(t, err)
+	require.Empty(t, claimed)
+}
+
 func TestEntOutboxStoreProjectsPrivateMessageExactlyOnce(t *testing.T) {
 	client := newMessageWorkerEntClient(t)
 	defer client.Close()

@@ -174,6 +174,20 @@ func (_c *MessageOutboxCreate) SetNillablePublishedAt(v *time.Time) *MessageOutb
 	return _c
 }
 
+// SetDeadLetteredAt sets the "dead_lettered_at" field.
+func (_c *MessageOutboxCreate) SetDeadLetteredAt(v time.Time) *MessageOutboxCreate {
+	_c.mutation.SetDeadLetteredAt(v)
+	return _c
+}
+
+// SetNillableDeadLetteredAt sets the "dead_lettered_at" field if the given value is not nil.
+func (_c *MessageOutboxCreate) SetNillableDeadLetteredAt(v *time.Time) *MessageOutboxCreate {
+	if v != nil {
+		_c.SetDeadLetteredAt(*v)
+	}
+	return _c
+}
+
 // SetLastError sets the "last_error" field.
 func (_c *MessageOutboxCreate) SetLastError(v string) *MessageOutboxCreate {
 	_c.mutation.SetLastError(v)
@@ -369,6 +383,10 @@ func (_c *MessageOutboxCreate) createSpec() (*MessageOutbox, *sqlgraph.CreateSpe
 	if value, ok := _c.mutation.PublishedAt(); ok {
 		_spec.SetField(messageoutbox.FieldPublishedAt, field.TypeTime, value)
 		_node.PublishedAt = &value
+	}
+	if value, ok := _c.mutation.DeadLetteredAt(); ok {
+		_spec.SetField(messageoutbox.FieldDeadLetteredAt, field.TypeTime, value)
+		_node.DeadLetteredAt = &value
 	}
 	if value, ok := _c.mutation.LastError(); ok {
 		_spec.SetField(messageoutbox.FieldLastError, field.TypeString, value)
@@ -609,6 +627,24 @@ func (u *MessageOutboxUpsert) UpdatePublishedAt() *MessageOutboxUpsert {
 // ClearPublishedAt clears the value of the "published_at" field.
 func (u *MessageOutboxUpsert) ClearPublishedAt() *MessageOutboxUpsert {
 	u.SetNull(messageoutbox.FieldPublishedAt)
+	return u
+}
+
+// SetDeadLetteredAt sets the "dead_lettered_at" field.
+func (u *MessageOutboxUpsert) SetDeadLetteredAt(v time.Time) *MessageOutboxUpsert {
+	u.Set(messageoutbox.FieldDeadLetteredAt, v)
+	return u
+}
+
+// UpdateDeadLetteredAt sets the "dead_lettered_at" field to the value that was provided on create.
+func (u *MessageOutboxUpsert) UpdateDeadLetteredAt() *MessageOutboxUpsert {
+	u.SetExcluded(messageoutbox.FieldDeadLetteredAt)
+	return u
+}
+
+// ClearDeadLetteredAt clears the value of the "dead_lettered_at" field.
+func (u *MessageOutboxUpsert) ClearDeadLetteredAt() *MessageOutboxUpsert {
+	u.SetNull(messageoutbox.FieldDeadLetteredAt)
 	return u
 }
 
@@ -895,6 +931,27 @@ func (u *MessageOutboxUpsertOne) UpdatePublishedAt() *MessageOutboxUpsertOne {
 func (u *MessageOutboxUpsertOne) ClearPublishedAt() *MessageOutboxUpsertOne {
 	return u.Update(func(s *MessageOutboxUpsert) {
 		s.ClearPublishedAt()
+	})
+}
+
+// SetDeadLetteredAt sets the "dead_lettered_at" field.
+func (u *MessageOutboxUpsertOne) SetDeadLetteredAt(v time.Time) *MessageOutboxUpsertOne {
+	return u.Update(func(s *MessageOutboxUpsert) {
+		s.SetDeadLetteredAt(v)
+	})
+}
+
+// UpdateDeadLetteredAt sets the "dead_lettered_at" field to the value that was provided on create.
+func (u *MessageOutboxUpsertOne) UpdateDeadLetteredAt() *MessageOutboxUpsertOne {
+	return u.Update(func(s *MessageOutboxUpsert) {
+		s.UpdateDeadLetteredAt()
+	})
+}
+
+// ClearDeadLetteredAt clears the value of the "dead_lettered_at" field.
+func (u *MessageOutboxUpsertOne) ClearDeadLetteredAt() *MessageOutboxUpsertOne {
+	return u.Update(func(s *MessageOutboxUpsert) {
+		s.ClearDeadLetteredAt()
 	})
 }
 
@@ -1351,6 +1408,27 @@ func (u *MessageOutboxUpsertBulk) UpdatePublishedAt() *MessageOutboxUpsertBulk {
 func (u *MessageOutboxUpsertBulk) ClearPublishedAt() *MessageOutboxUpsertBulk {
 	return u.Update(func(s *MessageOutboxUpsert) {
 		s.ClearPublishedAt()
+	})
+}
+
+// SetDeadLetteredAt sets the "dead_lettered_at" field.
+func (u *MessageOutboxUpsertBulk) SetDeadLetteredAt(v time.Time) *MessageOutboxUpsertBulk {
+	return u.Update(func(s *MessageOutboxUpsert) {
+		s.SetDeadLetteredAt(v)
+	})
+}
+
+// UpdateDeadLetteredAt sets the "dead_lettered_at" field to the value that was provided on create.
+func (u *MessageOutboxUpsertBulk) UpdateDeadLetteredAt() *MessageOutboxUpsertBulk {
+	return u.Update(func(s *MessageOutboxUpsert) {
+		s.UpdateDeadLetteredAt()
+	})
+}
+
+// ClearDeadLetteredAt clears the value of the "dead_lettered_at" field.
+func (u *MessageOutboxUpsertBulk) ClearDeadLetteredAt() *MessageOutboxUpsertBulk {
+	return u.Update(func(s *MessageOutboxUpsert) {
+		s.ClearDeadLetteredAt()
 	})
 }
 

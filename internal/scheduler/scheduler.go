@@ -29,7 +29,13 @@ func New(cfg *config.AppConfig, client *ent.Client, s3Client *s3.Client) *Schedu
 	httpClient := &http.Client{Timeout: 30 * time.Second}
 	storageAdapter := objectstorage.NewStorageAdapter(cfg, s3Client, httpClient)
 
+	location, err := time.LoadLocation(cfg.SchedulerTimezone)
+	if err != nil {
+		location = time.UTC
+	}
+
 	c := cron.New(
+		cron.WithLocation(location),
 		cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)),
 	)
 

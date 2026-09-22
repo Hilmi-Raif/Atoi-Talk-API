@@ -115,6 +115,11 @@ func PublishedAt(v time.Time) predicate.MessageOutbox {
 	return predicate.MessageOutbox(sql.FieldEQ(FieldPublishedAt, v))
 }
 
+// DeadLetteredAt applies equality check predicate on the "dead_lettered_at" field. It's identical to DeadLetteredAtEQ.
+func DeadLetteredAt(v time.Time) predicate.MessageOutbox {
+	return predicate.MessageOutbox(sql.FieldEQ(FieldDeadLetteredAt, v))
+}
+
 // LastError applies equality check predicate on the "last_error" field. It's identical to LastErrorEQ.
 func LastError(v string) predicate.MessageOutbox {
 	return predicate.MessageOutbox(sql.FieldEQ(FieldLastError, v))
@@ -683,6 +688,56 @@ func PublishedAtIsNil() predicate.MessageOutbox {
 // PublishedAtNotNil applies the NotNil predicate on the "published_at" field.
 func PublishedAtNotNil() predicate.MessageOutbox {
 	return predicate.MessageOutbox(sql.FieldNotNull(FieldPublishedAt))
+}
+
+// DeadLetteredAtEQ applies the EQ predicate on the "dead_lettered_at" field.
+func DeadLetteredAtEQ(v time.Time) predicate.MessageOutbox {
+	return predicate.MessageOutbox(sql.FieldEQ(FieldDeadLetteredAt, v))
+}
+
+// DeadLetteredAtNEQ applies the NEQ predicate on the "dead_lettered_at" field.
+func DeadLetteredAtNEQ(v time.Time) predicate.MessageOutbox {
+	return predicate.MessageOutbox(sql.FieldNEQ(FieldDeadLetteredAt, v))
+}
+
+// DeadLetteredAtIn applies the In predicate on the "dead_lettered_at" field.
+func DeadLetteredAtIn(vs ...time.Time) predicate.MessageOutbox {
+	return predicate.MessageOutbox(sql.FieldIn(FieldDeadLetteredAt, vs...))
+}
+
+// DeadLetteredAtNotIn applies the NotIn predicate on the "dead_lettered_at" field.
+func DeadLetteredAtNotIn(vs ...time.Time) predicate.MessageOutbox {
+	return predicate.MessageOutbox(sql.FieldNotIn(FieldDeadLetteredAt, vs...))
+}
+
+// DeadLetteredAtGT applies the GT predicate on the "dead_lettered_at" field.
+func DeadLetteredAtGT(v time.Time) predicate.MessageOutbox {
+	return predicate.MessageOutbox(sql.FieldGT(FieldDeadLetteredAt, v))
+}
+
+// DeadLetteredAtGTE applies the GTE predicate on the "dead_lettered_at" field.
+func DeadLetteredAtGTE(v time.Time) predicate.MessageOutbox {
+	return predicate.MessageOutbox(sql.FieldGTE(FieldDeadLetteredAt, v))
+}
+
+// DeadLetteredAtLT applies the LT predicate on the "dead_lettered_at" field.
+func DeadLetteredAtLT(v time.Time) predicate.MessageOutbox {
+	return predicate.MessageOutbox(sql.FieldLT(FieldDeadLetteredAt, v))
+}
+
+// DeadLetteredAtLTE applies the LTE predicate on the "dead_lettered_at" field.
+func DeadLetteredAtLTE(v time.Time) predicate.MessageOutbox {
+	return predicate.MessageOutbox(sql.FieldLTE(FieldDeadLetteredAt, v))
+}
+
+// DeadLetteredAtIsNil applies the IsNil predicate on the "dead_lettered_at" field.
+func DeadLetteredAtIsNil() predicate.MessageOutbox {
+	return predicate.MessageOutbox(sql.FieldIsNull(FieldDeadLetteredAt))
+}
+
+// DeadLetteredAtNotNil applies the NotNil predicate on the "dead_lettered_at" field.
+func DeadLetteredAtNotNil() predicate.MessageOutbox {
+	return predicate.MessageOutbox(sql.FieldNotNull(FieldDeadLetteredAt))
 }
 
 // LastErrorEQ applies the EQ predicate on the "last_error" field.

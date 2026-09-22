@@ -16,12 +16,16 @@ const maxCaptchaResponseBytes = 64 * 1024
 type CaptchaAdapter struct {
 	httpClient *http.Client
 	cfg        *config.AppConfig
+	maxRetries int
+	retryDelay time.Duration
 }
 
 func NewCaptchaAdapter(cfg *config.AppConfig, httpClient *http.Client) *CaptchaAdapter {
 	return &CaptchaAdapter{
 		httpClient: httpClient,
 		cfg:        cfg,
+		maxRetries: cfg.CaptchaMaxRetries,
+		retryDelay: cfg.CaptchaRetryDelay,
 	}
 }
 
@@ -71,7 +75,7 @@ func (c *CaptchaAdapter) Verify(token string, ip string) error {
 		return resp, false, nil
 	}
 
-	resp, err := helper.RetryWithBackoff(operation, 3, 500*time.Millisecond)
+	resp, err := helper.RetryWithBackoff(operation, c.maxRetries, c.retryDelay)
 	if err != nil {
 		return err
 	}

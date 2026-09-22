@@ -15,8 +15,9 @@ import (
 	"AtoiTalkAPI/ent/user"
 	"AtoiTalkAPI/ent/userblock"
 	"AtoiTalkAPI/ent/useridentity"
-	"github.com/google/uuid"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // The init function reads all schema descriptors with runtime code

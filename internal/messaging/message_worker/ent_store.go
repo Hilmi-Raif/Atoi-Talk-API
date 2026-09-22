@@ -255,6 +255,7 @@ func (s *EntOutboxStore) Claim(ctx context.Context, limit int, leaseDuration tim
 	query := tx.MessageOutbox.Query().
 		Where(
 			messageoutbox.PublishedAtIsNil(),
+			messageoutbox.DeadLetteredAtIsNil(),
 			messageoutbox.AvailableAtLTE(now),
 			messageoutbox.Or(
 				messageoutbox.LockedAtIsNil(),
@@ -308,17 +309,22 @@ func (s *EntOutboxStore) Claim(ctx context.Context, limit int, leaseDuration tim
 func (s *EntOutboxStore) Backlog(ctx context.Context) (observability.MessageWorkerBacklog, error) {
 	var backlog observability.MessageWorkerBacklog
 	var err error
-	if backlog.Pending, err = s.client.MessageOutbox.Query().Where(messageoutbox.PublishedAtIsNil()).Count(ctx); err != nil {
+	if backlog.Pending, err = s.client.MessageOutbox.Query().Where(
+		messageoutbox.PublishedAtIsNil(),
+		messageoutbox.DeadLetteredAtIsNil(),
+	).Count(ctx); err != nil {
 		return backlog, fmt.Errorf("count pending outbox rows: %w", err)
 	}
 	if backlog.Locked, err = s.client.MessageOutbox.Query().Where(
 		messageoutbox.PublishedAtIsNil(),
+		messageoutbox.DeadLetteredAtIsNil(),
 		messageoutbox.LockedAtNotNil(),
 	).Count(ctx); err != nil {
 		return backlog, fmt.Errorf("count locked outbox rows: %w", err)
 	}
 	if backlog.Unprojected, err = s.client.MessageOutbox.Query().Where(
 		messageoutbox.PublishedAtIsNil(),
+		messageoutbox.DeadLetteredAtIsNil(),
 		messageoutbox.ProjectedAtIsNil(),
 	).Count(ctx); err != nil {
 		return backlog, fmt.Errorf("count unprojected outbox rows: %w", err)
@@ -458,6 +464,29 @@ func (s *EntOutboxStore) MarkFailed(ctx context.Context, id, lockToken uuid.UUID
 	}
 	if affected != 1 {
 		return fmt.Errorf("%w: mark failed for %s", ErrOutboxLeaseLost, id)
+	}
+	return nil
+}
+
+func (s *EntOutboxStore) MarkDeadLetter(ctx context.Context, id, lockToken uuid.UUID, processingErr error, deadLetteredAt time.Time) error {
+	lastError := truncateOutboxError(processingErr)
+	affected, err := s.client.MessageOutbox.Update().
+		Where(
+			messageoutbox.ID(id),
+			messageoutbox.LockToken(lockToken),
+			messageoutbox.PublishedAtIsNil(),
+			messageoutbox.DeadLetteredAtIsNil(),
+		).
+		SetDeadLetteredAt(deadLetteredAt.UTC()).
+		SetLastError(lastError).
+		ClearLockedAt().
+		ClearLockToken().
+		Save(ctx)
+	if err != nil {
+		return fmt.Errorf("mark outbox row %s dead letter: %w", id, err)
+	}
+	if affected != 1 {
+		return fmt.Errorf("%w: mark dead letter for %s", ErrOutboxLeaseLost, id)
 	}
 	return nil
 }

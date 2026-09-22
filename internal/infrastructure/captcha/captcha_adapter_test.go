@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestCaptchaAdapterVerifyRejectsOversizedResponse(t *testing.T) {
@@ -71,7 +72,8 @@ func TestCaptchaAdapterVerifyRejectsProviderStatus(t *testing.T) {
 func TestCaptchaAdapterVerifyRetriesRetryableStatus(t *testing.T) {
 	attempts := 0
 	adapter := &CaptchaAdapter{
-		cfg: &config.AppConfig{TurnstileSecretKey: "secret", CaptchaEnabled: true},
+		cfg:        &config.AppConfig{TurnstileSecretKey: "secret", CaptchaEnabled: true},
+		maxRetries: 1,
 		httpClient: &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
 			attempts++
 			if attempts == 1 {
@@ -94,6 +96,17 @@ func TestCaptchaAdapterVerifyRetriesRetryableStatus(t *testing.T) {
 	}
 	if attempts != 2 {
 		t.Fatalf("expected two verification attempts, got %d", attempts)
+	}
+}
+
+func TestNewCaptchaAdapterUsesConfiguredRetryPolicy(t *testing.T) {
+	adapter := NewCaptchaAdapter(&config.AppConfig{
+		CaptchaMaxRetries: 4,
+		CaptchaRetryDelay: 125 * time.Millisecond,
+	}, &http.Client{})
+
+	if adapter.maxRetries != 4 || adapter.retryDelay != 125*time.Millisecond {
+		t.Fatalf("unexpected retry policy: retries=%d delay=%s", adapter.maxRetries, adapter.retryDelay)
 	}
 }
 

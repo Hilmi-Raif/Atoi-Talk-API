@@ -13,22 +13,26 @@ import (
 )
 
 type EmailAdapter struct {
-	host      string
-	port      int
-	user      string
-	password  string
-	fromEmail string
-	fromName  string
+	host       string
+	port       int
+	user       string
+	password   string
+	fromEmail  string
+	fromName   string
+	maxRetries int
+	retryDelay time.Duration
 }
 
 func NewEmailAdapter(cfg *config.AppConfig) *EmailAdapter {
 	return &EmailAdapter{
-		host:      cfg.SMTPHost,
-		port:      cfg.SMTPPort,
-		user:      cfg.SMTPUser,
-		password:  cfg.SMTPPassword,
-		fromEmail: cfg.SMTPFromEmail,
-		fromName:  cfg.SMTPFromName,
+		host:       cfg.SMTPHost,
+		port:       cfg.SMTPPort,
+		user:       cfg.SMTPUser,
+		password:   cfg.SMTPPassword,
+		fromEmail:  cfg.SMTPFromEmail,
+		fromName:   cfg.SMTPFromName,
+		maxRetries: cfg.SMTPMaxRetries,
+		retryDelay: cfg.SMTPRetryDelay,
 	}
 }
 
@@ -52,7 +56,7 @@ func (e *EmailAdapter) Send(to []string, subject string, body string) error {
 		return struct{}{}, false, nil
 	}
 
-	_, err := helper.RetryWithBackoff(operation, 3, 1*time.Second)
+	_, err := helper.RetryWithBackoff(operation, e.maxRetries, e.retryDelay)
 	return err
 }
 

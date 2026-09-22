@@ -7,8 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// MessageOutbox stores durable message events before they are delivered to
-// the asynchronous worker and WebSocket gateway.
 type MessageOutbox struct {
 	ent.Schema
 }
@@ -29,6 +27,7 @@ func (MessageOutbox) Fields() []ent.Field {
 		field.UUID("lock_token", uuid.UUID{}).Optional().Nillable(),
 		field.Time("projected_at").Optional().Nillable(),
 		field.Time("published_at").Optional().Nillable(),
+		field.Time("dead_lettered_at").Optional().Nillable(),
 		field.Text("last_error").Optional().Nillable(),
 	}
 }

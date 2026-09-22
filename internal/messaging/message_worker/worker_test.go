@@ -16,13 +16,16 @@ import (
 
 func TestWorkerConfigFromAppConfig(t *testing.T) {
 	cfg := &config.AppConfig{
-		MessageWorkerBatchSize:     25,
-		MessageWorkerLeaseDuration: 2 * time.Minute,
-		MessageWorkerPollInterval:  750 * time.Millisecond,
+		MessageWorkerBatchSize:      25,
+		MessageWorkerLeaseDuration:  2 * time.Minute,
+		MessageWorkerPollInterval:   750 * time.Millisecond,
+		MessageWorkerMaxAttempts:    7,
+		MessageWorkerRetryBaseDelay: 2 * time.Second,
+		MessageWorkerRetryMaxDelay:  2 * time.Minute,
 	}
 
 	workerCfg := ConfigFromAppConfig(cfg)
-	if workerCfg.BatchSize != 25 || workerCfg.LeaseDuration != 2*time.Minute || workerCfg.PollInterval != 750*time.Millisecond {
+	if workerCfg.BatchSize != 25 || workerCfg.LeaseDuration != 2*time.Minute || workerCfg.PollInterval != 750*time.Millisecond || workerCfg.MaxAttempts != 7 || workerCfg.RetryBaseDelay != 2*time.Second || workerCfg.RetryMaxDelay != 2*time.Minute {
 		t.Fatalf("unexpected worker configuration: %+v", workerCfg)
 	}
 }
@@ -47,6 +50,8 @@ type fakeOutboxStore struct {
 	failedIDs     []uuid.UUID
 	failedLocks   []uuid.UUID
 	failedReasons []string
+	failedAt      []time.Time
+	deadLetterIDs []uuid.UUID
 }
 
 type workerLoopStore struct {
@@ -81,6 +86,9 @@ func (s *workerLoopStore) MarkPublished(context.Context, uuid.UUID, uuid.UUID, t
 }
 
 func (s *workerLoopStore) MarkFailed(context.Context, uuid.UUID, uuid.UUID, error, time.Time) error {
+	return nil
+}
+func (s *workerLoopStore) MarkDeadLetter(context.Context, uuid.UUID, uuid.UUID, error, time.Time) error {
 	return nil
 }
 
@@ -121,6 +129,9 @@ func (s *transientWorkerLoopStore) MarkPublished(context.Context, uuid.UUID, uui
 }
 
 func (s *transientWorkerLoopStore) MarkFailed(context.Context, uuid.UUID, uuid.UUID, error, time.Time) error {
+	return nil
+}
+func (s *transientWorkerLoopStore) MarkDeadLetter(context.Context, uuid.UUID, uuid.UUID, error, time.Time) error {
 	return nil
 }
 func (s *fakeOutboxStore) Project(_ context.Context, record OutboxRecord) error {
@@ -177,12 +188,20 @@ func (s *fakeOutboxStore) MarkPublished(_ context.Context, id, lockToken uuid.UU
 	return nil
 }
 
-func (s *fakeOutboxStore) MarkFailed(_ context.Context, id, lockToken uuid.UUID, err error, _ time.Time) error {
+func (s *fakeOutboxStore) MarkFailed(_ context.Context, id, lockToken uuid.UUID, err error, availableAt time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.failedIDs = append(s.failedIDs, id)
 	s.failedLocks = append(s.failedLocks, lockToken)
 	s.failedReasons = append(s.failedReasons, err.Error())
+	s.failedAt = append(s.failedAt, availableAt)
+	return nil
+}
+
+func (s *fakeOutboxStore) MarkDeadLetter(_ context.Context, id, _ uuid.UUID, _ error, _ time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.deadLetterIDs = append(s.deadLetterIDs, id)
 	return nil
 }
 
@@ -355,7 +374,7 @@ func TestWorkerRetriesWhenProjectionFailsWithoutPublishing(t *testing.T) {
 }
 
 func TestWorkerMarksPublishFailureForRetry(t *testing.T) {
-	record := OutboxRecord{ID: uuid.New(), EventType: string(events.EventMessageNew)}
+	record := OutboxRecord{ID: uuid.New(), EventType: string(events.EventMessageNew), AttemptCount: 9}
 	store := &fakeOutboxStore{records: []OutboxRecord{record}}
 	publisher := &fakeStreamPublisher{err: errors.New("redis unavailable")}
 	worker := NewWorker(store, publisher, WorkerConfig{BatchSize: 1, LeaseDuration: time.Minute})
@@ -365,7 +384,37 @@ func TestWorkerMarksPublishFailureForRetry(t *testing.T) {
 	require.Equal(t, 0, processed)
 	require.Equal(t, []uuid.UUID{record.ID}, store.failedIDs)
 	require.Equal(t, "redis unavailable", store.failedReasons[0])
+	require.WithinDuration(t, time.Now().UTC().Add(64*time.Second), store.failedAt[0], time.Second)
 	require.Empty(t, store.publishedIDs)
+}
+
+func TestWorkerUsesBaseDelayForFirstRetry(t *testing.T) {
+	record := OutboxRecord{ID: uuid.New(), EventType: string(events.EventMessageNew), AttemptCount: 1}
+	store := &fakeOutboxStore{records: []OutboxRecord{record}}
+	worker := NewWorker(store, &fakeStreamPublisher{err: errors.New("redis unavailable")}, WorkerConfig{
+		BatchSize:      1,
+		MaxAttempts:    10,
+		RetryBaseDelay: 2 * time.Second,
+		RetryMaxDelay:  time.Minute,
+	})
+
+	_, err := worker.ProcessBatch(context.Background())
+	require.Error(t, err)
+	require.WithinDuration(t, time.Now().UTC().Add(2*time.Second), store.failedAt[0], time.Second)
+}
+
+func TestWorkerDeadLettersRecordAtMaximumAttempt(t *testing.T) {
+	record := OutboxRecord{ID: uuid.New(), EventType: string(events.EventMessageNew), AttemptCount: 10}
+	store := &fakeOutboxStore{records: []OutboxRecord{record}}
+	worker := NewWorker(store, &fakeStreamPublisher{err: errors.New("redis unavailable")}, WorkerConfig{
+		BatchSize:   1,
+		MaxAttempts: 10,
+	})
+
+	_, err := worker.ProcessBatch(context.Background())
+	require.Error(t, err)
+	require.Equal(t, []uuid.UUID{record.ID}, store.deadLetterIDs)
+	require.Empty(t, store.failedIDs)
 }
 
 func TestWorkerPublishesAllFanoutEventsBeforeMarkingOutboxPublished(t *testing.T) {
