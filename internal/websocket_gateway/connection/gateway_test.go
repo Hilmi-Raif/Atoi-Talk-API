@@ -12,6 +12,7 @@ import (
 type gatewayPresenceProbe struct {
 	connected    chan uuid.UUID
 	disconnected chan uuid.UUID
+	refreshed    chan uuid.UUID
 }
 
 func (p *gatewayPresenceProbe) Connected(_ context.Context, userID uuid.UUID) {
@@ -20,6 +21,24 @@ func (p *gatewayPresenceProbe) Connected(_ context.Context, userID uuid.UUID) {
 
 func (p *gatewayPresenceProbe) Disconnected(_ context.Context, userID uuid.UUID) {
 	p.disconnected <- userID
+}
+
+func (p *gatewayPresenceProbe) Refresh(_ context.Context, userID uuid.UUID) {
+	p.refreshed <- userID
+}
+
+func TestGatewayRefreshesPresenceForConnectedClient(t *testing.T) {
+	probe := &gatewayPresenceProbe{
+		connected: make(chan uuid.UUID, 1),
+		refreshed: make(chan uuid.UUID, 1),
+	}
+	gateway := NewGatewayWithPresence(probe)
+	userID := uuid.New()
+	client := gateway.Register(userID)
+
+	gateway.RefreshPresence(client)
+
+	require.Equal(t, userID, <-probe.refreshed)
 }
 
 func TestGatewayDeliversOnlyToConnectionsForTargetUser(t *testing.T) {
@@ -46,7 +65,7 @@ func TestGatewayDropsSlowConnection(t *testing.T) {
 	client := gateway.RegisterWithBuffer(userID, 1)
 
 	require.NoError(t, gateway.Deliver(context.Background(), userID, []byte("first")))
-	require.Error(t, gateway.Deliver(context.Background(), userID, []byte("second")))
+	require.NoError(t, gateway.Deliver(context.Background(), userID, []byte("second")))
 
 	select {
 	case <-gateway.UnregisterSignal():
@@ -54,6 +73,24 @@ func TestGatewayDropsSlowConnection(t *testing.T) {
 		t.Fatal("slow connection was not scheduled for unregister")
 	}
 	_ = client
+}
+
+func TestGatewayContinuesDeliveryAfterSlowConnection(t *testing.T) {
+	gateway := NewGateway()
+	userID := uuid.New()
+	healthy := gateway.RegisterWithBuffer(userID, 1)
+	slow := gateway.RegisterWithBuffer(userID, 1)
+	slow.Send <- []byte("occupied")
+
+	require.NoError(t, gateway.Deliver(context.Background(), userID, []byte("payload")))
+	require.Equal(t, []byte("payload"), <-healthy.Send)
+
+	select {
+	case dropped := <-gateway.UnregisterSignal():
+		require.Same(t, slow, dropped)
+	default:
+		t.Fatal("slow connection was not scheduled for unregister")
+	}
 }
 
 func TestGatewayNotifiesPresenceOnlyOnFirstAndLastConnection(t *testing.T) {

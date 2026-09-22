@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"AtoiTalkAPI/internal/messaging/events"
 	"github.com/alicebob/miniredis/v2"
@@ -60,4 +61,21 @@ func TestPresenceManagerPublishesFilteredOnlineAndOfflineEvents(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(message.Payload), &payload))
 	require.NoError(t, json.Unmarshal(payload.EventData, &event))
 	require.Equal(t, events.EventUserOffline, event.Type)
+}
+
+func TestPresenceManagerRefreshExtendsOnlineTTL(t *testing.T) {
+	redisServer := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+	defer client.Close()
+
+	userID := uuid.New()
+	manager := NewManager(client, nil, nil, nil)
+	ctx := context.Background()
+
+	manager.Connected(ctx, userID)
+	redisServer.FastForward(60 * time.Second)
+	manager.Refresh(ctx, userID)
+	redisServer.FastForward(20 * time.Second)
+
+	require.Equal(t, "true", client.Get(ctx, "online:"+userID.String()).Val())
 }

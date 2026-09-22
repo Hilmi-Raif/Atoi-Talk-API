@@ -2,7 +2,6 @@ package connection
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/google/uuid"
@@ -18,6 +17,7 @@ type Client struct {
 
 type PresenceListener interface {
 	Connected(context.Context, uuid.UUID)
+	Refresh(context.Context, uuid.UUID)
 	Disconnected(context.Context, uuid.UUID)
 }
 
@@ -79,7 +79,6 @@ func (g *Gateway) Deliver(ctx context.Context, userID uuid.UUID, payload []byte)
 			case g.unregister <- client:
 			default:
 			}
-			return errors.New("realtime client send buffer is full")
 		}
 	}
 	return nil
@@ -91,6 +90,13 @@ func (g *Gateway) DeliverString(ctx context.Context, userID string, payload []by
 		return err
 	}
 	return g.Deliver(ctx, id, payload)
+}
+
+func (g *Gateway) RefreshPresence(client *Client) {
+	if client == nil || g.presence == nil {
+		return
+	}
+	g.presence.Refresh(context.Background(), client.UserID)
 }
 
 func (g *Gateway) Unregister(client *Client) {

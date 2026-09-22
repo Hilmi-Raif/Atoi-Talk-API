@@ -201,7 +201,7 @@ func LoadAppConfig() *AppConfig {
 		MessageWorkerRetryMaxDelay:   getEnvAsDuration("MESSAGE_WORKER_RETRY_MAX_DELAY", 64*time.Second),
 		MessageEventStream:           getEnv("MESSAGE_EVENT_STREAM", "events:messages"),
 		MessageEventStreamMaxLen:     getEnvAsInt("MESSAGE_EVENT_STREAM_MAX_LEN", 10000),
-		RealtimeInstanceID:           getEnv("REALTIME_INSTANCE_ID", "realtime-1"),
+		RealtimeInstanceID:           getEnv("REALTIME_INSTANCE_ID", ""),
 		RealtimeConsumerGroup:        getEnv("REALTIME_CONSUMER_GROUP", ""),
 
 		EnablePprof: getEnvAsBool("ENABLE_PPROF", false),

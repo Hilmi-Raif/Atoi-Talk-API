@@ -54,8 +54,9 @@ func main() {
 		}
 	}()
 
-	group := connection.RealtimeConsumerGroup(cfg.RealtimeConsumerGroup, cfg.RealtimeInstanceID)
-	redisStream := redis.NewRedisStreamConsumer(redisAdapter.Client(), cfg.MessageEventStream, group, cfg.RealtimeInstanceID)
+	instanceID := connection.ResolveRealtimeInstanceID(cfg.RealtimeInstanceID)
+	group := connection.RealtimeConsumerGroup(cfg.RealtimeConsumerGroup, instanceID)
+	redisStream := redis.NewRedisStreamConsumer(redisAdapter.Client(), cfg.MessageEventStream, group, instanceID)
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	if err := redisStream.EnsureGroup(ctx); err != nil {

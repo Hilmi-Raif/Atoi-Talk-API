@@ -51,6 +51,7 @@ type RedisStreamConsumer struct {
 	group    string
 	consumer string
 	minIdle  time.Duration
+	buffer   []*events.StreamMessage
 }
 
 func NewRedisStreamConsumer(client redis.UniversalClient, stream, group, consumer string) *RedisStreamConsumer {
@@ -79,6 +80,12 @@ func (c *RedisStreamConsumer) EnsureGroup(ctx context.Context) error {
 }
 
 func (c *RedisStreamConsumer) Receive(ctx context.Context) (*events.StreamMessage, error) {
+	if len(c.buffer) > 0 {
+		msg := c.buffer[0]
+		c.buffer = c.buffer[1:]
+		return msg, nil
+	}
+
 	if c.minIdle >= 0 {
 		claimed, _, err := c.client.XAutoClaim(ctx, &redis.XAutoClaimArgs{
 			Stream:   c.stream,
@@ -91,10 +98,11 @@ func (c *RedisStreamConsumer) Receive(ctx context.Context) (*events.StreamMessag
 		if err != nil && !errors.Is(err, redis.Nil) {
 			return nil, fmt.Errorf("claim pending Redis Stream messages: %w", err)
 		}
-		if message, err := streamMessageFromRedis(claimed); err != nil {
+		if messages, err := streamMessagesFromRedis(claimed); err != nil {
 			return nil, err
-		} else if message != nil {
-			return message, nil
+		} else if len(messages) > 0 {
+			c.buffer = append(c.buffer, messages[1:]...)
+			return messages[0], nil
 		}
 	}
 
@@ -113,32 +121,37 @@ func (c *RedisStreamConsumer) Receive(ctx context.Context) (*events.StreamMessag
 		return nil, fmt.Errorf("read Redis Stream: %w", err)
 	}
 	for _, stream := range result {
-		if message, err := streamMessageFromRedis(stream.Messages); err != nil {
+		if messages, err := streamMessagesFromRedis(stream.Messages); err != nil {
 			return nil, err
-		} else if message != nil {
-			return message, nil
+		} else if len(messages) > 0 {
+			c.buffer = append(c.buffer, messages[1:]...)
+			return messages[0], nil
 		}
 	}
 	return nil, nil
 }
 
-func streamMessageFromRedis(messages []redis.XMessage) (*events.StreamMessage, error) {
+func streamMessagesFromRedis(messages []redis.XMessage) ([]*events.StreamMessage, error) {
 	if len(messages) == 0 {
 		return nil, nil
 	}
-	message := messages[0]
-	data, ok := message.Values["data"]
-	if !ok {
-		return nil, fmt.Errorf("redis stream message %s has no data", message.ID)
-	}
-	payload, ok := data.(string)
-	if !ok {
-		if bytes, ok := data.([]byte); ok {
-			return &events.StreamMessage{ID: message.ID, Data: bytes}, nil
+	res := make([]*events.StreamMessage, 0, len(messages))
+	for _, message := range messages {
+		data, ok := message.Values["data"]
+		if !ok {
+			return nil, fmt.Errorf("redis stream message %s has no data", message.ID)
 		}
-		return nil, fmt.Errorf("redis stream message %s data has invalid type", message.ID)
+		payload, ok := data.(string)
+		if !ok {
+			if bytes, ok := data.([]byte); ok {
+				res = append(res, &events.StreamMessage{ID: message.ID, Data: bytes})
+				continue
+			}
+			return nil, fmt.Errorf("redis stream message %s data has invalid type", message.ID)
+		}
+		res = append(res, &events.StreamMessage{ID: message.ID, Data: []byte(payload)})
 	}
-	return &events.StreamMessage{ID: message.ID, Data: []byte(payload)}, nil
+	return res, nil
 }
 
 func (c *RedisStreamConsumer) Ack(ctx context.Context, id string) error {

@@ -41,6 +41,13 @@ func (p *PresenceManager) Connected(ctx context.Context, userID uuid.UUID) {
 	p.publish(ctx, userID, events.EventUserOnline, true)
 }
 
+func (p *PresenceManager) Refresh(ctx context.Context, userID uuid.UUID) {
+	if p == nil || p.client == nil || userID == uuid.Nil {
+		return
+	}
+	_ = p.client.Set(ctx, "online:"+userID.String(), "true", presenceOnlineTTL).Err()
+}
+
 func (p *PresenceManager) Disconnected(ctx context.Context, userID uuid.UUID) {
 	if p == nil || p.client == nil || userID == uuid.Nil {
 		return

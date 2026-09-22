@@ -33,6 +33,7 @@ func TestMessageServiceSendMessagePersistsOutboxWithoutDirectBroadcast(t *testin
 	require.NoError(t, err)
 	require.Equal(t, result.ID, outbox.MessageID)
 	require.Equal(t, current.ID, *outbox.SenderID)
+	require.Equal(t, "durable message", outbox.Payload["content"])
 	publisher.AssertNotCalled(t, "BroadcastToChat")
 }
 
@@ -94,6 +95,7 @@ func TestMessageServiceEditMessagePersistsOutboxWithoutDirectBroadcast(t *testin
 	).Only(ctx)
 	require.NoError(t, err)
 	require.Equal(t, messageEntity.ID, outbox.MessageID)
+	require.Equal(t, "edited durable message", outbox.Payload["content"])
 	publisher.AssertNotCalled(t, "BroadcastToChat")
 }
 

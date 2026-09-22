@@ -22,6 +22,7 @@ type OutboxRecord struct {
 	ChatID       uuid.UUID
 	SenderID     uuid.UUID
 	TargetUserID uuid.UUID
+	Payload      map[string]interface{}
 	AttemptCount int
 }
 
@@ -156,8 +157,22 @@ func (w *Worker) ProcessBatch(ctx context.Context) (int, error) {
 	if concurrency <= 0 {
 		concurrency = 5
 	}
-	if concurrency > len(records) {
-		concurrency = len(records)
+
+	groups := make(map[uuid.UUID][]OutboxRecord)
+	groupOrder := make([]uuid.UUID, 0)
+	for _, record := range records {
+		key := record.ChatID
+		if key == uuid.Nil {
+			key = record.ID
+		}
+		if _, exists := groups[key]; !exists {
+			groupOrder = append(groupOrder, key)
+		}
+		groups[key] = append(groups[key], record)
+	}
+
+	if concurrency > len(groupOrder) {
+		concurrency = len(groupOrder)
 	}
 
 	var (
@@ -169,23 +184,26 @@ func (w *Worker) ProcessBatch(ctx context.Context) (int, error) {
 		errOnce   sync.Once
 	)
 
-	for _, record := range records {
+	for _, key := range groupOrder {
+		groupRecords := groups[key]
 		sem <- struct{}{}
 		wg.Add(1)
-		go func(rec OutboxRecord) {
+		go func(recs []OutboxRecord) {
 			defer func() {
 				<-sem
 				wg.Done()
 			}()
-			if err := w.processRecord(ctx, rec); err != nil {
-				failed.Add(1)
-				errOnce.Do(func() {
-					firstErr = err
-				})
-				return
+			for _, rec := range recs {
+				if err := w.processRecord(ctx, rec); err != nil {
+					failed.Add(1)
+					errOnce.Do(func() {
+						firstErr = err
+					})
+					return
+				}
+				processed.Add(1)
 			}
-			processed.Add(1)
-		}(record)
+		}(groupRecords)
 	}
 	wg.Wait()
 

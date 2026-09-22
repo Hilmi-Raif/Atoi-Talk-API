@@ -10,6 +10,7 @@ import (
 	"AtoiTalkAPI/ent/privatechat"
 	"AtoiTalkAPI/ent/user"
 	"AtoiTalkAPI/ent/userblock"
+	"AtoiTalkAPI/internal/domain/model"
 	"AtoiTalkAPI/internal/infrastructure/database/mapper"
 	objectstorage "AtoiTalkAPI/internal/infrastructure/object_storage"
 	"AtoiTalkAPI/internal/infrastructure/observability"
@@ -88,7 +89,11 @@ func (s *EntOutboxStore) BuildEvents(ctx context.Context, record OutboxRecord) (
 		if msg.Edges.Sender == nil && record.SenderID != uuid.Nil {
 			return nil, fmt.Errorf("message %s sender is unavailable", record.MessageID)
 		}
-		payloadData = mapper.ToMessageResponse(msg, s.urlGen, nil, "")
+		messageSnapshot := *msg
+		applyMessageEntitySnapshot(&messageSnapshot, record.Payload)
+		response := mapper.ToMessageResponse(&messageSnapshot, s.urlGen, nil, "")
+		applyMessageSnapshot(response, record.Payload)
+		payloadData = response
 	}
 
 	unreadMap, countErr := s.batchRecipientsUnreadCount(ctx, record.ChatID, targets)
@@ -124,6 +129,48 @@ func (s *EntOutboxStore) BuildEvents(ctx context.Context, record OutboxRecord) (
 		})
 	}
 	return built, nil
+}
+
+func applyMessageEntitySnapshot(message *ent.Message, payload map[string]interface{}) {
+	if message == nil || payload == nil {
+		return
+	}
+	if content, exists := payload["content"]; exists {
+		message.Content = nil
+		if value, ok := content.(string); ok {
+			message.Content = &value
+		}
+	}
+	if actionData, exists := payload["action_data"]; exists {
+		message.ActionData, _ = actionData.(map[string]interface{})
+	}
+	if deletedAt, exists := payload["deleted_at"]; exists && deletedAt == nil {
+		message.DeletedAt = nil
+	}
+}
+
+func applyMessageSnapshot(response *model.MessageResponse, payload map[string]interface{}) {
+	if response == nil || payload == nil {
+		return
+	}
+	if content, exists := payload["content"]; exists {
+		response.Content, _ = content.(string)
+	}
+	if actionData, exists := payload["action_data"]; exists {
+		response.ActionData, _ = actionData.(map[string]interface{})
+	}
+	if editedAt, exists := payload["edited_at"]; exists {
+		response.EditedAt = nil
+		if value, ok := editedAt.(string); ok {
+			response.EditedAt = &value
+		}
+	}
+	if deletedAt, exists := payload["deleted_at"]; exists {
+		response.DeletedAt = nil
+		if value, ok := deletedAt.(string); ok {
+			response.DeletedAt = &value
+		}
+	}
 }
 
 func (s *EntOutboxStore) batchRecipientsUnreadCount(ctx context.Context, chatID uuid.UUID, targets []uuid.UUID) (map[uuid.UUID]int, error) {
@@ -261,6 +308,23 @@ func (s *EntOutboxStore) Claim(ctx context.Context, limit int, leaseDuration tim
 				messageoutbox.LockedAtIsNil(),
 				messageoutbox.LockedAtLTE(now.Add(-leaseDuration)),
 			),
+			func(selector *entsql.Selector) {
+				earlier := entsql.Table(messageoutbox.Table).As("earlier_outbox")
+				selector.Where(entsql.NotExists(
+					entsql.Select(earlier.C(messageoutbox.FieldID)).From(earlier).Where(entsql.And(
+						entsql.ColumnsEQ(earlier.C(messageoutbox.FieldChatID), selector.C(messageoutbox.FieldChatID)),
+						entsql.IsNull(earlier.C(messageoutbox.FieldPublishedAt)),
+						entsql.IsNull(earlier.C(messageoutbox.FieldDeadLetteredAt)),
+						entsql.Or(
+							entsql.ColumnsLT(earlier.C(messageoutbox.FieldCreatedAt), selector.C(messageoutbox.FieldCreatedAt)),
+							entsql.And(
+								entsql.ColumnsEQ(earlier.C(messageoutbox.FieldCreatedAt), selector.C(messageoutbox.FieldCreatedAt)),
+								entsql.ColumnsLT(earlier.C(messageoutbox.FieldID), selector.C(messageoutbox.FieldID)),
+							),
+						),
+					)),
+				))
+			},
 		).
 		Order(messageoutbox.ByCreatedAt()).
 		Limit(limit)
@@ -497,6 +561,7 @@ func outboxRecord(row *ent.MessageOutbox) OutboxRecord {
 		EventType:    row.EventType,
 		MessageID:    row.MessageID,
 		ChatID:       row.ChatID,
+		Payload:      row.Payload,
 		AttemptCount: row.AttemptCount,
 	}
 	if row.SenderID != nil {

@@ -86,6 +86,38 @@ func TestEntOutboxStoreClaimsOnlyEligibleRowsWithLeaseTokens(t *testing.T) {
 	}
 }
 
+func TestEntOutboxStoreClaimsOnlyOldestPendingRecordPerChat(t *testing.T) {
+	client := newMessageWorkerEntClient(t)
+	defer client.Close()
+	ctx := context.Background()
+	now := time.Date(2026, time.January, 1, 12, 0, 0, 0, time.UTC)
+	chatID := uuid.New()
+
+	first := client.MessageOutbox.Create().
+		SetEventType("message.new").
+		SetMessageID(uuid.New()).
+		SetChatID(chatID).
+		SetAvailableAt(now.Add(-time.Second)).
+		SetCreatedAt(now.Add(-time.Minute)).
+		SaveX(ctx)
+	client.MessageOutbox.Create().
+		SetEventType("message.update").
+		SetMessageID(uuid.New()).
+		SetChatID(chatID).
+		SetAvailableAt(now.Add(-time.Second)).
+		SetCreatedAt(now).
+		SaveX(ctx)
+	otherChat := createOutboxRecord(t, client, now.Add(-time.Second))
+
+	store := NewEntOutboxStoreWithDialect(client, dialect.SQLite)
+	store.now = func() time.Time { return now }
+	claimed, err := store.Claim(ctx, 10, time.Minute)
+
+	require.NoError(t, err)
+	require.Len(t, claimed, 2)
+	require.ElementsMatch(t, []uuid.UUID{first.ID, otherChat.ID}, []uuid.UUID{claimed[0].ID, claimed[1].ID})
+}
+
 func TestEntOutboxStoreClaimUpdatesBatchWithoutPerRowReads(t *testing.T) {
 	var updateStatements atomic.Int32
 	client := enttest.Open(t, dialect.SQLite, "file:message-worker-claim-batch?mode=memory&cache=shared&_fk=1", enttest.WithOptions(
@@ -349,6 +381,82 @@ func TestEntOutboxStoreBuildsTargetedEventsFromSourceData(t *testing.T) {
 	require.Equal(t, "durable payload", response.Content)
 	require.NotContains(t, string(built[0].Payload), recipient.ID.String())
 	_ = private
+}
+
+func TestEntOutboxStoreBuildsEventWithStoredMessageSnapshot(t *testing.T) {
+	client := newMessageWorkerEntClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	sender := client.User.Create().SetUsername("snapshot-sender").SaveX(ctx)
+	recipient := client.User.Create().SetUsername("snapshot-recipient").SaveX(ctx)
+	chatEntity := client.Chat.Create().SetType(chat.TypePrivate).SaveX(ctx)
+	client.PrivateChat.Create().SetChatID(chatEntity.ID).SetUser1ID(sender.ID).SetUser2ID(recipient.ID).SaveX(ctx)
+	messageEntity := client.Message.Create().SetChatID(chatEntity.ID).SetSenderID(sender.ID).SetContent("current content").SaveX(ctx)
+
+	built, err := NewEntOutboxStoreWithDialect(client, dialect.SQLite).BuildEvents(ctx, OutboxRecord{
+		ID:        uuid.New(),
+		EventType: string(websocket.EventMessageNew),
+		MessageID: messageEntity.ID,
+		ChatID:    chatEntity.ID,
+		SenderID:  sender.ID,
+		Payload:   map[string]interface{}{"content": "original content"},
+	})
+	require.NoError(t, err)
+	require.Len(t, built, 1)
+
+	var event websocket.Event
+	require.NoError(t, json.Unmarshal(built[0].Payload, &event))
+	payload, err := json.Marshal(event.Payload)
+	require.NoError(t, err)
+	var response model.MessageResponse
+	require.NoError(t, json.Unmarshal(payload, &response))
+	require.Equal(t, "original content", response.Content)
+}
+
+func TestEntOutboxStoreBuildsNewEventFromSnapshotAfterMessageWasDeleted(t *testing.T) {
+	client := newMessageWorkerEntClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	sender := client.User.Create().SetUsername("deleted-snapshot-sender").SaveX(ctx)
+	recipient := client.User.Create().SetUsername("deleted-snapshot-recipient").SaveX(ctx)
+	chatEntity := client.Chat.Create().SetType(chat.TypePrivate).SaveX(ctx)
+	client.PrivateChat.Create().SetChatID(chatEntity.ID).SetUser1ID(sender.ID).SetUser2ID(recipient.ID).SaveX(ctx)
+	messageEntity := client.Message.Create().SetChatID(chatEntity.ID).SetSenderID(sender.ID).SetContent("current content").SaveX(ctx)
+	attachment := client.Media.Create().
+		SetFileName("messages/snapshot.png").
+		SetOriginalName("snapshot.png").
+		SetFileSize(10).
+		SetMimeType("image/png").
+		SetMessageID(messageEntity.ID).
+		SaveX(ctx)
+	messageEntity.Update().ClearContent().SetDeletedAt(time.Now().UTC()).SaveX(ctx)
+
+	built, err := NewEntOutboxStoreWithURLGenerator(client, messageWorkerURLGenerator{}).BuildEvents(ctx, OutboxRecord{
+		ID:        uuid.New(),
+		EventType: string(websocket.EventMessageNew),
+		MessageID: messageEntity.ID,
+		ChatID:    chatEntity.ID,
+		SenderID:  sender.ID,
+		Payload: map[string]interface{}{
+			"content":    "original content",
+			"deleted_at": nil,
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, built, 1)
+
+	var event websocket.Event
+	require.NoError(t, json.Unmarshal(built[0].Payload, &event))
+	payload, err := json.Marshal(event.Payload)
+	require.NoError(t, err)
+	var response model.MessageResponse
+	require.NoError(t, json.Unmarshal(payload, &response))
+	require.Equal(t, "original content", response.Content)
+	require.Nil(t, response.DeletedAt)
+	require.Len(t, response.Attachments, 1)
+	require.Equal(t, attachment.ID, response.Attachments[0].ID)
 }
 
 func TestEntOutboxStoreBuildsMessageEventsWithAttachments(t *testing.T) {

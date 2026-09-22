@@ -30,14 +30,83 @@ func TestWorkerConfigFromAppConfig(t *testing.T) {
 	}
 }
 
-func TestWorkerConfigUsesSeparateBacklogSamplingInterval(t *testing.T) {
-	cfg := &config.AppConfig{MessageWorkerBacklogInterval: 5 * time.Second}
+func TestWorkerProcessesRecordsInSameChatSequentially(t *testing.T) {
+	chatID := uuid.New()
+	senderID := uuid.New()
+	msgID1 := uuid.New()
+	msgID2 := uuid.New()
 
-	workerCfg := ConfigFromAppConfig(cfg)
-
-	if workerCfg.BacklogInterval != 5*time.Second {
-		t.Fatalf("unexpected backlog sampling interval: %s", workerCfg.BacklogInterval)
+	rec1 := OutboxRecord{
+		ID:        uuid.New(),
+		ChatID:    chatID,
+		MessageID: msgID1,
+		SenderID:  senderID,
+		EventType: string(events.EventMessageNew),
 	}
+	rec2 := OutboxRecord{
+		ID:        uuid.New(),
+		ChatID:    chatID,
+		MessageID: msgID2,
+		SenderID:  senderID,
+		EventType: string(events.EventMessageDelete),
+	}
+
+	var executionOrder []uuid.UUID
+	var mu sync.Mutex
+
+	store := &orderTrackingStore{
+		records: []OutboxRecord{rec1, rec2},
+		onProject: func(r OutboxRecord) {
+			mu.Lock()
+			executionOrder = append(executionOrder, r.ID)
+			mu.Unlock()
+			time.Sleep(10 * time.Millisecond)
+		},
+	}
+	publisher := &fakeStreamPublisher{}
+
+	worker := NewWorker(store, publisher, WorkerConfig{
+		BatchSize:   10,
+		Concurrency: 4,
+	})
+
+	processed, err := worker.ProcessBatch(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, 2, processed)
+
+	require.Equal(t, []uuid.UUID{rec1.ID, rec2.ID}, executionOrder)
+}
+
+type orderTrackingStore struct {
+	records   []OutboxRecord
+	onProject func(OutboxRecord)
+}
+
+func (s *orderTrackingStore) Claim(context.Context, int, time.Duration) ([]OutboxRecord, error) {
+	return s.records, nil
+}
+
+func (s *orderTrackingStore) Project(_ context.Context, rec OutboxRecord) error {
+	if s.onProject != nil {
+		s.onProject(rec)
+	}
+	return nil
+}
+
+func (s *orderTrackingStore) BuildEvents(context.Context, OutboxRecord) ([]events.MessageEvent, error) {
+	return nil, nil
+}
+
+func (s *orderTrackingStore) MarkPublished(context.Context, uuid.UUID, uuid.UUID, time.Time) error {
+	return nil
+}
+
+func (s *orderTrackingStore) MarkFailed(context.Context, uuid.UUID, uuid.UUID, error, time.Time) error {
+	return nil
+}
+
+func (s *orderTrackingStore) MarkDeadLetter(context.Context, uuid.UUID, uuid.UUID, error, time.Time) error {
+	return nil
 }
 
 type fakeOutboxStore struct {

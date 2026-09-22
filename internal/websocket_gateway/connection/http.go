@@ -132,6 +132,7 @@ func (h *HTTPHandler) readPump(conn *websocket.Conn, client *Client) {
 	conn.SetReadLimit(512)
 	_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	conn.SetPongHandler(func(string) error {
+		h.gateway.RefreshPresence(client)
 		return conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	})
 	for {

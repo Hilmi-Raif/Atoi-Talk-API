@@ -136,6 +136,33 @@ func (d *countingLocalDelivery) Deliver(context.Context, uuid.UUID, []byte) erro
 	return nil
 }
 
+func TestConsumerRecoversFromMalformedMessageAndContinues(t *testing.T) {
+	stream := &repeatingStreamConsumer{
+		messages: []*StreamMessage{
+			{ID: "stream-bad", Data: []byte("not-valid-json")},
+			{ID: "stream-good", Data: func() []byte {
+				ev := events.MessageEvent{ID: uuid.New(), TargetUserID: uuid.New(), Payload: []byte("ok")}
+				d, _ := ev.Marshal()
+				return d
+			}()},
+		},
+	}
+	delivery := &countingLocalDelivery{}
+	consumer := NewConsumer(stream, delivery)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := consumer.Process(ctx)
+	require.NoError(t, err)
+	require.Contains(t, stream.acked, "stream-bad")
+
+	err = consumer.Process(ctx)
+	require.NoError(t, err)
+	require.Contains(t, stream.acked, "stream-good")
+	require.Equal(t, 1, delivery.calls)
+}
+
 func TestConsumerRunStopsWhenStreamContextIsCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	stream := &loopingStreamConsumer{cancel: cancel}

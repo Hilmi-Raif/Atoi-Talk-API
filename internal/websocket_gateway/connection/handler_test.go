@@ -2,6 +2,7 @@ package connection
 
 import (
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -24,5 +25,8 @@ func TestRealtimeConsumerGroupIsUniquePerInstanceByDefault(t *testing.T) {
 	}
 	if got := RealtimeConsumerGroup("custom-group", "realtime-a"); got != "custom-group" {
 		t.Fatalf("configured group = %q, want custom-group", got)
+	}
+	if got := RealtimeConsumerGroup("", ""); !strings.HasPrefix(got, "realtime-") || len(got) <= len("realtime-") {
+		t.Fatalf("empty group should resolve with prefix and dynamic id, got %q", got)
 	}
 }

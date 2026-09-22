@@ -18,6 +18,7 @@ import (
 	objectstorage "AtoiTalkAPI/internal/infrastructure/object_storage"
 	"AtoiTalkAPI/internal/infrastructure/observability"
 	"AtoiTalkAPI/internal/messaging/events"
+	"AtoiTalkAPI/internal/messaging/outbox"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -279,12 +280,7 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 		return nil, helper.NewInternalServerError("")
 	}
 
-	if _, err := tx.MessageOutbox.Create().
-		SetEventType(string(events.EventMessageNew)).
-		SetMessageID(msg.ID).
-		SetChatID(req.ChatID).
-		SetSenderID(userID).
-		Save(txCtx); err != nil {
+	if err := outbox.PersistMessageOutbox(txCtx, tx, msg, events.EventMessageNew, userID); err != nil {
 		observability.RecordError(span, err)
 		slog.Error("Failed to persist message outbox event", "error", err)
 		return nil, helper.NewInternalServerError("")
@@ -521,12 +517,7 @@ func (s *MessageService) EditMessage(ctx context.Context, userID uuid.UUID, mess
 		return nil, helper.NewInternalServerError("")
 	}
 
-	if _, err := tx.MessageOutbox.Create().
-		SetEventType(string(events.EventMessageUpdate)).
-		SetMessageID(msg.ID).
-		SetChatID(msg.ChatID).
-		SetSenderID(userID).
-		Save(ctx); err != nil {
+	if err := outbox.PersistMessageOutbox(ctx, tx, msg, events.EventMessageUpdate, userID); err != nil {
 		slog.Error("Failed to persist message update outbox event", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
@@ -976,12 +967,7 @@ func (s *MessageService) DeleteMessage(ctx context.Context, userID uuid.UUID, me
 		return helper.NewInternalServerError("")
 	}
 
-	if _, err := tx.MessageOutbox.Create().
-		SetEventType(string(events.EventMessageDelete)).
-		SetMessageID(msg.ID).
-		SetChatID(msg.ChatID).
-		SetSenderID(userID).
-		Save(ctx); err != nil {
+	if err := outbox.PersistMessageOutbox(ctx, tx, msg, events.EventMessageDelete, userID); err != nil {
 		slog.Error("Failed to persist message delete outbox event", "error", err)
 		return helper.NewInternalServerError("")
 	}

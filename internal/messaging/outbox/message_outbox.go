@@ -9,12 +9,28 @@ import (
 )
 
 func PersistMessageOutbox(ctx context.Context, tx *ent.Tx, msg *ent.Message, eventType events.EventType, senderID uuid.UUID) error {
-	_, err := tx.MessageOutbox.Create().
+	payload := map[string]interface{}{
+		"content":     msg.Content,
+		"action_data": msg.ActionData,
+		"edited_at":   msg.EditedAt,
+		"deleted_at":  msg.DeletedAt,
+	}
+	if eventType == events.EventMessageDelete {
+		payload = map[string]interface{}{"message_id": msg.ID}
+	}
+	return PersistMessageOutboxWithPayload(ctx, tx, msg, eventType, senderID, payload)
+}
+
+func PersistMessageOutboxWithPayload(ctx context.Context, tx *ent.Tx, msg *ent.Message, eventType events.EventType, senderID uuid.UUID, payload map[string]interface{}) error {
+	create := tx.MessageOutbox.Create().
 		SetEventType(string(eventType)).
 		SetMessageID(msg.ID).
 		SetChatID(msg.ChatID).
-		SetSenderID(senderID).
-		Save(ctx)
+		SetSenderID(senderID)
+	if payload != nil {
+		create.SetPayload(payload)
+	}
+	_, err := create.Save(ctx)
 	return err
 }
 

@@ -14,6 +14,7 @@ import (
 	"AtoiTalkAPI/internal/infrastructure/database/repository"
 	objectstorage "AtoiTalkAPI/internal/infrastructure/object_storage"
 	"AtoiTalkAPI/internal/messaging/events"
+	"AtoiTalkAPI/internal/messaging/outbox"
 	"context"
 	"encoding/base64"
 	"log/slog"
@@ -507,12 +508,7 @@ func (s *AdminService) ResolveReport(ctx context.Context, adminID uuid.UUID, rep
 				}
 
 				if shouldPublishDelete {
-					if _, err := tx.MessageOutbox.Create().
-						SetEventType(string(events.EventMessageDelete)).
-						SetMessageID(msg.ID).
-						SetChatID(msg.ChatID).
-						SetSenderID(adminID).
-						Save(ctx); err != nil {
+					if err := outbox.PersistMessageOutbox(ctx, tx, msg, events.EventMessageDelete, adminID); err != nil {
 						slog.Error("Failed to persist reported message delete outbox event", "error", err, "messageID", msgID)
 						return helper.NewInternalServerError("")
 					}
