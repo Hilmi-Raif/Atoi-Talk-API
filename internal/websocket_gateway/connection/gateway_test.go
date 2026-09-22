@@ -13,18 +13,48 @@ type gatewayPresenceProbe struct {
 	connected    chan uuid.UUID
 	disconnected chan uuid.UUID
 	refreshed    chan uuid.UUID
+	deadlines    chan bool
 }
 
-func (p *gatewayPresenceProbe) Connected(_ context.Context, userID uuid.UUID) {
+func (p *gatewayPresenceProbe) Connected(ctx context.Context, userID uuid.UUID) {
+	if p.deadlines != nil {
+		_, ok := ctx.Deadline()
+		p.deadlines <- ok
+	}
 	p.connected <- userID
 }
 
-func (p *gatewayPresenceProbe) Disconnected(_ context.Context, userID uuid.UUID) {
+func (p *gatewayPresenceProbe) Disconnected(ctx context.Context, userID uuid.UUID) {
+	if p.deadlines != nil {
+		_, ok := ctx.Deadline()
+		p.deadlines <- ok
+	}
 	p.disconnected <- userID
 }
 
-func (p *gatewayPresenceProbe) Refresh(_ context.Context, userID uuid.UUID) {
+func (p *gatewayPresenceProbe) Refresh(ctx context.Context, userID uuid.UUID) {
+	if p.deadlines != nil {
+		_, ok := ctx.Deadline()
+		p.deadlines <- ok
+	}
 	p.refreshed <- userID
+}
+
+func TestGatewayBoundsPresenceOperations(t *testing.T) {
+	probe := &gatewayPresenceProbe{
+		connected:    make(chan uuid.UUID, 1),
+		disconnected: make(chan uuid.UUID, 1),
+		refreshed:    make(chan uuid.UUID, 1),
+		deadlines:    make(chan bool, 3),
+	}
+	gateway := NewGatewayWithPresence(probe)
+	client := gateway.Register(uuid.New())
+	gateway.RefreshPresence(client)
+	gateway.Unregister(client)
+
+	require.True(t, <-probe.deadlines)
+	require.True(t, <-probe.deadlines)
+	require.True(t, <-probe.deadlines)
 }
 
 func TestGatewayRefreshesPresenceForConnectedClient(t *testing.T) {

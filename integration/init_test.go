@@ -29,6 +29,7 @@ import (
 	objectstorage "AtoiTalkAPI/internal/infrastructure/object_storage"
 	redisinfra "AtoiTalkAPI/internal/infrastructure/redis"
 	messageworker "AtoiTalkAPI/internal/messaging/message_worker"
+	messagingpubsub "AtoiTalkAPI/internal/messaging/pubsub"
 	"AtoiTalkAPI/internal/websocket_gateway/auth"
 	"AtoiTalkAPI/internal/websocket_gateway/connection"
 	"AtoiTalkAPI/internal/websocket_gateway/presence"
@@ -177,7 +178,7 @@ func TestMain(m *testing.M) {
 	privateChatController := controller.NewPrivateChatController(privateChatService)
 	groupChatController := controller.NewGroupChatController(groupChatService)
 
-	messageService := messageapp.NewMessageService(testClient, repo.Message, testConfig, validator, testStorageAdapter, eventPublisher)
+	messageService := messageapp.NewMessageService(testClient, repo.Message, validator, testStorageAdapter)
 	messageController := controller.NewMessageController(messageService)
 
 	mediaService := mediaapp.NewMediaService(testClient, testConfig, validator, testStorageAdapter, captchaAdapter)
@@ -321,7 +322,7 @@ func startWebSocketGateway() http.Handler {
 	gateway := connection.NewGatewayWithPresence(presenceManager)
 	go gateway.Run(integrationCtx)
 
-	pubSubListener := pubsub.NewPubSubListener(redisAdapter.Client(), "events:broadcast", gateway)
+	pubSubListener := pubsub.NewPubSubListener(redisAdapter.Client(), messagingpubsub.BroadcastChannel, gateway)
 	go func() {
 		if err := pubSubListener.Run(integrationCtx); err != nil && integrationCtx.Err() == nil {
 			log.Printf("integration websocket Pub/Sub listener stopped: %v", err)

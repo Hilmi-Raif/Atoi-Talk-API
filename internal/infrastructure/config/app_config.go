@@ -117,7 +117,7 @@ func LoadAppConfig() *AppConfig {
 		RealtimePort:          getEnv("REALTIME_PORT", "8081"),
 		AppEnv:                getEnv("APP_ENV", "development"),
 		AppURL:                getEnv("APP_URL", "http://localhost:8080"),
-		AppCorsAllowedOrigins: strings.Split(getEnv("APP_CORS_ALLOWED_ORIGINS", "*"), ","),
+		AppCorsAllowedOrigins: splitCSV(getEnv("APP_CORS_ALLOWED_ORIGINS", "*")),
 		RateLimitEnabled:      getEnvAsBool("RATE_LIMIT_ENABLED", true),
 		CaptchaEnabled:        getEnvAsBool("CAPTCHA_ENABLED", true),
 		CaptchaMaxRetries:     getEnvAsInt("CAPTCHA_MAX_RETRIES", 2),

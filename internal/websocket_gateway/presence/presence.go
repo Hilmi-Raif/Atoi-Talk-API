@@ -2,23 +2,17 @@ package presence
 
 import (
 	"context"
-	"encoding/json"
+	"log/slog"
 	"time"
 
 	"AtoiTalkAPI/internal/messaging/events"
+	messagingpubsub "AtoiTalkAPI/internal/messaging/pubsub"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
 type Contacts func(context.Context, uuid.UUID) ([]uuid.UUID, error)
 type BlockChecker func(context.Context, uuid.UUID, uuid.UUID) (bool, error)
-
-type PubSubPayload struct {
-	TargetUserID string `json:"target_user_id"`
-	EventData    []byte `json:"event_data"`
-}
-
-const legacyPubSubChannel = "events:broadcast"
 
 const presenceOnlineTTL = 70 * time.Second
 
@@ -68,7 +62,7 @@ func (p *PresenceManager) publish(ctx context.Context, userID uuid.UUID, eventTy
 		return
 	}
 	now := time.Now().UTC().UnixMilli()
-	eventData, err := json.Marshal(events.Event{
+	event := events.Event{
 		Type: eventType,
 		Payload: map[string]interface{}{
 			"user_id":      userID,
@@ -76,9 +70,6 @@ func (p *PresenceManager) publish(ctx context.Context, userID uuid.UUID, eventTy
 			"last_seen_at": now,
 		},
 		Meta: &events.EventMeta{Timestamp: now, SenderID: userID},
-	})
-	if err != nil {
-		return
 	}
 	for _, contactID := range contactIDs {
 		if contactID == uuid.Nil || contactID == userID {
@@ -90,10 +81,8 @@ func (p *PresenceManager) publish(ctx context.Context, userID uuid.UUID, eventTy
 				continue
 			}
 		}
-		payload, err := json.Marshal(PubSubPayload{TargetUserID: contactID.String(), EventData: eventData})
-		if err != nil {
-			continue
+		if err := messagingpubsub.PublishToUser(ctx, p.client, messagingpubsub.BroadcastChannel, contactID, event); err != nil {
+			slog.WarnContext(ctx, "failed to publish presence event", "error", err, "targetUserID", contactID)
 		}
-		_ = p.client.Publish(ctx, legacyPubSubChannel, payload).Err()
 	}
 }

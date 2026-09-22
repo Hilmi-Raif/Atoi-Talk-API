@@ -4,6 +4,7 @@ import (
 	"AtoiTalkAPI/ent/chat"
 	"AtoiTalkAPI/ent/enttest"
 	"AtoiTalkAPI/internal/messaging/events"
+	messagingpubsub "AtoiTalkAPI/internal/messaging/pubsub"
 	"context"
 	"encoding/json"
 	"testing"
@@ -24,7 +25,7 @@ func TestPubSubPublisherPublishesNonDurableEvents(t *testing.T) {
 
 	publisher := NewPubSubPublisher(nil, client)
 	targetID := uuid.New()
-	pubsub := client.Subscribe(context.Background(), pubSubChannel)
+	pubsub := client.Subscribe(context.Background(), messagingpubsub.BroadcastChannel)
 	defer pubsub.Close()
 	_, err := pubsub.Receive(context.Background())
 	require.NoError(t, err)
@@ -36,7 +37,7 @@ func TestPubSubPublisherPublishesNonDurableEvents(t *testing.T) {
 	message, err := pubsub.ReceiveMessage(messageCtx)
 	require.NoError(t, err)
 
-	var payload pubSubPayload
+	var payload messagingpubsub.Payload
 	require.NoError(t, json.Unmarshal([]byte(message.Payload), &payload))
 	require.Equal(t, targetID.String(), payload.TargetUserID)
 	var event events.Event
@@ -50,7 +51,7 @@ func TestPubSubPublisherDoesNotPublishDurableMessageEvents(t *testing.T) {
 	defer client.Close()
 
 	publisher := NewPubSubPublisher(nil, client)
-	pubsub := client.Subscribe(context.Background(), pubSubChannel)
+	pubsub := client.Subscribe(context.Background(), messagingpubsub.BroadcastChannel)
 	defer pubsub.Close()
 	_, err := pubsub.Receive(context.Background())
 	require.NoError(t, err)
@@ -84,7 +85,7 @@ func TestPubSubPublisherBroadcastsToPrivateAndGroupMembers(t *testing.T) {
 	db.GroupMember.Create().SetGroupChatID(group.ID).SetUserID(first.ID).SaveX(ctx)
 	db.GroupMember.Create().SetGroupChatID(group.ID).SetUserID(third.ID).SaveX(ctx)
 
-	pubsub := client.Subscribe(ctx, pubSubChannel)
+	pubsub := client.Subscribe(ctx, messagingpubsub.BroadcastChannel)
 	t.Cleanup(func() { _ = pubsub.Close() })
 	_, err := pubsub.Receive(ctx)
 	require.NoError(t, err)
@@ -114,7 +115,7 @@ func TestPubSubPublisherBroadcastsPresenceOnlyToUnblockedContacts(t *testing.T) 
 	db.PrivateChat.Create().SetChatID(blockedChat.ID).SetUser1ID(current.ID).SetUser2ID(blocked.ID).SaveX(ctx)
 	db.UserBlock.Create().SetBlockerID(blocked.ID).SetBlockedID(current.ID).SaveX(ctx)
 
-	pubsub := client.Subscribe(ctx, pubSubChannel)
+	pubsub := client.Subscribe(ctx, messagingpubsub.BroadcastChannel)
 	t.Cleanup(func() { _ = pubsub.Close() })
 	_, err := pubsub.Receive(ctx)
 	require.NoError(t, err)
@@ -131,7 +132,7 @@ func TestPubSubPublisherDisconnectsUserAndHandlesNilInputs(t *testing.T) {
 	publisher := NewPubSubPublisher(nil, client)
 	userID := uuid.New()
 
-	pubsub := client.Subscribe(ctx, pubSubControlChannel)
+	pubsub := client.Subscribe(ctx, messagingpubsub.ControlChannel)
 	t.Cleanup(func() { _ = pubsub.Close() })
 	_, err := pubsub.Receive(ctx)
 	require.NoError(t, err)
@@ -155,7 +156,7 @@ func receiveTargets(t *testing.T, pubsub *redis.PubSub, count int) []string {
 	for len(targets) < count {
 		message, err := pubsub.ReceiveMessage(ctx)
 		require.NoError(t, err)
-		var payload pubSubPayload
+		var payload messagingpubsub.Payload
 		require.NoError(t, json.Unmarshal([]byte(message.Payload), &payload))
 		targets = append(targets, payload.TargetUserID)
 	}

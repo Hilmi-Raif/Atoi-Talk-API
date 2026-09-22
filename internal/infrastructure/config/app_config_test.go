@@ -89,6 +89,16 @@ func TestLoadAppConfigBuildsCompleteConfiguration(t *testing.T) {
 	}
 }
 
+func TestLoadAppConfigNormalizesCORSOrigins(t *testing.T) {
+	setCompleteAppConfigEnvironment(t)
+	t.Setenv("APP_CORS_ALLOWED_ORIGINS", " https://app.example.com, ,https://admin.example.com ")
+
+	cfg := LoadAppConfig()
+	if len(cfg.AppCorsAllowedOrigins) != 2 || cfg.AppCorsAllowedOrigins[0] != "https://app.example.com" || cfg.AppCorsAllowedOrigins[1] != "https://admin.example.com" {
+		t.Fatalf("unexpected normalized CORS origins: %#v", cfg.AppCorsAllowedOrigins)
+	}
+}
+
 func TestAppConfigOTelFields(t *testing.T) {
 	setCompleteAppConfigEnvironment(t)
 	t.Setenv("OTEL_ENABLED", "true")

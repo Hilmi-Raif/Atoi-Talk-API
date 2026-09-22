@@ -12,7 +12,6 @@ import (
 	"AtoiTalkAPI/internal/domain/constant"
 	"AtoiTalkAPI/internal/domain/helper"
 	"AtoiTalkAPI/internal/domain/model"
-	"AtoiTalkAPI/internal/infrastructure/config"
 	"AtoiTalkAPI/internal/infrastructure/database/mapper"
 	"AtoiTalkAPI/internal/infrastructure/database/repository"
 	objectstorage "AtoiTalkAPI/internal/infrastructure/object_storage"
@@ -33,10 +32,8 @@ import (
 type MessageService struct {
 	client         *ent.Client
 	messageRepo    repository.MessageReader
-	cfg            *config.AppConfig
 	validator      *validator.Validate
 	storageAdapter objectstorage.URLGenerator
-	wsHub          events.Publisher
 }
 
 func runPaginationAvailabilityChecks(ctx context.Context, nextCheck, prevCheck func(context.Context) (bool, error)) (hasNext, hasPrev bool, err error) {
@@ -51,14 +48,12 @@ func runPaginationAvailabilityChecks(ctx context.Context, nextCheck, prevCheck f
 	return hasNext, hasPrev, nil
 }
 
-func NewMessageService(client *ent.Client, messageRepo repository.MessageReader, cfg *config.AppConfig, validator *validator.Validate, storageAdapter objectstorage.URLGenerator, wsHub events.Publisher) *MessageService {
+func NewMessageService(client *ent.Client, messageRepo repository.MessageReader, validator *validator.Validate, storageAdapter objectstorage.URLGenerator) *MessageService {
 	return &MessageService{
 		client:         client,
 		messageRepo:    messageRepo,
-		cfg:            cfg,
 		validator:      validator,
 		storageAdapter: storageAdapter,
-		wsHub:          wsHub,
 	}
 }
 
@@ -742,11 +737,7 @@ func (s *MessageService) GetMessages(ctx context.Context, userID uuid.UUID, req 
 		hasExtraMessage := req.AroundMessageID == nil && len(messages) > req.Limit
 
 		if hasExtraMessage {
-			if req.Direction == "newer" {
-				messages = messages[:req.Limit]
-			} else {
-				messages = messages[:req.Limit]
-			}
+			messages = messages[:req.Limit]
 		}
 
 		if req.AroundMessageID == nil && req.Direction != "newer" {

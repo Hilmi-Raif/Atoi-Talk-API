@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"AtoiTalkAPI/internal/messaging/events"
+	messagingpubsub "AtoiTalkAPI/internal/messaging/pubsub"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -35,7 +36,7 @@ func TestPresenceManagerPublishesFilteredOnlineAndOfflineEvents(t *testing.T) {
 		},
 	)
 
-	pubsub := client.Subscribe(context.Background(), legacyPubSubChannel)
+	pubsub := client.Subscribe(context.Background(), messagingpubsub.BroadcastChannel)
 	defer pubsub.Close()
 	_, err := pubsub.Receive(context.Background())
 	require.NoError(t, err)
@@ -45,7 +46,7 @@ func TestPresenceManagerPublishesFilteredOnlineAndOfflineEvents(t *testing.T) {
 
 	message, err := pubsub.ReceiveMessage(context.Background())
 	require.NoError(t, err)
-	var payload PubSubPayload
+	var payload messagingpubsub.Payload
 	require.NoError(t, json.Unmarshal([]byte(message.Payload), &payload))
 	var event events.Event
 	require.NoError(t, json.Unmarshal(payload.EventData, &event))

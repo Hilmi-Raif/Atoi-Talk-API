@@ -3,11 +3,15 @@ package connection
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 )
 
-const defaultClientBuffer = 256
+const (
+	defaultClientBuffer = 256
+	dependencyTimeout   = 5 * time.Second
+)
 
 type Client struct {
 	UserID uuid.UUID
@@ -57,7 +61,9 @@ func (g *Gateway) RegisterWithBuffer(userID uuid.UUID, buffer int) *Client {
 	g.clients[userID][client] = struct{}{}
 	g.mu.Unlock()
 	if firstConnection && g.presence != nil {
-		g.presence.Connected(context.Background(), userID)
+		ctx, cancel := context.WithTimeout(context.Background(), dependencyTimeout)
+		defer cancel()
+		g.presence.Connected(ctx, userID)
 	}
 	return client
 }
@@ -96,7 +102,9 @@ func (g *Gateway) RefreshPresence(client *Client) {
 	if client == nil || g.presence == nil {
 		return
 	}
-	g.presence.Refresh(context.Background(), client.UserID)
+	ctx, cancel := context.WithTimeout(context.Background(), dependencyTimeout)
+	defer cancel()
+	g.presence.Refresh(ctx, client.UserID)
 }
 
 func (g *Gateway) Unregister(client *Client) {
@@ -120,7 +128,9 @@ func (g *Gateway) Unregister(client *Client) {
 	}
 	g.mu.Unlock()
 	if lastConnection && g.presence != nil {
-		g.presence.Disconnected(context.Background(), client.UserID)
+		ctx, cancel := context.WithTimeout(context.Background(), dependencyTimeout)
+		defer cancel()
+		g.presence.Disconnected(ctx, client.UserID)
 	}
 }
 

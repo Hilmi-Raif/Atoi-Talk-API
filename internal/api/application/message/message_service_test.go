@@ -39,10 +39,8 @@ func newMessageServiceTest(t *testing.T) (*MessageService, *ent.Client, *reposit
 	service := NewMessageService(
 		client,
 		messageRepo,
-		&config.AppConfig{},
 		config.NewValidator(),
 		adaptermocks.NewMockURLGenerator(t),
-		nil,
 	)
 	return service, client, messageRepo
 }
@@ -207,10 +205,8 @@ func TestMessageServiceGetMessagesDoesNotLoadGroupChatForPrivateChat(t *testing.
 	service := NewMessageService(
 		client,
 		messageRepo,
-		&config.AppConfig{},
 		config.NewValidator(),
 		adaptermocks.NewMockURLGenerator(t),
-		nil,
 	)
 	current := client.User.Create().SetUsername("private-access-current").SaveX(ctx)
 	other := client.User.Create().SetUsername("private-access-other").SaveX(ctx)
@@ -247,10 +243,8 @@ func TestMessageServiceGetMessagesUsesOneAvailabilityQueryWhenPageHasExtraMessag
 	service := NewMessageService(
 		client,
 		messageRepo,
-		&config.AppConfig{},
 		config.NewValidator(),
 		adaptermocks.NewMockURLGenerator(t),
-		nil,
 	)
 	current := client.User.Create().SetUsername("pagination-current").SaveX(ctx)
 	other := client.User.Create().SetUsername("pagination-other").SaveX(ctx)
@@ -293,10 +287,8 @@ func TestMessageServiceGetMessagesSkipsAvailabilityQueryForNewerPageWithExtraMes
 	service := NewMessageService(
 		client,
 		messageRepo,
-		&config.AppConfig{},
 		config.NewValidator(),
 		adaptermocks.NewMockURLGenerator(t),
-		nil,
 	)
 	current := client.User.Create().SetUsername("newer-pagination-current").SaveX(ctx)
 	other := client.User.Create().SetUsername("newer-pagination-other").SaveX(ctx)
@@ -372,10 +364,8 @@ func TestMessageServiceSendMessageSkipsUnusedResponseEdges(t *testing.T) {
 	service := NewMessageService(
 		client,
 		repositorymocks.NewMockMessageReader(t),
-		&config.AppConfig{},
 		config.NewValidator(),
 		adaptermocks.NewMockURLGenerator(t),
-		nil,
 	)
 	sender := client.User.Create().SetUsername("response-edge-sender").SetFullName("Sender").SaveX(ctx)
 	recipient := client.User.Create().SetUsername("response-edge-recipient").SetFullName("Recipient").SaveX(ctx)
@@ -411,10 +401,8 @@ func TestMessageServiceSendMessageUsesCreatedMessageForSimpleResponse(t *testing
 	service := NewMessageService(
 		client,
 		repositorymocks.NewMockMessageReader(t),
-		&config.AppConfig{},
 		config.NewValidator(),
 		adaptermocks.NewMockURLGenerator(t),
-		nil,
 	)
 	sender := client.User.Create().SetUsername("simple-response-sender").SetFullName("Sender").SaveX(ctx)
 	recipient := client.User.Create().SetUsername("simple-response-recipient").SetFullName("Recipient").SaveX(ctx)
@@ -718,10 +706,8 @@ func TestMessageServiceSendMessageDoesNotLoadPrivateChatForGroupMessage(t *testi
 	service := NewMessageService(
 		client,
 		repositorymocks.NewMockMessageReader(t),
-		&config.AppConfig{},
 		config.NewValidator(),
 		adaptermocks.NewMockURLGenerator(t),
-		nil,
 	)
 	sender := client.User.Create().SetUsername("group-query-sender").SaveX(ctx)
 	recipient := client.User.Create().SetUsername("group-query-recipient").SaveX(ctx)
@@ -757,10 +743,8 @@ func TestMessageServiceSendMessageUpdatesGroupMembersInOneStatement(t *testing.T
 	service := NewMessageService(
 		client,
 		repositorymocks.NewMockMessageReader(t),
-		&config.AppConfig{},
 		config.NewValidator(),
 		adaptermocks.NewMockURLGenerator(t),
-		nil,
 	)
 	sender := client.User.Create().SetUsername("group-update-sender").SaveX(ctx)
 	recipient := client.User.Create().SetUsername("group-update-recipient").SaveX(ctx)
@@ -803,10 +787,8 @@ func TestMessageServiceSendMessageUpdatesChatBeforeGroupMembers(t *testing.T) {
 	service := NewMessageService(
 		client,
 		repositorymocks.NewMockMessageReader(t),
-		&config.AppConfig{},
 		config.NewValidator(),
 		adaptermocks.NewMockURLGenerator(t),
-		nil,
 	)
 	sender := client.User.Create().SetUsername("group-order-sender").SaveX(ctx)
 	recipient := client.User.Create().SetUsername("group-order-recipient").SaveX(ctx)
@@ -1938,34 +1920,6 @@ func TestMessageServiceSendMessageAllowsExpiredBannedRecipient(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, res)
 	require.Equal(t, "message to previously banned user", res.Content)
-}
-
-func TestMessageServiceOperationsWithWsHubNil(t *testing.T) {
-	service, client, _ := newMessageServiceTest(t)
-	defer func() { _ = client.Close() }()
-	ctx := context.Background()
-	service.wsHub = nil
-
-	u1 := client.User.Create().SetUsername("u1-wsnil").SaveX(ctx)
-	u2 := client.User.Create().SetUsername("u2-wsnil").SaveX(ctx)
-	pChat := client.Chat.Create().SetType(chat.TypePrivate).SaveX(ctx)
-	client.PrivateChat.Create().SetChat(pChat).SetUser1ID(u1.ID).SetUser2ID(u2.ID).SaveX(ctx)
-
-	msg, err := service.SendMessage(ctx, u1.ID, model.SendMessageRequest{
-		ChatID:  pChat.ID,
-		Content: "hello wsnil",
-	})
-	require.NoError(t, err)
-	require.NotNil(t, msg)
-
-	edited, err := service.EditMessage(ctx, u1.ID, msg.ID, model.EditMessageRequest{
-		Content: "hello wsnil edited",
-	})
-	require.NoError(t, err)
-	require.NotNil(t, edited)
-
-	err = service.DeleteMessage(ctx, u1.ID, msg.ID)
-	require.NoError(t, err)
 }
 
 func TestMessageServiceSendMessageRejectsReplyToSystemOrDeletedMessage(t *testing.T) {

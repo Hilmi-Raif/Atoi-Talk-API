@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -140,7 +141,9 @@ func (h *HTTPHandler) readPump(conn *websocket.Conn, client *Client) {
 		if err != nil {
 			return
 		}
-		_ = h.handleIncomingMessage(context.Background(), client.UserID, message)
+		if err := h.handleIncomingMessage(context.Background(), client.UserID, message); err != nil {
+			slog.Warn("failed to handle incoming realtime event", "error", err, "userID", client.UserID)
+		}
 	}
 }
 
@@ -152,5 +155,7 @@ func (h *HTTPHandler) handleIncomingMessage(ctx context.Context, userID uuid.UUI
 	if err := json.Unmarshal(data, &event); err != nil {
 		return err
 	}
-	return h.typingRouter.Publish(ctx, userID, event)
+	operationCtx, cancel := context.WithTimeout(ctx, dependencyTimeout)
+	defer cancel()
+	return h.typingRouter.Publish(operationCtx, userID, event)
 }
