@@ -14,6 +14,14 @@ func TestQueryIndexStatementsCoverSearchAndCleanupQueries(t *testing.T) {
 	if !strings.Contains(statements, "dead_lettered_at IS NULL") {
 		t.Fatal("message outbox indexes must exclude dead-letter rows")
 	}
+	if !strings.Contains(statements, "message_outboxes_active_chat_order_idx") ||
+		!strings.Contains(statements, "(chat_id, created_at, id)") {
+		t.Fatal("message outbox indexes must support per-chat ordering")
+	}
+	if !strings.Contains(statements, "message_outboxes_published_cleanup_idx") ||
+		!strings.Contains(statements, "message_outboxes_dead_letter_cleanup_idx") {
+		t.Fatal("message outbox indexes must support terminal row retention cleanup")
+	}
 
 	requiredFragments := []string{
 		"CREATE EXTENSION IF NOT EXISTS pg_trgm",

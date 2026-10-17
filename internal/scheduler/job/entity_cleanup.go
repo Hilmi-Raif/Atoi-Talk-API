@@ -3,11 +3,14 @@ package job
 import (
 	"AtoiTalkAPI/ent"
 	"AtoiTalkAPI/ent/chat"
+	"AtoiTalkAPI/ent/messageoutbox"
 	"AtoiTalkAPI/ent/user"
 	"AtoiTalkAPI/internal/infrastructure/config"
 	"context"
 	"log/slog"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const cleanupBatchSize = 100
@@ -75,6 +78,42 @@ func RunEntityCleanup(ctx context.Context, client *ent.Client, cfg *config.AppCo
 		}
 		if deleted == 0 {
 			slog.Warn("Stopping chat cleanup because the current batch made no progress")
+			break
+		}
+	}
+
+	outboxRetentionDays := cfg.MessageOutboxRetentionDays
+	if outboxRetentionDays <= 0 {
+		outboxRetentionDays = 7
+	}
+	outboxCutoff := time.Now().UTC().AddDate(0, 0, -outboxRetentionDays)
+	for {
+		rows, err := client.MessageOutbox.Query().
+			Where(
+				messageoutbox.Or(
+					messageoutbox.PublishedAtLT(outboxCutoff),
+					messageoutbox.DeadLetteredAtLT(outboxCutoff),
+				),
+			).
+			Order(ent.Asc(messageoutbox.FieldID)).
+			Select(messageoutbox.FieldID).
+			Limit(cleanupBatchSize).
+			All(ctx)
+		if err != nil {
+			return err
+		}
+		if len(rows) == 0 {
+			break
+		}
+		ids := make([]uuid.UUID, len(rows))
+		for i, row := range rows {
+			ids[i] = row.ID
+		}
+		deleted, err := client.MessageOutbox.Delete().Where(messageoutbox.IDIn(ids...)).Exec(ctx)
+		if err != nil {
+			return err
+		}
+		if deleted == 0 {
 			break
 		}
 	}

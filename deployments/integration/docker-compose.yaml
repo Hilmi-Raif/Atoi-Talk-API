@@ -18,7 +18,7 @@ services:
     image: redis:7-alpine
     container_name: atoitalk-test-redis
     ports:
-      - "6379:6379"
+      - "${REDIS_HOST_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 3s
@@ -31,11 +31,11 @@ services:
     environment:
       COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: test-public-bucket,test-private-bucket
     ports:
-      - "9090:9090"
+      - "${S3_HOST_PORT:-9090}:9090"
 
   mailpit:
     image: axllent/mailpit:latest
     container_name: atoitalk-test-mailpit
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "${SMTP_HOST_PORT:-1025}:1025"
+      - "${MAILPIT_UI_HOST_PORT:-8025}:8025"

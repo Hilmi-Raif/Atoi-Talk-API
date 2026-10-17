@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect"
+	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
@@ -44,6 +45,38 @@ func TestRunEntityCleanupUsesDefaultRetentionForNegativeConfig(t *testing.T) {
 	defer client.Close()
 
 	require.NoError(t, RunEntityCleanup(context.Background(), client, &config.AppConfig{SoftDeleteRetentionDays: -1}))
+}
+
+func TestRunEntityCleanupDeletesOnlyExpiredTerminalOutboxRows(t *testing.T) {
+	client := enttest.Open(t, dialect.SQLite, "file:entity-cleanup-outbox-"+t.Name()+"?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+	ctx := context.Background()
+	old := time.Now().UTC().Add(-8 * 24 * time.Hour)
+	recent := time.Now().UTC().Add(-6 * 24 * time.Hour)
+	create := func() *ent.MessageOutboxCreate {
+		return client.MessageOutbox.Create().
+			SetEventType("message.new").
+			SetMessageID(uuid.New()).
+			SetChatID(uuid.New()).
+			SetCreatedAt(old)
+	}
+	published := create().SetPublishedAt(old).SaveX(ctx)
+	deadLetter := create().SetDeadLetteredAt(old).SaveX(ctx)
+	recentPublished := create().SetCreatedAt(recent).SetPublishedAt(recent).SaveX(ctx)
+	recentDeadLetter := create().SetDeadLetteredAt(recent).SaveX(ctx)
+	pending := create().SaveX(ctx)
+
+	err := RunEntityCleanup(ctx, client, &config.AppConfig{SoftDeleteRetentionDays: 30, MessageOutboxRetentionDays: 7})
+
+	require.NoError(t, err)
+	for _, id := range []uuid.UUID{published.ID, deadLetter.ID} {
+		_, err = client.MessageOutbox.Get(ctx, id)
+		require.True(t, ent.IsNotFound(err))
+	}
+	for _, id := range []uuid.UUID{recentPublished.ID, recentDeadLetter.ID, pending.ID} {
+		_, err = client.MessageOutbox.Get(ctx, id)
+		require.NoError(t, err)
+	}
 }
 
 func TestRunEntityCleanupReturnsQueryErrorOnCancelledContext(t *testing.T) {

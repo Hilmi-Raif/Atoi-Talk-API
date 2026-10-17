@@ -29,9 +29,14 @@ func ResolveRealtimeInstanceID(configured string) string {
 	return uuid.NewString()
 }
 
-func RealtimeConsumerGroup(configured, instanceID string) string {
-	if strings.TrimSpace(configured) != "" {
-		return configured
+func RealtimeConsumerGroupPrefix(configured string) string {
+	prefix := strings.TrimSpace(configured)
+	if prefix == "" {
+		prefix = "realtime"
 	}
-	return "realtime-" + ResolveRealtimeInstanceID(instanceID)
+	return prefix
+}
+
+func RealtimeConsumerGroup(configured, instanceID string) string {
+	return RealtimeConsumerGroupPrefix(configured) + "-" + ResolveRealtimeInstanceID(instanceID)
 }

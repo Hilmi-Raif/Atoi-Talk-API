@@ -8,6 +8,7 @@ import (
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/message"
 	apiresponse "AtoiTalkAPI/internal/api/http/response"
+	"AtoiTalkAPI/internal/domain/constant"
 	"AtoiTalkAPI/internal/domain/helper"
 	"AtoiTalkAPI/internal/domain/model"
 	websocket "AtoiTalkAPI/internal/messaging/events"
@@ -16,7 +17,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -1035,6 +1038,86 @@ func TestJoinPublicGroup(t *testing.T) {
 	})
 }
 
+func TestConcurrentPublicGroupJoinsRespectCapacity(t *testing.T) {
+	clearDatabase(context.Background())
+	ctx := context.Background()
+	owner := testClient.User.Create().SetEmail("capacity-owner@test.com").SetUsername("capacityowner").SetFullName("Capacity Owner").SaveX(ctx)
+	chatEntity := testClient.Chat.Create().SetType(chat.TypeGroup).SaveX(ctx)
+	group := testClient.GroupChat.Create().SetChat(chatEntity).SetCreator(owner).SetName("Capacity Group").SetIsPublic(true).SetInviteCode("capacity-public").SaveX(ctx)
+	testClient.GroupMember.Create().SetGroupChat(group).SetUser(owner).SetRole(groupmember.RoleOwner).SaveX(ctx)
+	for i := 1; i < constant.MaxGroupMembers-1; i++ {
+		member := testClient.User.Create().SetEmail(fmt.Sprintf("capacity-member-%d@test.com", i)).SetUsername(fmt.Sprintf("capacitymember%d", i)).SetFullName("Member").SaveX(ctx)
+		testClient.GroupMember.Create().SetGroupChat(group).SetUser(member).SetRole(groupmember.RoleMember).SaveX(ctx)
+	}
+	joiners := [2]string{}
+	for i := range joiners {
+		joiner := testClient.User.Create().SetEmail(fmt.Sprintf("capacity-joiner-%d@test.com", i)).SetUsername(fmt.Sprintf("capacityjoiner%d", i)).SetFullName("Joiner").SaveX(ctx)
+		joiners[i], _ = helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, joiner.ID)
+	}
+	start := make(chan struct{})
+	results := make(chan int, 2)
+	var wg sync.WaitGroup
+	for _, token := range joiners {
+		wg.Add(1)
+		go func(token string) {
+			defer wg.Done()
+			<-start
+			results <- makeRequest("POST", fmt.Sprintf("/api/chats/group/%s/join", group.ChatID), nil, token).Code
+		}(token)
+	}
+	close(start)
+	wg.Wait()
+	close(results)
+	var statuses []int
+	for status := range results {
+		statuses = append(statuses, status)
+	}
+	sort.Ints(statuses)
+	assert.Equal(t, []int{http.StatusOK, http.StatusConflict}, statuses)
+	count, err := testClient.GroupMember.Query().Where(groupmember.GroupChatID(group.ID)).Count(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, constant.MaxGroupMembers, count)
+}
+
+func TestConcurrentPublicGroupJoinsBySameUser(t *testing.T) {
+	for attempt := 0; attempt < 5; attempt++ {
+		clearDatabase(context.Background())
+		ctx := context.Background()
+		owner := testClient.User.Create().SetEmail("owner@test.com").SetUsername("sameowner").SetFullName("Owner").SaveX(ctx)
+		joiner := testClient.User.Create().SetEmail("joiner@test.com").SetUsername("samejoiner").SetFullName("Joiner").SaveX(ctx)
+		chatEntity := testClient.Chat.Create().SetType(chat.TypeGroup).SaveX(ctx)
+		group := testClient.GroupChat.Create().SetChat(chatEntity).SetCreator(owner).SetName("Same User Join").SetIsPublic(true).SetInviteCode("same-user-join").SaveX(ctx)
+		testClient.GroupMember.Create().SetGroupChat(group).SetUser(owner).SetRole(groupmember.RoleOwner).SaveX(ctx)
+		token, err := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, joiner.ID)
+		if !assert.NoError(t, err) {
+			return
+		}
+		start := make(chan struct{})
+		results := make(chan int, 2)
+		var wg sync.WaitGroup
+		for i := 0; i < 2; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-start
+				results <- makeRequest("POST", fmt.Sprintf("/api/chats/group/%s/join", group.ChatID), nil, token).Code
+			}()
+		}
+		close(start)
+		wg.Wait()
+		close(results)
+		var statuses []int
+		for status := range results {
+			statuses = append(statuses, status)
+		}
+		sort.Ints(statuses)
+		assert.Equal(t, []int{http.StatusOK, http.StatusConflict}, statuses, "attempt %d", attempt)
+		count, err := testClient.GroupMember.Query().Where(groupmember.GroupChatID(group.ID), groupmember.UserID(joiner.ID)).Count(ctx)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, count)
+	}
+}
+
 func TestJoinGroupByInvite(t *testing.T) {
 	clearDatabase(context.Background())
 	u1 := testClient.User.Create().SetEmail("u1@test.com").SetUsername("user1").SetFullName("User 1").SaveX(context.Background())
@@ -1157,4 +1240,70 @@ func TestResetInviteCode(t *testing.T) {
 		rr := makeRequest("PUT", fmt.Sprintf("/api/chats/group/%s/invite", gc.ChatID), nil, token2)
 		assert.Equal(t, http.StatusForbidden, rr.Code)
 	})
+}
+
+func TestConcurrentOwnershipTransfersKeepSingleOwner(t *testing.T) {
+	clearDatabase(context.Background())
+	ctx := context.Background()
+	owner := testClient.User.Create().SetEmail("transfer-owner@test.com").SetUsername("transferowner").SetFullName("Owner").SaveX(ctx)
+	c := testClient.Chat.Create().SetType(chat.TypeGroup).SaveX(ctx)
+	gc := testClient.GroupChat.Create().SetChat(c).SetCreator(owner).SetName("Concurrent transfer").SetInviteCode("concurrent-transfer").SaveX(ctx)
+	testClient.GroupMember.Create().SetGroupChat(gc).SetUser(owner).SetRole(groupmember.RoleOwner).SaveX(ctx)
+	token, err := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, owner.ID)
+	if !assert.NoError(t, err) {
+		return
+	}
+	targets := make([]uuid.UUID, 8)
+	for i := range targets {
+		u := testClient.User.Create().SetEmail(fmt.Sprintf("transfer-%d@test.com", i)).SetUsername(fmt.Sprintf("transfer%d", i)).SetFullName("Member").SaveX(ctx)
+		testClient.GroupMember.Create().SetGroupChat(gc).SetUser(u).SetRole(groupmember.RoleMember).SaveX(ctx)
+		targets[i] = u.ID
+	}
+	start := make(chan struct{})
+	codes := make(chan int, len(targets))
+	for _, target := range targets {
+		go func(id uuid.UUID) {
+			<-start
+			rr := makeRequest("POST", fmt.Sprintf("/api/chats/group/%s/transfer", c.ID), model.TransferGroupOwnershipRequest{NewOwnerID: id}, token)
+			codes <- rr.Code
+		}(target)
+	}
+	close(start)
+	successes := 0
+	for range targets {
+		code := <-codes
+		if code == http.StatusOK {
+			successes++
+		} else {
+			assert.Equal(t, http.StatusForbidden, code)
+		}
+	}
+	assert.Equal(t, 1, successes, "only one transfer may succeed for the original owner")
+	count := testClient.GroupMember.Query().Where(groupmember.GroupChatID(gc.ID), groupmember.RoleEQ(groupmember.RoleOwner)).CountX(ctx)
+	assert.Equal(t, 1, count, "a group must retain exactly one owner")
+}
+
+func TestGroupNamesValidateAfterTrimming(t *testing.T) {
+	clearDatabase(context.Background())
+	ctx := context.Background()
+	owner := testClient.User.Create().SetEmail("name-owner@test.com").SetUsername("nameowner").SetFullName("Owner").SaveX(ctx)
+	token, err := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, owner.ID)
+	if !assert.NoError(t, err) {
+		return
+	}
+	c := testClient.Chat.Create().SetType(chat.TypeGroup).SaveX(ctx)
+	gc := testClient.GroupChat.Create().SetChat(c).SetCreator(owner).SetName("Original name").SetInviteCode("name-validation").SaveX(ctx)
+	testClient.GroupMember.Create().SetGroupChat(gc).SetUser(owner).SetRole(groupmember.RoleOwner).SaveX(ctx)
+	member := testClient.User.Create().SetEmail("name-member@test.com").SetUsername("namemember").SetFullName("Member").SaveX(ctx)
+	for _, name := range []string{"   ", " x "} {
+		t.Run(fmt.Sprintf("create_%q", name), func(t *testing.T) {
+			rr := makeRequest("POST", "/api/chats/group", model.CreateGroupChatRequest{Name: name, MemberIDs: []uuid.UUID{member.ID}}, token)
+			assert.Equal(t, http.StatusBadRequest, rr.Code)
+		})
+		t.Run(fmt.Sprintf("update_%q", name), func(t *testing.T) {
+			rr := makeRequest("PUT", fmt.Sprintf("/api/chats/group/%s", c.ID), model.UpdateGroupChatRequest{Name: &name}, token)
+			assert.Equal(t, http.StatusBadRequest, rr.Code)
+			assert.Equal(t, "Original name", testClient.GroupChat.GetX(ctx, gc.ID).Name)
+		})
+	}
 }

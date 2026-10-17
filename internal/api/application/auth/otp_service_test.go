@@ -8,14 +8,16 @@ import (
 	"AtoiTalkAPI/internal/infrastructure/config"
 	repositorymocks "AtoiTalkAPI/internal/infrastructure/database/repository/mocks"
 	adaptermocks "AtoiTalkAPI/internal/infrastructure/mocks"
+	redisinfrastructure "AtoiTalkAPI/internal/infrastructure/redis"
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"entgo.io/ent/dialect"
+	"github.com/alicebob/miniredis/v2"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -70,7 +72,7 @@ func TestOTPServiceSendOTPUsesFingerprintScopeAndDeletesStoredCodeWhenEmailFails
 	limiter.EXPECT().Allow(mock.Anything, "ratelimit:otp:register:person@example.com:"+scope, 1, time.Minute).Return(true, time.Minute, nil)
 	store.EXPECT().Set(mock.Anything, "otp:register:person@example.com", mock.Anything, 5*time.Minute).Return(nil)
 	email.EXPECT().Send([]string{"person@example.com"}, "Your OTP Code", mock.Anything).Return(errors.New("smtp unavailable"))
-	store.EXPECT().Del(mock.Anything, "otp:register:person@example.com").Return(nil)
+	store.EXPECT().ConsumeIfMatch(mock.Anything, "otp:register:person@example.com", mock.Anything).Return(true, nil)
 
 	service, client := newOTPService(t, email, captcha, store, limiter)
 	defer client.Close()
@@ -82,6 +84,40 @@ func TestOTPServiceSendOTPUsesFingerprintScopeAndDeletesStoredCodeWhenEmailFails
 	})
 
 	require.NoError(t, err)
+}
+
+func TestOTPServiceFailedOlderEmailDoesNotDeleteNewerOTP(t *testing.T) {
+	server := miniredis.RunT(t)
+	store, err := redisinfrastructure.NewRedisAdapter(&config.AppConfig{RedisHost: server.Host(), RedisPort: server.Port()})
+	require.NoError(t, err)
+	captcha := adaptermocks.NewMockCaptchaVerifier(t)
+	captcha.EXPECT().Verify("captcha", "").Return(nil).Twice()
+	limiter := repositorymocks.NewMockRateLimiter(t)
+	limiter.EXPECT().Allow(mock.Anything, mock.Anything, 1, time.Minute).Return(true, time.Minute, nil).Twice()
+	email := adaptermocks.NewMockEmailSender(t)
+	firstStarted := make(chan struct{})
+	releaseFirst := make(chan struct{})
+	var sends atomic.Int32
+	email.EXPECT().Send(mock.Anything, "Your OTP Code", mock.Anything).RunAndReturn(func(_ []string, _, _ string) error {
+		if sends.Add(1) == 1 {
+			close(firstStarted)
+			<-releaseFirst
+			return errors.New("smtp unavailable")
+		}
+		return nil
+	}).Twice()
+	service, client := newOTPService(t, email, captcha, store, limiter)
+	defer client.Close()
+	req := model.SendOTPRequest{Email: "person@example.com", Mode: "register", CaptchaToken: "captcha"}
+	firstResult := make(chan error, 1)
+	go func() { firstResult <- service.SendOTP(context.Background(), req) }()
+	<-firstStarted
+	require.NoError(t, service.SendOTP(context.Background(), req))
+	key := "otp:register:person@example.com"
+	require.True(t, server.Exists(key))
+	close(releaseFirst)
+	require.NoError(t, <-firstResult)
+	require.True(t, server.Exists(key), "a failed older delivery must not delete the newer code")
 }
 
 func TestOTPServiceSendOTPRejectsInvalidRequestAndCaptcha(t *testing.T) {
@@ -164,15 +200,14 @@ func TestOTPServiceSendOTPSuppressesKnownUserModes(t *testing.T) {
 
 func TestOTPServiceVerifyOTPBranches(t *testing.T) {
 	tests := []struct {
-		name     string
-		value    string
-		getError error
-		allow    bool
-		allowErr error
+		name         string
+		consumeError error
+		allow        bool
+		allowErr     error
 	}{
-		{name: "wrong code", value: "wrong", allow: true},
-		{name: "expired", getError: redis.Nil, allow: true},
-		{name: "redis error", getError: errors.New("redis unavailable"), allow: true},
+		{name: "wrong code", allow: true},
+		{name: "expired", allow: true},
+		{name: "redis error", consumeError: errors.New("redis unavailable"), allow: true},
 		{name: "rate limited", allow: false},
 		{name: "rate limit error", allow: true, allowErr: errors.New("rate limit unavailable")},
 	}
@@ -185,7 +220,7 @@ func TestOTPServiceVerifyOTPBranches(t *testing.T) {
 			limiter := repositorymocks.NewMockRateLimiter(t)
 			limiter.EXPECT().Allow(mock.Anything, "ratelimit:otp_verify:reset:person@example.com:global", 5, time.Minute).Return(tt.allow, 12*time.Second, tt.allowErr)
 			if tt.allow && tt.allowErr == nil {
-				store.EXPECT().Get(mock.Anything, "otp:reset:person@example.com").Return(tt.value, tt.getError)
+				store.EXPECT().ConsumeIfMatch(mock.Anything, "otp:reset:person@example.com", helper.HashOTP("123456", "secret")).Return(false, tt.consumeError)
 			}
 
 			service, client := newOTPService(t, email, captcha, store, limiter)
@@ -196,12 +231,11 @@ func TestOTPServiceVerifyOTPBranches(t *testing.T) {
 	}
 }
 
-func TestOTPServiceVerifyOTPSuccessAndDeleteError(t *testing.T) {
+func TestOTPServiceVerifyOTPSuccessAndStorageError(t *testing.T) {
 	store := adaptermocks.NewMockRedisStore(t)
 	limiter := repositorymocks.NewMockRateLimiter(t)
 	limiter.EXPECT().Allow(mock.Anything, mock.Anything, 5, time.Minute).Return(true, time.Minute, nil)
-	store.EXPECT().Get(mock.Anything, "otp:reset:person@example.com").Return(helper.HashOTP("123456", "secret"), nil)
-	store.EXPECT().Del(mock.Anything, "otp:reset:person@example.com").Return(nil)
+	store.EXPECT().ConsumeIfMatch(mock.Anything, "otp:reset:person@example.com", helper.HashOTP("123456", "secret")).Return(true, nil)
 	service, client := newOTPService(t, adaptermocks.NewMockEmailSender(t), adaptermocks.NewMockCaptchaVerifier(t), store, limiter)
 	defer client.Close()
 
@@ -211,12 +245,37 @@ func TestOTPServiceVerifyOTPSuccessAndDeleteError(t *testing.T) {
 	store = adaptermocks.NewMockRedisStore(t)
 	limiter = repositorymocks.NewMockRateLimiter(t)
 	limiter.EXPECT().Allow(mock.Anything, mock.Anything, 5, time.Minute).Return(true, time.Minute, nil)
-	store.EXPECT().Get(mock.Anything, mock.Anything).Return(helper.HashOTP("123456", "secret"), nil)
-	store.EXPECT().Del(mock.Anything, mock.Anything).Return(errors.New("delete failed"))
+	store.EXPECT().ConsumeIfMatch(mock.Anything, mock.Anything, mock.Anything).Return(false, errors.New("redis unavailable"))
 	service, client = newOTPService(t, adaptermocks.NewMockEmailSender(t), adaptermocks.NewMockCaptchaVerifier(t), store, limiter)
 	defer client.Close()
 	err = service.VerifyOTP(context.Background(), "person@example.com", "123456", "reset")
 	require.Error(t, err)
+}
+
+func TestOTPServiceVerifyOTPConcurrentRequestsConsumeOnce(t *testing.T) {
+	email := adaptermocks.NewMockEmailSender(t)
+	captcha := adaptermocks.NewMockCaptchaVerifier(t)
+	store := adaptermocks.NewMockRedisStore(t)
+	limiter := repositorymocks.NewMockRateLimiter(t)
+	limiter.EXPECT().Allow(mock.Anything, mock.Anything, 5, time.Minute).Return(true, time.Minute, nil).Times(2)
+	store.EXPECT().ConsumeIfMatch(mock.Anything, "otp:reset:person@example.com", helper.HashOTP("123456", "secret")).Return(true, nil).Once()
+	store.EXPECT().ConsumeIfMatch(mock.Anything, "otp:reset:person@example.com", helper.HashOTP("123456", "secret")).Return(false, nil).Once()
+	service, client := newOTPService(t, email, captcha, store, limiter)
+	defer client.Close()
+
+	results := make(chan error, 2)
+	for i := 0; i < 2; i++ {
+		go func() { results <- service.VerifyOTP(context.Background(), "person@example.com", "123456", "reset") }()
+	}
+	first, second := <-results, <-results
+	require.Equal(t, 1, boolToInt(first == nil)+boolToInt(second == nil), "OTP may only be consumed once")
+}
+
+func boolToInt(value bool) int {
+	if value {
+		return 1
+	}
+	return 0
 }
 
 func TestOTPServiceClientRateLimitScopeDefaultsToGlobal(t *testing.T) {

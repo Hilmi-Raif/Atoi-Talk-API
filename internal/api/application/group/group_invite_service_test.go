@@ -5,6 +5,7 @@ import (
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/media"
 	"AtoiTalkAPI/ent/messageoutbox"
+	"AtoiTalkAPI/internal/domain/constant"
 	adaptermocks "AtoiTalkAPI/internal/infrastructure/mocks"
 	websocket "AtoiTalkAPI/internal/messaging/events"
 	websocketmocks "AtoiTalkAPI/internal/messaging/events/mocks"
@@ -44,6 +45,24 @@ func TestGroupChatServiceGetGroupByInviteCodeRejectsExpiredInvite(t *testing.T) 
 	_, err := service.GetGroupByInviteCode(ctx, "expired123")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "expired")
+}
+
+func TestGroupChatServiceJoinGroupByInviteRejectsFullGroup(t *testing.T) {
+	service, client, _, _, _ := newGroupChatServiceTest(t)
+	defer client.Close()
+	ctx := context.Background()
+	parent := client.Chat.Create().SetType(chat.TypeGroup).SaveX(ctx)
+	groupEntity := client.GroupChat.Create().SetChatID(parent.ID).SetName("full invite").SetInviteCode("full-invite").SaveX(ctx)
+	for i := 0; i < constant.MaxGroupMembers; i++ {
+		member := client.User.Create().SaveX(ctx)
+		client.GroupMember.Create().SetGroupChatID(groupEntity.ID).SetUserID(member.ID).SetRole(groupmember.RoleMember).SaveX(ctx)
+	}
+	joiner := client.User.Create().SaveX(ctx)
+
+	result, err := service.JoinGroupByInvite(ctx, joiner.ID, "full-invite")
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Equal(t, constant.MaxGroupMembers, client.GroupMember.Query().Where(groupmember.GroupChatID(groupEntity.ID)).CountX(ctx))
 }
 
 func TestGroupChatServiceJoinGroupByInviteCreatesMemberAndMessage(t *testing.T) {

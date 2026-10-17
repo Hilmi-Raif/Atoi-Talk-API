@@ -516,6 +516,24 @@ func TestMediaServiceCompleteUploadPublicAvatarReturnsPublicURL(t *testing.T) {
 	require.Equal(t, "https://cdn.example.com/avatars/user.png", res.URL)
 }
 
+func TestMediaServiceGetMediaURLRejectsDeletedChat(t *testing.T) {
+	service, client, storage, _ := newMediaService(t)
+	defer client.Close()
+	ctx := context.Background()
+	owner := client.User.Create().SetUsername("deleted-chat-owner").SaveX(ctx)
+	chatEntity := client.Chat.Create().SetType(chat.TypePrivate).SetDeletedAt(time.Now().UTC()).SaveX(ctx)
+	client.PrivateChat.Create().SetChatID(chatEntity.ID).SetUser1ID(owner.ID).SaveX(ctx)
+	msg := client.Message.Create().SetChatID(chatEntity.ID).SetSenderID(owner.ID).SetContent("hidden").SaveX(ctx)
+	attachment := client.Media.Create().SetFileName("hidden.bin").SetOriginalName("hidden.bin").SetFileSize(10).
+		SetMimeType("application/octet-stream").SetCategory(media.CategoryMessageAttachment).
+		SetUploadStatus(media.UploadStatusCompleted).SetUploaderID(owner.ID).SetMessageID(msg.ID).SaveX(ctx)
+	storage.EXPECT().GetPresignedURL("hidden.bin", 15*time.Minute).Return("https://download.test/hidden", nil).Maybe()
+
+	result, err := service.GetMediaURL(ctx, owner.ID, attachment.ID)
+	require.Error(t, err)
+	require.Nil(t, result)
+}
+
 func TestMediaServiceGetMediaURLPrivateChatUser2(t *testing.T) {
 	service, client, storage, _ := newMediaService(t)
 	defer client.Close()

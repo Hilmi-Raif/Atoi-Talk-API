@@ -595,10 +595,10 @@ func (s *continuousDrainStore) Claim(_ context.Context, batchSize int, _ time.Du
 	return nil, nil
 }
 
-func TestWorkerRunDrainsContinuouslyWhenBatchIsFull(t *testing.T) {
+func TestWorkerRunDrainsContinuouslyWhenBatchProcessesRecords(t *testing.T) {
 	store := &continuousDrainStore{claimCalls: make(chan struct{}, 10)}
 	worker := NewWorker(store, &fakeStreamPublisher{}, WorkerConfig{
-		BatchSize:     1,
+		BatchSize:     10,
 		LeaseDuration: time.Minute,
 		PollInterval:  time.Hour,
 	})

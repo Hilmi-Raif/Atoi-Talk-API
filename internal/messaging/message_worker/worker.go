@@ -121,7 +121,7 @@ func (w *Worker) Run(ctx context.Context, wakeup <-chan struct{}) error {
 
 	for {
 		processed, err := w.ProcessBatch(ctx)
-		if err == nil && processed == w.config.BatchSize {
+		if err == nil && processed > 0 {
 			if ctx.Err() != nil {
 				return nil
 			}

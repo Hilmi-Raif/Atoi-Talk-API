@@ -313,6 +313,7 @@ func startWebSocketGateway() http.Handler {
 
 	presenceManager := presence.NewManager(
 		redisAdapter.Client(),
+		consumerName,
 		func(ctx context.Context, userID uuid.UUID) error {
 			return testClient.User.UpdateOneID(userID).SetLastSeenAt(time.Now().UTC()).Exec(ctx)
 		},

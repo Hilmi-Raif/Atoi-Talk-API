@@ -9,6 +9,7 @@ import (
 	"AtoiTalkAPI/ent/messageoutbox"
 	"AtoiTalkAPI/internal/domain/model"
 	websocket "AtoiTalkAPI/internal/messaging/events"
+	"AtoiTalkAPI/internal/messaging/outbox"
 	"context"
 	"encoding/json"
 	"errors"
@@ -246,6 +247,31 @@ func TestEntOutboxStoreProjectsPrivateMessageExactlyOnce(t *testing.T) {
 	require.NotNil(t, updatedOutbox.ProjectedAt)
 }
 
+func TestEntOutboxStoreDoesNotMarkLaterReplyReadWhenProjectingOwnMessage(t *testing.T) {
+	client := newMessageWorkerEntClient(t)
+	defer client.Close()
+	ctx := context.Background()
+	sender := client.User.Create().SetUsername("reply-race-sender").SaveX(ctx)
+	recipient := client.User.Create().SetUsername("reply-race-recipient").SaveX(ctx)
+	chatEntity := client.Chat.Create().SetType(chat.TypePrivate).SaveX(ctx)
+	private := client.PrivateChat.Create().SetChatID(chatEntity.ID).SetUser1ID(sender.ID).SetUser2ID(recipient.ID).SaveX(ctx)
+	firstAt := time.Now().UTC().Add(-time.Minute)
+	first := client.Message.Create().SetChatID(chatEntity.ID).SetSenderID(sender.ID).SetType(message.TypeRegular).SetContent("first").SetCreatedAt(firstAt).SaveX(ctx)
+	client.MessageOutbox.Create().SetEventType(string(websocket.EventMessageNew)).SetMessageID(first.ID).SetChatID(chatEntity.ID).SetSenderID(sender.ID).SetCreatedAt(firstAt).SaveX(ctx)
+	reply := client.Message.Create().SetChatID(chatEntity.ID).SetSenderID(recipient.ID).SetType(message.TypeRegular).SetContent("reply").SaveX(ctx)
+	client.MessageOutbox.Create().SetEventType(string(websocket.EventMessageNew)).SetMessageID(reply.ID).SetChatID(chatEntity.ID).SetSenderID(recipient.ID).SaveX(ctx)
+
+	store := NewEntOutboxStoreWithDialect(client, dialect.SQLite)
+	for range 2 {
+		claimed, err := store.Claim(ctx, 1, time.Minute)
+		require.NoError(t, err)
+		require.Len(t, claimed, 1)
+		require.NoError(t, store.Project(ctx, claimed[0]))
+		require.NoError(t, store.MarkPublished(ctx, claimed[0].ID, claimed[0].LockToken, time.Now().UTC()))
+	}
+	require.Equal(t, 1, client.PrivateChat.GetX(ctx, private.ID).User1UnreadCount)
+}
+
 func TestEntOutboxStoreProjectsGroupMessageExactlyOnce(t *testing.T) {
 	client := newMessageWorkerEntClient(t)
 	defer client.Close()
@@ -383,6 +409,27 @@ func TestEntOutboxStoreBuildsTargetedEventsFromSourceData(t *testing.T) {
 	_ = private
 }
 
+func TestEntOutboxStoreRejectsEventsForDeletedChat(t *testing.T) {
+	client := newMessageWorkerEntClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	sender := client.User.Create().SetUsername("deleted-chat-sender").SaveX(ctx)
+	recipient := client.User.Create().SetUsername("deleted-chat-recipient").SaveX(ctx)
+	chatEntity := client.Chat.Create().SetType(chat.TypePrivate).SetDeletedAt(time.Now().UTC()).SaveX(ctx)
+	client.PrivateChat.Create().SetChatID(chatEntity.ID).SetUser1ID(sender.ID).SetUser2ID(recipient.ID).SaveX(ctx)
+	messageEntity := client.Message.Create().SetChatID(chatEntity.ID).SetSenderID(sender.ID).SetContent("hidden").SaveX(ctx)
+
+	_, err := NewEntOutboxStoreWithDialect(client, dialect.SQLite).BuildEvents(ctx, OutboxRecord{
+		ID:        uuid.New(),
+		EventType: string(websocket.EventMessageNew),
+		MessageID: messageEntity.ID,
+		ChatID:    chatEntity.ID,
+		SenderID:  sender.ID,
+	})
+	require.Error(t, err)
+}
+
 func TestEntOutboxStoreBuildsEventWithStoredMessageSnapshot(t *testing.T) {
 	client := newMessageWorkerEntClient(t)
 	defer client.Close()
@@ -412,6 +459,47 @@ func TestEntOutboxStoreBuildsEventWithStoredMessageSnapshot(t *testing.T) {
 	var response model.MessageResponse
 	require.NoError(t, json.Unmarshal(payload, &response))
 	require.Equal(t, "original content", response.Content)
+}
+
+func TestEntOutboxStoreBuildsEventAfterPersistedSnapshotRoundTrip(t *testing.T) {
+	client := newMessageWorkerEntClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	sender := client.User.Create().SetUsername("roundtrip-sender").SaveX(ctx)
+	recipient := client.User.Create().SetUsername("roundtrip-recipient").SaveX(ctx)
+	chatEntity := client.Chat.Create().SetType(chat.TypePrivate).SaveX(ctx)
+	client.PrivateChat.Create().SetChatID(chatEntity.ID).SetUser1ID(sender.ID).SetUser2ID(recipient.ID).SaveX(ctx)
+	editedAt := time.Now().UTC().Truncate(time.Millisecond)
+	messageEntity := client.Message.Create().
+		SetChatID(chatEntity.ID).
+		SetSenderID(sender.ID).
+		SetContent("persisted content").
+		SetActionData(map[string]interface{}{"kind": "wave"}).
+		SetEditedAt(editedAt).
+		SaveX(ctx)
+
+	tx, err := client.Tx(ctx)
+	require.NoError(t, err)
+	require.NoError(t, outbox.PersistMessageOutbox(ctx, tx, messageEntity, websocket.EventMessageUpdate, sender.ID))
+	require.NoError(t, tx.Commit())
+
+	messageEntity.Update().SetContent("current content").ClearEditedAt().SaveX(ctx)
+	row := client.MessageOutbox.Query().OnlyX(ctx)
+	built, err := NewEntOutboxStoreWithDialect(client, dialect.SQLite).BuildEvents(ctx, outboxRecord(row))
+	require.NoError(t, err)
+	require.Len(t, built, 1)
+
+	var event websocket.Event
+	require.NoError(t, json.Unmarshal(built[0].Payload, &event))
+	payload, err := json.Marshal(event.Payload)
+	require.NoError(t, err)
+	var response model.MessageResponse
+	require.NoError(t, json.Unmarshal(payload, &response))
+	require.Equal(t, "persisted content", response.Content)
+	require.Equal(t, map[string]interface{}{"kind": "wave"}, response.ActionData)
+	require.NotNil(t, response.EditedAt)
+	require.Equal(t, editedAt.Format(time.RFC3339Nano), *response.EditedAt)
 }
 
 func TestEntOutboxStoreBuildsNewEventFromSnapshotAfterMessageWasDeleted(t *testing.T) {

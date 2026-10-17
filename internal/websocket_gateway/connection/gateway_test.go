@@ -123,6 +123,26 @@ func TestGatewayContinuesDeliveryAfterSlowConnection(t *testing.T) {
 	}
 }
 
+func TestGatewayUnregistersSlowConnectionWhenSignalQueueIsFull(t *testing.T) {
+	gateway := NewGateway()
+	for range cap(gateway.unregister) {
+		gateway.unregister <- &Client{}
+	}
+	userID := uuid.New()
+	client := gateway.RegisterWithBuffer(userID, 1)
+	client.Send <- []byte("occupied")
+
+	require.NoError(t, gateway.Deliver(context.Background(), userID, []byte("payload")))
+
+	<-client.Send
+	_, open := <-client.Send
+	require.False(t, open)
+	gateway.mu.RLock()
+	_, registered := gateway.clients[userID]
+	gateway.mu.RUnlock()
+	require.False(t, registered)
+}
+
 func TestGatewayNotifiesPresenceOnlyOnFirstAndLastConnection(t *testing.T) {
 	probe := &gatewayPresenceProbe{
 		connected:    make(chan uuid.UUID, 2),
@@ -160,4 +180,137 @@ func TestGatewayNotifiesPresenceOnlyOnFirstAndLastConnection(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("last disconnect did not trigger presence")
 	}
+}
+
+func TestGatewayCloseAllClosesRegisteredClients(t *testing.T) {
+	gateway := NewGateway()
+	closed := make(chan struct{}, 2)
+	first := gateway.RegisterWithClose(uuid.New(), 1, func() { closed <- struct{}{} })
+	second := gateway.RegisterWithClose(uuid.New(), 1, func() { closed <- struct{}{} })
+
+	gateway.CloseAll(context.Background())
+
+	for range 2 {
+		select {
+		case <-closed:
+		case <-time.After(time.Second):
+			t.Fatal("registered connection was not closed")
+		}
+	}
+	_, firstOpen := <-first.Send
+	_, secondOpen := <-second.Send
+	require.False(t, firstOpen)
+	require.False(t, secondOpen)
+	require.Empty(t, gateway.clients)
+}
+
+func TestGatewayRejectsConnectionsRegisteredDuringShutdown(t *testing.T) {
+	gateway := NewGateway()
+	gateway.CloseAll(context.Background())
+	closed := make(chan struct{})
+
+	client := gateway.RegisterWithClose(uuid.New(), 1, func() { close(closed) })
+
+	select {
+	case <-closed:
+	case <-time.After(time.Second):
+		t.Fatal("connection registered during shutdown was not closed")
+	}
+	_, open := <-client.Send
+	require.False(t, open)
+	require.Empty(t, gateway.clients)
+}
+
+func TestGatewayCloseAllUsesOneSharedDeadline(t *testing.T) {
+	presence := &blockingDisconnectPresence{}
+	gateway := NewGatewayWithPresence(presence)
+	gateway.Register(uuid.New())
+	gateway.Register(uuid.New())
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+
+	started := time.Now()
+	gateway.CloseAll(ctx)
+
+	require.Less(t, time.Since(started), 200*time.Millisecond)
+}
+
+type blockingDisconnectPresence struct{}
+
+func (*blockingDisconnectPresence) Connected(context.Context, uuid.UUID) {}
+func (*blockingDisconnectPresence) Refresh(context.Context, uuid.UUID)   {}
+func (*blockingDisconnectPresence) Disconnected(ctx context.Context, _ uuid.UUID) {
+	<-ctx.Done()
+}
+
+func TestGatewayRegisterInstallsCloseCallbackBeforeClientBecomesVisible(t *testing.T) {
+	gateway := NewGateway()
+	closed := make(chan struct{}, 1)
+	client := gateway.RegisterWithClose(uuid.New(), 1, func() { close(closed) })
+
+	gateway.Unregister(client)
+
+	select {
+	case <-closed:
+	case <-time.After(time.Second):
+		t.Fatal("connection close callback was not called")
+	}
+}
+
+func TestGatewayDoesNotPublishOfflineBeforeOnlineTransitionCompletes(t *testing.T) {
+	presence := &orderedPresenceProbe{
+		connectedStarted: make(chan struct{}),
+		allowConnected:   make(chan struct{}),
+		disconnected:     make(chan struct{}, 1),
+	}
+	gateway := NewGatewayWithPresence(presence)
+	userID := uuid.New()
+	registered := make(chan *Client, 1)
+	go func() { registered <- gateway.Register(userID) }()
+
+	<-presence.connectedStarted
+	gateway.mu.RLock()
+	var client *Client
+	for candidate := range gateway.clients[userID] {
+		client = candidate
+	}
+	gateway.mu.RUnlock()
+	require.NotNil(t, client)
+
+	unregistered := make(chan struct{})
+	go func() {
+		gateway.Unregister(client)
+		close(unregistered)
+	}()
+	select {
+	case <-presence.disconnected:
+		t.Fatal("offline transition ran before online transition completed")
+	case <-time.After(20 * time.Millisecond):
+	}
+
+	close(presence.allowConnected)
+	<-registered
+	select {
+	case <-presence.disconnected:
+	case <-time.After(time.Second):
+		t.Fatal("offline transition did not run after online transition completed")
+	}
+	<-unregistered
+}
+
+type orderedPresenceProbe struct {
+	connectedStarted chan struct{}
+	allowConnected   chan struct{}
+	disconnected     chan struct{}
+}
+
+func (p *orderedPresenceProbe) Connected(context.Context, uuid.UUID) {
+	close(p.connectedStarted)
+	<-p.allowConnected
+}
+
+func (*orderedPresenceProbe) Refresh(context.Context, uuid.UUID) {}
+
+func (p *orderedPresenceProbe) Disconnected(context.Context, uuid.UUID) {
+	p.disconnected <- struct{}{}
 }

@@ -6,11 +6,13 @@ import (
 	"AtoiTalkAPI/ent/chat"
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/message"
+	"AtoiTalkAPI/ent/messageoutbox"
 	"AtoiTalkAPI/ent/privatechat"
 	"AtoiTalkAPI/ent/userblock"
 	apiresponse "AtoiTalkAPI/internal/api/http/response"
 	"AtoiTalkAPI/internal/domain/helper"
 	"AtoiTalkAPI/internal/domain/model"
+	"AtoiTalkAPI/internal/messaging/events"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -423,7 +425,7 @@ func TestMarkAsRead(t *testing.T) {
 
 		pcAfter, _ := testClient.PrivateChat.Query().Where(privatechat.ChatID(chat1.ID)).Only(context.Background())
 		assert.Equal(t, 0, pcAfter.User1UnreadCount)
-		assert.True(t, pcAfter.User1LastReadAt.IsZero())
+		assert.False(t, pcAfter.User1LastReadAt.IsZero())
 
 		testClient.UserBlock.Delete().Where(userblock.BlockerID(u2.ID), userblock.BlockedID(u1.ID)).ExecX(context.Background())
 	})
@@ -518,4 +520,39 @@ func TestGroupUnreadConsistency(t *testing.T) {
 
 	assert.Equal(t, 0, gm2After.UnreadCount)
 	assert.Equal(t, 1, gm3After.UnreadCount)
+}
+
+func TestMarkAsReadBeforeWorkerProjection(t *testing.T) {
+	clearDatabase(context.Background())
+	ctx := context.Background()
+	sender := createTestUser(t, "earlysender")
+	recipient := createTestUser(t, "earlyrecipient")
+	token, err := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, recipient.ID)
+	if !assert.NoError(t, err) {
+		return
+	}
+	conversation := testClient.Chat.Create().SetType(chat.TypePrivate).SaveX(ctx)
+	testClient.PrivateChat.Create().SetChat(conversation).SetUser1(sender).SetUser2(recipient).SaveX(ctx)
+	msg := testClient.Message.Create().SetChat(conversation).SetSender(sender).SetType(message.TypeRegular).SetContent("already seen").SaveX(ctx)
+	pending := testClient.MessageOutbox.Create().SetChatID(conversation.ID).SetMessageID(msg.ID).SetSenderID(sender.ID).SetEventType(string(events.EventMessageNew)).SetAvailableAt(time.Now().UTC().Add(time.Hour)).SaveX(ctx)
+	rr := makeRequest(http.MethodPost, fmt.Sprintf("/api/chats/%s/read", conversation.ID), nil, token)
+	if !assert.Equal(t, http.StatusOK, rr.Code) {
+		return
+	}
+	privateEntity := testClient.PrivateChat.Query().Where(privatechat.ChatID(conversation.ID)).OnlyX(ctx)
+	if !assert.NotNil(t, privateEntity.User2LastReadAt) {
+		return
+	}
+	if !assert.True(t, privateEntity.User2LastReadAt.After(msg.CreatedAt)) {
+		return
+	}
+	testClient.MessageOutbox.UpdateOneID(pending.ID).SetAvailableAt(time.Now().UTC().Add(-time.Second)).ExecX(ctx)
+	if !assert.Eventually(t, func() bool {
+		outbox, err := testClient.MessageOutbox.Query().Where(messageoutbox.ID(pending.ID)).Only(ctx)
+		return err == nil && outbox.PublishedAt != nil
+	}, 5*time.Second, 20*time.Millisecond) {
+		return
+	}
+	privateEntity = testClient.PrivateChat.Query().Where(privatechat.ChatID(conversation.ID)).OnlyX(ctx)
+	assert.Equal(t, 0, privateEntity.User2UnreadCount)
 }

@@ -407,17 +407,11 @@ func (s *ChatService) MarkAsRead(ctx context.Context, userID uuid.UUID, chatID u
 		update := tx.PrivateChat.UpdateOneID(pc.ID)
 
 		if pc.User1ID != nil && *pc.User1ID == userID {
-			if pc.User1UnreadCount == 0 {
-				return nil
-			}
 			if pc.User2ID != nil {
 				otherUserID = *pc.User2ID
 			}
 			update.SetUser1UnreadCount(0)
 		} else if pc.User2ID != nil && *pc.User2ID == userID {
-			if pc.User2UnreadCount == 0 {
-				return nil
-			}
 			if pc.User1ID != nil {
 				otherUserID = *pc.User1ID
 			}
@@ -441,12 +435,10 @@ func (s *ChatService) MarkAsRead(ctx context.Context, userID uuid.UUID, chatID u
 		}
 		isBlocked = blockExists
 
-		if !isBlocked {
-			if pc.User1ID != nil && *pc.User1ID == userID {
-				update.SetUser1LastReadAt(time.Now().UTC())
-			} else {
-				update.SetUser2LastReadAt(time.Now().UTC())
-			}
+		if pc.User1ID != nil && *pc.User1ID == userID {
+			update.SetUser1LastReadAt(time.Now().UTC())
+		} else {
+			update.SetUser2LastReadAt(time.Now().UTC())
 		}
 
 		if err := update.Exec(ctx); err != nil {
@@ -467,10 +459,6 @@ func (s *ChatService) MarkAsRead(ctx context.Context, userID uuid.UUID, chatID u
 			}
 			slog.Error("Failed to query group member", "error", err)
 			return helper.NewInternalServerError("")
-		}
-
-		if member.UnreadCount == 0 {
-			return nil
 		}
 
 		err = tx.GroupMember.UpdateOne(member).

@@ -20,11 +20,17 @@ func TestExtractWebSocketTokenSupportsQueryAndBearerHeader(t *testing.T) {
 }
 
 func TestRealtimeConsumerGroupIsUniquePerInstanceByDefault(t *testing.T) {
+	if got := RealtimeConsumerGroupPrefix("  custom-group  "); got != "custom-group" {
+		t.Fatalf("configured prefix = %q, want custom-group", got)
+	}
+	if got := RealtimeConsumerGroupPrefix(""); got != "realtime" {
+		t.Fatalf("default prefix = %q, want realtime", got)
+	}
 	if got := RealtimeConsumerGroup("", "realtime-a"); got != "realtime-realtime-a" {
 		t.Fatalf("default group = %q, want realtime-realtime-a", got)
 	}
-	if got := RealtimeConsumerGroup("custom-group", "realtime-a"); got != "custom-group" {
-		t.Fatalf("configured group = %q, want custom-group", got)
+	if got := RealtimeConsumerGroup("custom-group", "realtime-a"); got != "custom-group-realtime-a" {
+		t.Fatalf("configured group = %q, want custom-group-realtime-a", got)
 	}
 	if got := RealtimeConsumerGroup("", ""); !strings.HasPrefix(got, "realtime-") || len(got) <= len("realtime-") {
 		t.Fatalf("empty group should resolve with prefix and dynamic id, got %q", got)

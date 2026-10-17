@@ -101,6 +101,7 @@ type AppConfig struct {
 	MessageWorkerRetryMaxDelay   time.Duration
 	MessageEventStream           string
 	MessageEventStreamMaxLen     int
+	MessageOutboxRetentionDays   int
 	RealtimeInstanceID           string
 	RealtimeConsumerGroup        string
 
@@ -201,6 +202,7 @@ func LoadAppConfig() *AppConfig {
 		MessageWorkerRetryMaxDelay:   getEnvAsDuration("MESSAGE_WORKER_RETRY_MAX_DELAY", 64*time.Second),
 		MessageEventStream:           getEnv("MESSAGE_EVENT_STREAM", "events:messages"),
 		MessageEventStreamMaxLen:     getEnvAsInt("MESSAGE_EVENT_STREAM_MAX_LEN", 10000),
+		MessageOutboxRetentionDays:   getEnvAsInt("MESSAGE_OUTBOX_RETENTION_DAYS", 7),
 		RealtimeInstanceID:           getEnv("REALTIME_INSTANCE_ID", ""),
 		RealtimeConsumerGroup:        getEnv("REALTIME_CONSUMER_GROUP", ""),
 

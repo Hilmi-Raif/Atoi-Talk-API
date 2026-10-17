@@ -9,6 +9,7 @@ type Store interface {
 	Set(context.Context, string, interface{}, time.Duration) error
 	Get(context.Context, string) (string, error)
 	Del(context.Context, string) error
+	ConsumeIfMatch(context.Context, string, string) (bool, error)
 }
 
 type OAuthStore interface {

@@ -37,7 +37,7 @@ func (s *GroupChatService) UpdateMemberRole(ctx context.Context, requestorID uui
 			groupchat.ChatID(groupID),
 			groupchat.HasChatWith(chat.DeletedAtIsNil()),
 		).
-		Select(groupchat.FieldID, groupchat.FieldChatID).
+		Select(groupchat.FieldID, groupchat.FieldChatID, groupchat.FieldName).
 		WithChat().
 		Only(ctx)
 	if err != nil {
@@ -46,6 +46,10 @@ func (s *GroupChatService) UpdateMemberRole(ctx context.Context, requestorID uui
 		}
 		slog.Error("Failed to query group chat", "error", err)
 		return nil, helper.NewInternalServerError("")
+	}
+
+	if err := lockGroupMembership(ctx, tx, gc); err != nil {
+		return nil, err
 	}
 
 	requestorMember, err := tx.GroupMember.Query().
@@ -181,7 +185,7 @@ func (s *GroupChatService) TransferOwnership(ctx context.Context, requestorID uu
 			groupchat.ChatID(groupID),
 			groupchat.HasChatWith(chat.DeletedAtIsNil()),
 		).
-		Select(groupchat.FieldID, groupchat.FieldChatID).
+		Select(groupchat.FieldID, groupchat.FieldChatID, groupchat.FieldName).
 		WithChat().
 		Only(ctx)
 	if err != nil {
@@ -190,6 +194,10 @@ func (s *GroupChatService) TransferOwnership(ctx context.Context, requestorID uu
 		}
 		slog.Error("Failed to query group chat", "error", err)
 		return nil, helper.NewInternalServerError("")
+	}
+
+	if err := lockGroupMembership(ctx, tx, gc); err != nil {
+		return nil, err
 	}
 
 	requestorMember, err := tx.GroupMember.Query().

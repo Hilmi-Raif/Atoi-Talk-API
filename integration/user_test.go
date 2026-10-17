@@ -30,6 +30,28 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestUpdateProfileValidatesNormalizedName(t *testing.T) {
+	clearDatabase(context.Background())
+	ctx := context.Background()
+	u := testClient.User.Create().SetEmail("profile-name@test.com").SetUsername("profilename").SetFullName("Original name").SetBio("Original bio").SaveX(ctx)
+	token, err := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, u.ID)
+	if !assert.NoError(t, err) {
+		return
+	}
+	for _, name := range []string{"   ", " x "} {
+		t.Run(fmt.Sprintf("invalid_%q", name), func(t *testing.T) {
+			rr := makeRequest("PUT", "/api/user/profile", model.UpdateProfileRequest{FullName: name, Bio: "Changed bio"}, token)
+			assert.Equal(t, http.StatusBadRequest, rr.Code)
+			stored := testClient.User.GetX(ctx, u.ID)
+			assert.Equal(t, "Original name", *stored.FullName)
+			assert.Equal(t, "Original bio", *stored.Bio)
+		})
+	}
+	rr := makeRequest("PUT", "/api/user/profile", model.UpdateProfileRequest{FullName: "  Valid name  ", Bio: "Original bio"}, token)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "Valid name", *testClient.User.GetX(ctx, u.ID).FullName)
+}
+
 func createTestImage(t *testing.T, width, height int) []byte {
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 	for x := 0; x < width; x++ {

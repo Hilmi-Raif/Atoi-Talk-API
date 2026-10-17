@@ -56,6 +56,10 @@ func (s *GroupChatService) AddMember(ctx context.Context, requestorID uuid.UUID,
 		return nil, helper.NewInternalServerError("")
 	}
 
+	if err := lockGroupMembership(ctx, tx, gc); err != nil {
+		return nil, err
+	}
+
 	requestorMember, err := tx.GroupMember.Query().
 		Where(
 			groupmember.GroupChatID(gc.ID),
@@ -99,7 +103,6 @@ func (s *GroupChatService) AddMember(ctx context.Context, requestorID uuid.UUID,
 		}
 		targetUserIDs = append(targetUserIDs, u.ID)
 	}
-
 	existingMembers, err := tx.GroupMember.Query().
 		Where(
 			groupmember.GroupChatID(gc.ID),
@@ -148,6 +151,9 @@ func (s *GroupChatService) AddMember(ctx context.Context, requestorID uuid.UUID,
 
 	if len(memberCreates) == 0 {
 		return nil, helper.NewConflictError("All users are already members")
+	}
+	if err := checkMemberCapacity(ctx, tx, gc, len(memberCreates)); err != nil {
+		return nil, err
 	}
 
 	_, err = tx.GroupMember.CreateBulk(memberCreates...).Save(ctx)
@@ -287,6 +293,10 @@ func (s *GroupChatService) LeaveGroup(ctx context.Context, userID uuid.UUID, gro
 		return nil, helper.NewInternalServerError("")
 	}
 
+	if err := lockGroupMembership(ctx, tx, gc); err != nil {
+		return nil, err
+	}
+
 	member, err := tx.GroupMember.Query().
 		Where(
 			groupmember.GroupChatID(gc.ID),
@@ -386,6 +396,10 @@ func (s *GroupChatService) KickMember(ctx context.Context, requestorID uuid.UUID
 		}
 		slog.Error("Failed to query group chat", "error", err)
 		return nil, helper.NewInternalServerError("")
+	}
+
+	if err := lockGroupMembership(ctx, tx, gc); err != nil {
+		return nil, err
 	}
 
 	requestorMember, err := tx.GroupMember.Query().

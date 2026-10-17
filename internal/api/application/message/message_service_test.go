@@ -422,6 +422,53 @@ func TestMessageServiceSendMessageUsesCreatedMessageForSimpleResponse(t *testing
 	require.Equal(t, int32(0), responseMessageQueries.Load())
 }
 
+func TestMessageServiceSendMessageResponseFailureRollsBackTransaction(t *testing.T) {
+	service, client, _ := newMessageServiceTest(t)
+	defer client.Close()
+	ctx := context.Background()
+	sender := client.User.Create().SetUsername("postcommit-sender").SaveX(ctx)
+	recipient := client.User.Create().SetUsername("postcommit-recipient").SaveX(ctx)
+	chatEntity := client.Chat.Create().SetType(chat.TypePrivate).SaveX(ctx)
+	client.PrivateChat.Create().SetChatID(chatEntity.ID).SetUser1ID(sender.ID).SetUser2ID(recipient.ID).SaveX(ctx)
+
+	var userLookups atomic.Int32
+	client.User.Intercept(ent.InterceptFunc(func(next ent.Querier) ent.Querier {
+		return ent.QuerierFunc(func(ctx context.Context, query ent.Query) (ent.Value, error) {
+			if _, ok := query.(*ent.UserQuery); ok && userLookups.Add(1) > 2 {
+				return nil, errors.New("sender response lookup unavailable")
+			}
+			return next.Query(ctx, query)
+		})
+	}))
+
+	response, err := service.SendMessage(ctx, sender.ID, model.SendMessageRequest{ChatID: chatEntity.ID, Content: "saved"})
+	require.Error(t, err)
+	require.Nil(t, response)
+	require.Zero(t, client.Message.Query().CountX(ctx))
+	require.Zero(t, client.MessageOutbox.Query().CountX(ctx))
+}
+
+func TestMessageServiceEditMessageResponseFailureRollsBackTransaction(t *testing.T) {
+	service, client, _ := newMessageServiceTest(t)
+	defer client.Close()
+	ctx, sender, _, _, msg := createPrivateMessageServiceFixture(t, client)
+	client.User.Intercept(ent.InterceptFunc(func(next ent.Querier) ent.Querier {
+		return ent.QuerierFunc(func(ctx context.Context, query ent.Query) (ent.Value, error) {
+			if _, ok := query.(*ent.UserQuery); ok {
+				return nil, errors.New("edited message response sender unavailable")
+			}
+			return next.Query(ctx, query)
+		})
+	}))
+
+	response, err := service.EditMessage(ctx, sender.ID, msg.ID, model.EditMessageRequest{Content: "changed"})
+	require.Error(t, err)
+	require.Nil(t, response)
+	stored := client.Message.GetX(ctx, msg.ID)
+	require.Equal(t, "hello", *stored.Content)
+	require.Zero(t, client.MessageOutbox.Query().CountX(ctx))
+}
+
 func TestMessageServiceGetMessagesEnrichesGroupSystemMessage(t *testing.T) {
 	service, client, messageRepo := newMessageServiceTest(t)
 	defer client.Close()
@@ -1056,6 +1103,40 @@ func TestMessageServiceEditMessageLinksAndUnlinksAttachments(t *testing.T) {
 	require.Len(t, attachments, 1)
 	require.Equal(t, newAttachment.ID, attachments[0].ID)
 	_ = oldAttachment
+}
+
+func TestMessageServiceEditMessageRejectsUnverifiedAttachments(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		category media.Category
+		status   media.UploadStatus
+	}{
+		{"pending", media.CategoryMessageAttachment, media.UploadStatusPending},
+		{"avatar", media.CategoryUserAvatar, media.UploadStatusCompleted},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			service, client, _ := newMessageServiceTest(t)
+			defer client.Close()
+			ctx, current, _, _, msg := createPrivateMessageServiceFixture(t, client)
+			service.storageAdapter.(*adaptermocks.MockURLGenerator).EXPECT().GetPresignedURL(mock.Anything, mock.Anything).Return("https://cdn.test/file", nil).Maybe()
+			attachment := client.Media.Create().
+				SetFileName(tc.name + ".bin").
+				SetOriginalName(tc.name + ".bin").
+				SetFileSize(10).
+				SetMimeType("application/octet-stream").
+				SetCategory(tc.category).
+				SetUploadStatus(tc.status).
+				SetUploaderID(current.ID).
+				SaveX(ctx)
+
+			result, err := service.EditMessage(ctx, current.ID, msg.ID, model.EditMessageRequest{
+				Content: "updated", AttachmentIDs: []uuid.UUID{attachment.ID}, HasAttachmentIDs: true,
+			})
+			require.Error(t, err)
+			require.Nil(t, result)
+			require.Empty(t, client.Message.GetX(ctx, msg.ID).QueryAttachments().AllX(ctx))
+		})
+	}
 }
 
 func TestMessageServiceEditMessageRejectsDeletedChatAndNonRegularMessage(t *testing.T) {

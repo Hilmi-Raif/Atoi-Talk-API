@@ -213,6 +213,9 @@ func (s *UserService) GetUserProfile(ctx context.Context, currentUserID uuid.UUI
 }
 
 func (s *UserService) UpdateProfile(ctx context.Context, userID uuid.UUID, req model.UpdateProfileRequest) (*model.UserDTO, error) {
+	req.FullName = strings.TrimSpace(req.FullName)
+	req.Bio = strings.TrimSpace(req.Bio)
+
 	if req.DeleteAvatar && req.AvatarMediaID != nil {
 		return nil, helper.NewBadRequestError("")
 	}
@@ -221,9 +224,6 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID uuid.UUID, req m
 		slog.Warn("Validation failed", "error", err, "userID", userID)
 		return nil, helper.NewBadRequestError("")
 	}
-
-	req.FullName = strings.TrimSpace(req.FullName)
-	req.Bio = strings.TrimSpace(req.Bio)
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {

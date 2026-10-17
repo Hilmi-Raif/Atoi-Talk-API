@@ -48,6 +48,9 @@ func (s *GroupChatService) JoinGroupByInvite(ctx context.Context, userID uuid.UU
 	if gc.InviteExpiresAt != nil && time.Now().UTC().After(*gc.InviteExpiresAt) {
 		return nil, helper.NewBadRequestError("Invite code has expired")
 	}
+	if err := lockGroupMembership(ctx, tx, gc); err != nil {
+		return nil, err
+	}
 
 	isMember, err := tx.GroupMember.Query().
 		Where(
@@ -61,6 +64,9 @@ func (s *GroupChatService) JoinGroupByInvite(ctx context.Context, userID uuid.UU
 	}
 	if isMember {
 		return nil, helper.NewConflictError("You are already a member of this group")
+	}
+	if err := checkMemberCapacity(ctx, tx, gc, 1); err != nil {
+		return nil, err
 	}
 
 	_, err = tx.GroupMember.Create().

@@ -6,6 +6,7 @@ import (
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/media"
 	"AtoiTalkAPI/ent/messageoutbox"
+	"AtoiTalkAPI/internal/domain/constant"
 	"AtoiTalkAPI/internal/domain/model"
 	adaptermocks "AtoiTalkAPI/internal/infrastructure/mocks"
 	websocket "AtoiTalkAPI/internal/messaging/events"
@@ -100,6 +101,27 @@ func TestGroupChatServiceSearchPublicGroupsInvalidCursorAndCountFallback(t *test
 	require.NoError(t, err)
 	require.Len(t, resp, 1)
 	require.Equal(t, 0, resp[0].MemberCount)
+}
+
+func TestGroupChatServiceJoinPublicGroupRejectsFullGroup(t *testing.T) {
+	service, client, _, _, _ := newGroupChatServiceTest(t)
+	defer client.Close()
+	ctx := context.Background()
+	parent := client.Chat.Create().SetType(chat.TypeGroup).SaveX(ctx)
+	groupEntity := client.GroupChat.Create().SetChatID(parent.ID).SetName("full group").SetIsPublic(true).SetInviteCode("full-public").SaveX(ctx)
+	users := make([]*ent.User, 0, constant.MaxGroupMembers)
+	for i := 0; i < constant.MaxGroupMembers; i++ {
+		users = append(users, client.User.Create().SaveX(ctx))
+	}
+	for _, member := range users {
+		client.GroupMember.Create().SetGroupChatID(groupEntity.ID).SetUserID(member.ID).SetRole(groupmember.RoleMember).SaveX(ctx)
+	}
+	joiner := client.User.Create().SaveX(ctx)
+
+	result, err := service.JoinPublicGroup(ctx, joiner.ID, parent.ID)
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Equal(t, constant.MaxGroupMembers, client.GroupMember.Query().Where(groupmember.GroupChatID(groupEntity.ID)).CountX(ctx))
 }
 
 func TestGroupChatServiceJoinPublicGroupSuccess(t *testing.T) {

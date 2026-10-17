@@ -176,12 +176,13 @@ func TestLoadAppConfigReadsMessageWorkerConfiguration(t *testing.T) {
 	t.Setenv("MESSAGE_WORKER_BACKLOG_INTERVAL", "5s")
 	t.Setenv("MESSAGE_EVENT_STREAM", "events:test")
 	t.Setenv("MESSAGE_EVENT_STREAM_MAX_LEN", "5000")
+	t.Setenv("MESSAGE_OUTBOX_RETENTION_DAYS", "14")
 	t.Setenv("MESSAGE_WORKER_MAX_ATTEMPTS", "7")
 	t.Setenv("MESSAGE_WORKER_RETRY_BASE_DELAY", "2s")
 	t.Setenv("MESSAGE_WORKER_RETRY_MAX_DELAY", "2m")
 
 	cfg := LoadAppConfig()
-	if cfg.MessageWorkerBatchSize != 25 || cfg.MessageWorkerConcurrency != 8 || cfg.MessageWorkerLeaseDuration != 2*time.Minute || cfg.MessageWorkerPollInterval != 750*time.Millisecond || cfg.MessageWorkerBacklogInterval != 5*time.Second || cfg.MessageEventStream != "events:test" || cfg.MessageEventStreamMaxLen != 5000 || cfg.MessageWorkerMaxAttempts != 7 || cfg.MessageWorkerRetryBaseDelay != 2*time.Second || cfg.MessageWorkerRetryMaxDelay != 2*time.Minute {
+	if cfg.MessageWorkerBatchSize != 25 || cfg.MessageWorkerConcurrency != 8 || cfg.MessageWorkerLeaseDuration != 2*time.Minute || cfg.MessageWorkerPollInterval != 750*time.Millisecond || cfg.MessageWorkerBacklogInterval != 5*time.Second || cfg.MessageEventStream != "events:test" || cfg.MessageEventStreamMaxLen != 5000 || cfg.MessageOutboxRetentionDays != 14 || cfg.MessageWorkerMaxAttempts != 7 || cfg.MessageWorkerRetryBaseDelay != 2*time.Second || cfg.MessageWorkerRetryMaxDelay != 2*time.Minute {
 		t.Fatalf("unexpected message worker configuration: %+v", cfg)
 	}
 }

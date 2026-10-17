@@ -12,16 +12,18 @@ packages:
     interfaces:
       Verifier: {}
     config:
-      dir: "internal/infrastructure/mocks"
+      filename: "captcha_{{.InterfaceName | snakecase}}.go"
+      dir: "{{.InterfaceDir}}/../mocks"
       outpkg: mocks
-      mockname: "Mock{{.InterfaceName}}"
+      mockname: "MockCaptcha{{.InterfaceName}}"
   AtoiTalkAPI/internal/infrastructure/email:
     interfaces:
       Sender: {}
     config:
-      dir: "internal/infrastructure/mocks"
+      filename: "email_{{.InterfaceName | snakecase}}.go"
+      dir: "{{.InterfaceDir}}/../mocks"
       outpkg: mocks
-      mockname: "Mock{{.InterfaceName}}"
+      mockname: "MockEmail{{.InterfaceName}}"
   AtoiTalkAPI/internal/infrastructure/object_storage:
     interfaces:
       PublicURLGenerator: {}
@@ -29,7 +31,7 @@ packages:
       MediaStorage: {}
       URLGenerator: {}
     config:
-      dir: "internal/infrastructure/mocks"
+      dir: "{{.InterfaceDir}}/../mocks"
       outpkg: mocks
       mockname: "Mock{{.InterfaceName}}"
   AtoiTalkAPI/internal/infrastructure/redis:
@@ -40,9 +42,10 @@ packages:
       OnlineStore: {}
       Cache: {}
     config:
-      dir: "internal/infrastructure/mocks"
+      filename: "redis_{{.InterfaceName | snakecase}}.go"
+      dir: "{{.InterfaceDir}}/../mocks"
       outpkg: mocks
-      mockname: "Mock{{.InterfaceName}}"
+      mockname: "MockRedis{{.InterfaceName}}"
   AtoiTalkAPI/internal/infrastructure/database/repository:
     interfaces:
       UserReader: {}
@@ -54,12 +57,11 @@ packages:
       GroupChatReader: {}
       MessageReader: {}
     config:
-      dir: "internal/infrastructure/database/repository/mocks"
+      dir: "{{.InterfaceDir}}/mocks"
       outpkg: mocks
       mockname: "Mock{{.InterfaceName}}"
   AtoiTalkAPI/internal/api/application:
     interfaces:
-      authOTP: {}
       AuthVerifier: {}
       ChatServicePort: {}
       AuthServicePort: {}

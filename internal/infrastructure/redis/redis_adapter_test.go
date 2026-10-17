@@ -126,6 +126,31 @@ func TestRedisAdapterGetDelReturnsAndDeletesValue(t *testing.T) {
 	}
 }
 
+func TestRedisAdapterConsumeIfMatchKeepsWrongCodeAndConsumesOnce(t *testing.T) {
+	server := miniredis.RunT(t)
+	adapter, err := NewRedisAdapter(&config.AppConfig{RedisHost: server.Host(), RedisPort: server.Port()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if err := adapter.Set(ctx, "otp:reset:user", "right", time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		code string
+		want bool
+	}{
+		{code: "wrong", want: false},
+		{code: "right", want: true},
+		{code: "right", want: false},
+	} {
+		consumed, err := adapter.ConsumeIfMatch(ctx, "otp:reset:user", tc.code)
+		if err != nil || consumed != tc.want {
+			t.Fatalf("consume(%q) = %t, %v; want %t", tc.code, consumed, err, tc.want)
+		}
+	}
+}
+
 func TestNewRedisAdapterReturnsConnectionError(t *testing.T) {
 	_, err := NewRedisAdapter(&config.AppConfig{
 		RedisHost: "127.0.0.1",
