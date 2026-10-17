@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.3](https://github.com/Hilmi-Raif/Atoi-Talk-API/compare/atoitalk-api-v0.1.2...atoitalk-api-v0.1.3) (2026-10-17)
+
+
+### Features
+
+* **worker:** add retry policy and dead letter handling ([9c57e3c](https://github.com/Hilmi-Raif/Atoi-Talk-API/commit/9c57e3c61035158c47828f4d13c8b12a81ea2d72))
+
+
+### Bug Fixes
+
+* **core:** harden business flows, authorization, and concurrency handling ([f272736](https://github.com/Hilmi-Raif/Atoi-Talk-API/commit/f272736836df64782211b7285910ec9c98f4d6c0))
+* **messaging:** consolidate realtime delivery ([2b24f54](https://github.com/Hilmi-Raif/Atoi-Talk-API/commit/2b24f544975c922055b063cd98926c4a02a04ac3))
+* **messaging:** harden outbox and realtime delivery ([124fa48](https://github.com/Hilmi-Raif/Atoi-Talk-API/commit/124fa4892dab5a03f987813fa7027e488b4ab125))
+
 ## [0.1.2](https://github.com/Hilmi-Raif/Atoi-Talk-API/compare/atoitalk-api-v0.1.1...atoitalk-api-v0.1.2) (2026-09-21)
 
 
