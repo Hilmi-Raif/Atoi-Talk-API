@@ -2,28 +2,22 @@ package typing
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"time"
 
 	"AtoiTalkAPI/internal/messaging/events"
+	messagingpubsub "AtoiTalkAPI/internal/messaging/pubsub"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
 const (
-	legacyPubSubChannel = "events:broadcast"
-	typingThrottle      = 2 * time.Second
-	typingUserThrottle  = 300 * time.Millisecond
+	typingThrottle     = 2 * time.Second
+	typingUserThrottle = 300 * time.Millisecond
 )
 
 type ChatMembers func(context.Context, uuid.UUID) ([]uuid.UUID, error)
 type BlockChecker func(context.Context, uuid.UUID, uuid.UUID) (bool, error)
-
-type PubSubPayload struct {
-	TargetUserID string `json:"target_user_id"`
-	EventData    []byte `json:"event_data"`
-}
 
 type Router struct {
 	client  redis.UniversalClient
@@ -79,10 +73,6 @@ func (r *Router) Publish(ctx context.Context, senderID uuid.UUID, event events.E
 	metaCopy.SenderID = senderID
 	metaCopy.Timestamp = time.Now().UTC().UnixMilli()
 	eventCopy.Meta = &metaCopy
-	eventData, err := json.Marshal(eventCopy)
-	if err != nil {
-		return err
-	}
 	for _, targetID := range memberIDs {
 		if targetID == uuid.Nil || targetID == senderID {
 			continue
@@ -96,14 +86,7 @@ func (r *Router) Publish(ctx context.Context, senderID uuid.UUID, event events.E
 				continue
 			}
 		}
-		payload, err := json.Marshal(PubSubPayload{
-			TargetUserID: targetID.String(),
-			EventData:    eventData,
-		})
-		if err != nil {
-			return err
-		}
-		if err := r.client.Publish(ctx, legacyPubSubChannel, payload).Err(); err != nil {
+		if err := messagingpubsub.PublishToUser(ctx, r.client, messagingpubsub.BroadcastChannel, targetID, eventCopy); err != nil {
 			return err
 		}
 	}

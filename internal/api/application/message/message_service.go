@@ -12,12 +12,12 @@ import (
 	"AtoiTalkAPI/internal/domain/constant"
 	"AtoiTalkAPI/internal/domain/helper"
 	"AtoiTalkAPI/internal/domain/model"
-	"AtoiTalkAPI/internal/infrastructure/config"
 	"AtoiTalkAPI/internal/infrastructure/database/mapper"
 	"AtoiTalkAPI/internal/infrastructure/database/repository"
 	objectstorage "AtoiTalkAPI/internal/infrastructure/object_storage"
 	"AtoiTalkAPI/internal/infrastructure/observability"
 	"AtoiTalkAPI/internal/messaging/events"
+	"AtoiTalkAPI/internal/messaging/outbox"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -32,10 +32,8 @@ import (
 type MessageService struct {
 	client         *ent.Client
 	messageRepo    repository.MessageReader
-	cfg            *config.AppConfig
 	validator      *validator.Validate
 	storageAdapter objectstorage.URLGenerator
-	wsHub          events.Publisher
 }
 
 func runPaginationAvailabilityChecks(ctx context.Context, nextCheck, prevCheck func(context.Context) (bool, error)) (hasNext, hasPrev bool, err error) {
@@ -50,14 +48,12 @@ func runPaginationAvailabilityChecks(ctx context.Context, nextCheck, prevCheck f
 	return hasNext, hasPrev, nil
 }
 
-func NewMessageService(client *ent.Client, messageRepo repository.MessageReader, cfg *config.AppConfig, validator *validator.Validate, storageAdapter objectstorage.URLGenerator, wsHub events.Publisher) *MessageService {
+func NewMessageService(client *ent.Client, messageRepo repository.MessageReader, validator *validator.Validate, storageAdapter objectstorage.URLGenerator) *MessageService {
 	return &MessageService{
 		client:         client,
 		messageRepo:    messageRepo,
-		cfg:            cfg,
 		validator:      validator,
 		storageAdapter: storageAdapter,
-		wsHub:          wsHub,
 	}
 }
 
@@ -78,6 +74,9 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 	}
 
 	req.Content = strings.TrimSpace(req.Content)
+	if req.Content == "" && len(req.AttachmentIDs) == 0 {
+		return nil, helper.NewBadRequestError("Message must contain text or attachments")
+	}
 
 	var msg *ent.Message
 
@@ -279,32 +278,16 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 		return nil, helper.NewInternalServerError("")
 	}
 
-	if _, err := tx.MessageOutbox.Create().
-		SetEventType(string(events.EventMessageNew)).
-		SetMessageID(msg.ID).
-		SetChatID(req.ChatID).
-		SetSenderID(userID).
-		Save(txCtx); err != nil {
+	if err := outbox.PersistMessageOutbox(txCtx, tx, msg, events.EventMessageNew, userID); err != nil {
 		observability.RecordError(span, err)
 		slog.Error("Failed to persist message outbox event", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
-	if err := tx.Commit(); err != nil {
-		observability.RecordError(txSpan, err)
-		observability.RecordError(span, err)
-		txSpan.End()
-		txSpanEnded = true
-		slog.Error("Failed to commit transaction", "error", err)
-		return nil, helper.NewInternalServerError("")
-	}
-	txSpan.End()
-	txSpanEnded = true
-
-	responseCtx, responseSpan := observability.StartServiceSpan(ctx, "service.message.response.fetch")
+	responseCtx, responseSpan := observability.StartServiceSpan(txCtx, "service.message.response.fetch")
 	fullMsg := msg
 	if len(req.AttachmentIDs) == 0 && req.ReplyToID == nil {
-		sender, err := s.client.User.Query().
+		sender, err := tx.User.Query().
 			Where(user.ID(userID)).
 			WithAvatar().
 			Only(responseCtx)
@@ -317,7 +300,7 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 		}
 		msg.Edges.Sender = sender
 	} else {
-		fullMsgQuery := s.client.Message.Query().
+		fullMsgQuery := tx.Message.Query().
 			Where(message.ID(msg.ID)).
 			WithSender(func(uq *ent.UserQuery) {
 				uq.WithAvatar()
@@ -345,6 +328,17 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 		}
 	}
 	responseSpan.End()
+
+	if err := tx.Commit(); err != nil {
+		observability.RecordError(txSpan, err)
+		observability.RecordError(span, err)
+		txSpan.End()
+		txSpanEnded = true
+		slog.Error("Failed to commit transaction", "error", err)
+		return nil, helper.NewInternalServerError("")
+	}
+	txSpan.End()
+	txSpanEnded = true
 
 	resp := mapper.ToMessageResponse(fullMsg, s.storageAdapter, nil, senderRole)
 
@@ -417,16 +411,24 @@ func (s *MessageService) EditMessage(ctx context.Context, userID uuid.UUID, mess
 	}
 
 	var senderRole string
-	if msg.Edges.Chat.Type == chat.TypeGroup && msg.Edges.Chat.Edges.GroupChat != nil {
+	if msg.Edges.Chat.Type == chat.TypeGroup {
+		if msg.Edges.Chat.Edges.GroupChat == nil {
+			return nil, helper.NewInternalServerError("")
+		}
 		member, err := tx.GroupMember.Query().
 			Where(
 				groupmember.GroupChatID(msg.Edges.Chat.Edges.GroupChat.ID),
 				groupmember.UserID(userID),
 			).
 			Only(ctx)
-		if err == nil {
-			senderRole = string(member.Role)
+		if ent.IsNotFound(err) {
+			return nil, helper.NewForbiddenError("Not a member of this group")
 		}
+		if err != nil {
+			slog.Error("Failed to verify group membership for edit", "error", err)
+			return nil, helper.NewInternalServerError("")
+		}
+		senderRole = string(member.Role)
 	}
 
 	currentAttachmentIDs := make(map[uuid.UUID]bool)
@@ -453,6 +455,10 @@ func (s *MessageService) EditMessage(ctx context.Context, userID uuid.UUID, mess
 				toLink = append(toLink, id)
 			}
 		}
+	}
+	remainingAttachments := len(currentAttachmentIDs) - len(toUnlink) + len(toLink)
+	if req.Content == "" && remainingAttachments == 0 {
+		return nil, helper.NewBadRequestError("Message must contain text or attachments")
 	}
 
 	contentChanged := req.Content != *msg.Content
@@ -488,6 +494,8 @@ func (s *MessageService) EditMessage(ctx context.Context, userID uuid.UUID, mess
 			Where(
 				media.IDIn(toLink...),
 				media.MessageIDIsNil(),
+				media.CategoryEQ(media.CategoryMessageAttachment),
+				media.UploadStatusEQ(media.UploadStatusCompleted),
 				media.Not(media.HasUserAvatar()),
 				media.Not(media.HasGroupAvatar()),
 				media.HasUploaderWith(user.ID(userID)),
@@ -521,22 +529,12 @@ func (s *MessageService) EditMessage(ctx context.Context, userID uuid.UUID, mess
 		return nil, helper.NewInternalServerError("")
 	}
 
-	if _, err := tx.MessageOutbox.Create().
-		SetEventType(string(events.EventMessageUpdate)).
-		SetMessageID(msg.ID).
-		SetChatID(msg.ChatID).
-		SetSenderID(userID).
-		Save(ctx); err != nil {
+	if err := outbox.PersistMessageOutbox(ctx, tx, msg, events.EventMessageUpdate, userID); err != nil {
 		slog.Error("Failed to persist message update outbox event", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
-	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
-		return nil, helper.NewInternalServerError("")
-	}
-
-	fullMsg, err := s.client.Message.Query().
+	fullMsg, err := tx.Message.Query().
 		Where(message.ID(msg.ID)).
 		WithSender(func(uq *ent.UserQuery) {
 			uq.WithAvatar()
@@ -554,6 +552,11 @@ func (s *MessageService) EditMessage(ctx context.Context, userID uuid.UUID, mess
 
 	if err != nil {
 		slog.Error("Failed to fetch full message for response", "error", err)
+		return nil, helper.NewInternalServerError("")
+	}
+
+	if err := tx.Commit(); err != nil {
+		slog.Error("Failed to commit transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -751,11 +754,7 @@ func (s *MessageService) GetMessages(ctx context.Context, userID uuid.UUID, req 
 		hasExtraMessage := req.AroundMessageID == nil && len(messages) > req.Limit
 
 		if hasExtraMessage {
-			if req.Direction == "newer" {
-				messages = messages[:req.Limit]
-			} else {
-				messages = messages[:req.Limit]
-			}
+			messages = messages[:req.Limit]
 		}
 
 		if req.AroundMessageID == nil && req.Direction != "newer" {
@@ -935,22 +934,20 @@ func (s *MessageService) DeleteMessage(ctx context.Context, userID uuid.UUID, me
 	if msg.Edges.Chat != nil && msg.Edges.Chat.DeletedAt != nil {
 		return helper.NewBadRequestError("Chat is deleted")
 	}
-
-	canDelete := false
-	if msg.SenderID != nil && *msg.SenderID == userID {
-		canDelete = true
-	} else if msg.Edges.Chat != nil && msg.Edges.Chat.Type == chat.TypeGroup {
-
-		count, err := tx.GroupMember.Query().
-			Where(
-				groupmember.UserID(userID),
-				groupmember.RoleIn(groupmember.RoleAdmin, groupmember.RoleOwner),
-				groupmember.HasGroupChatWith(groupchat.ChatID(msg.ChatID)),
-			).
-			Count(ctx)
-		if err == nil && count > 0 {
-			canDelete = true
+	canDelete := msg.SenderID != nil && *msg.SenderID == userID
+	if msg.Edges.Chat != nil && msg.Edges.Chat.Type == chat.TypeGroup {
+		member, err := tx.GroupMember.Query().Where(
+			groupmember.UserID(userID),
+			groupmember.HasGroupChatWith(groupchat.ChatID(msg.ChatID)),
+		).Only(ctx)
+		if ent.IsNotFound(err) {
+			return helper.NewForbiddenError("Not a member of this group")
 		}
+		if err != nil {
+			slog.Error("Failed to verify group membership for deletion", "error", err)
+			return helper.NewInternalServerError("")
+		}
+		canDelete = canDelete || member.Role == groupmember.RoleAdmin || member.Role == groupmember.RoleOwner
 	}
 
 	if !canDelete {
@@ -976,12 +973,7 @@ func (s *MessageService) DeleteMessage(ctx context.Context, userID uuid.UUID, me
 		return helper.NewInternalServerError("")
 	}
 
-	if _, err := tx.MessageOutbox.Create().
-		SetEventType(string(events.EventMessageDelete)).
-		SetMessageID(msg.ID).
-		SetChatID(msg.ChatID).
-		SetSenderID(userID).
-		Save(ctx); err != nil {
+	if err := outbox.PersistMessageOutbox(ctx, tx, msg, events.EventMessageDelete, userID); err != nil {
 		slog.Error("Failed to persist message delete outbox event", "error", err)
 		return helper.NewInternalServerError("")
 	}

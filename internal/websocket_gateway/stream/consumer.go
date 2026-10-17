@@ -3,6 +3,7 @@ package stream
 import (
 	"AtoiTalkAPI/internal/messaging/events"
 	"context"
+	"log/slog"
 	"sync"
 
 	"github.com/google/uuid"
@@ -46,7 +47,8 @@ func (c *Consumer) Process(ctx context.Context) error {
 
 	event, err := events.UnmarshalMessageEvent(message.Data)
 	if err != nil {
-		return err
+		slog.Warn("Ignoring malformed realtime message event", "message_id", message.ID, "error", err)
+		return c.stream.Ack(ctx, message.ID)
 	}
 	if event.ID != uuid.Nil && c.wasDelivered(event.ID.String()) {
 		return c.stream.Ack(ctx, message.ID)

@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/redis/go-redis/v9"
 )
 
 //go:embed template/*.html
@@ -155,7 +154,7 @@ func (s *OTPService) SendOTP(ctx context.Context, req model.SendOTPRequest) erro
 		if err != nil {
 			slog.Error("Failed to send OTP email", "error", err)
 
-			_ = s.redisAdapter.Del(context.Background(), key)
+			_, _ = s.redisAdapter.ConsumeIfMatch(context.Background(), key, hashedCode)
 		}
 	}
 
@@ -190,22 +189,13 @@ func (s *OTPService) VerifyOTP(ctx context.Context, email, code, mode string) er
 
 	key := fmt.Sprintf("otp:%s:%s", mode, email)
 
-	hashedCode, err := s.redisAdapter.Get(ctx, key)
+	consumed, err := s.redisAdapter.ConsumeIfMatch(ctx, key, helper.HashOTP(code, s.cfg.OTPSecret))
 	if err != nil {
-		if err == redis.Nil {
-			return helper.NewBadRequestError("Invalid or expired OTP")
-		}
-		slog.Error("Failed to get OTP from Redis", "error", err, "email", email, "mode", mode)
+		slog.Error("Failed to consume OTP in Redis", "error", err, "email", email, "mode", mode)
 		return helper.NewServiceUnavailableError("OTP service unavailable")
 	}
-
-	if hashedCode != helper.HashOTP(code, s.cfg.OTPSecret) {
+	if !consumed {
 		return helper.NewBadRequestError("Invalid or expired OTP")
-	}
-
-	if err := s.redisAdapter.Del(ctx, key); err != nil {
-		slog.Error("Failed to delete used OTP key", "error", err, "email", email, "mode", mode)
-		return helper.NewServiceUnavailableError("OTP service unavailable")
 	}
 
 	return nil

@@ -16,15 +16,17 @@ import (
 )
 
 type StorageAdapter struct {
-	client          *s3.Client
-	bucketPublic    string
-	bucketPrivate   string
-	region          string
-	endpoint        string
-	presignEndpoint string
-	publicDomain    string
-	httpClient      *http.Client
-	presignClient   *s3.PresignClient
+	client             *s3.Client
+	bucketPublic       string
+	bucketPrivate      string
+	region             string
+	endpoint           string
+	presignEndpoint    string
+	publicDomain       string
+	httpClient         *http.Client
+	presignClient      *s3.PresignClient
+	downloadMaxRetries int
+	downloadRetryDelay time.Duration
 }
 
 type StorageObjectInfo struct {
@@ -50,15 +52,17 @@ func NewStorageAdapter(cfg *config.AppConfig, s3Client *s3.Client, httpClient *h
 	}
 
 	return &StorageAdapter{
-		client:          s3Client,
-		bucketPublic:    cfg.S3BucketPublic,
-		bucketPrivate:   cfg.S3BucketPrivate,
-		region:          cfg.S3Region,
-		endpoint:        cfg.S3Endpoint,
-		presignEndpoint: cfg.S3PresignEndpoint,
-		publicDomain:    cfg.S3PublicDomain,
-		httpClient:      httpClient,
-		presignClient:   presignClient,
+		client:             s3Client,
+		bucketPublic:       cfg.S3BucketPublic,
+		bucketPrivate:      cfg.S3BucketPrivate,
+		region:             cfg.S3Region,
+		endpoint:           cfg.S3Endpoint,
+		presignEndpoint:    cfg.S3PresignEndpoint,
+		publicDomain:       cfg.S3PublicDomain,
+		httpClient:         httpClient,
+		presignClient:      presignClient,
+		downloadMaxRetries: cfg.StorageDownloadMaxRetries,
+		downloadRetryDelay: cfg.StorageDownloadRetryDelay,
 	}
 }
 
@@ -125,7 +129,7 @@ func (s *StorageAdapter) Download(url string) ([]byte, string, error) {
 		return resp, false, nil
 	}
 
-	resp, err := helper.RetryWithBackoff(operation, 3, 500*time.Millisecond)
+	resp, err := helper.RetryWithBackoff(operation, s.downloadMaxRetries, s.downloadRetryDelay)
 	if err != nil {
 		return nil, "", err
 	}

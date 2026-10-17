@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -48,10 +49,11 @@ func main() {
 	storageAdapter := objectstorage.NewStorageAdapter(cfg, s3Client, config.NewHTTPClient())
 
 	store := messageworker.NewEntOutboxStoreWithURLGenerator(entClient, storageAdapter)
-	publisher := redis.NewRedisStreamPublisher(
+	publisher := redis.NewRedisStreamPublisherWithDedupeTTL(
 		redisAdapter.Client(),
 		cfg.MessageEventStream,
 		int64(cfg.MessageEventStreamMaxLen),
+		messageEventDedupeTTL(cfg),
 	)
 	worker := messageworker.NewWorker(store, publisher, messageworker.ConfigFromAppConfig(cfg))
 
@@ -64,4 +66,12 @@ func main() {
 		os.Exit(1)
 	}
 	slog.Info("Message worker stopped")
+}
+
+func messageEventDedupeTTL(cfg *config.AppConfig) time.Duration {
+	retentionDays := cfg.MessageOutboxRetentionDays
+	if retentionDays <= 0 {
+		retentionDays = 7
+	}
+	return time.Duration(retentionDays) * 24 * time.Hour
 }

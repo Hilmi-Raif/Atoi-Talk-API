@@ -4,11 +4,13 @@ import (
 	"AtoiTalkAPI/ent/enttest"
 	"AtoiTalkAPI/internal/domain/helper"
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"entgo.io/ent/dialect"
 	"github.com/alicebob/miniredis/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/redis/go-redis/v9"
@@ -54,4 +56,50 @@ func TestJWTVerifierRejectsInvalidClaimsAndMissingDependencies(t *testing.T) {
 	require.NoError(t, err)
 	_, err = verifier.Verify(ctx, token)
 	require.ErrorIs(t, err, ErrUnauthorized)
+}
+
+func TestJWTVerifierRejectsTokensIssuedBeforeGlobalRevocation(t *testing.T) {
+	client := enttest.Open(t, dialect.SQLite, "file:websocket-revoke?mode=memory&cache=shared&_fk=1")
+	t.Cleanup(func() { _ = client.Close() })
+	server := miniredis.RunT(t)
+	redisClient := redis.NewClient(&redis.Options{Addr: server.Addr()})
+	t.Cleanup(func() { _ = redisClient.Close() })
+
+	ctx := context.Background()
+	secret := "websocket-test-secret"
+	u := client.User.Create().SetUsername("revoke-test").SaveX(ctx)
+	verifier := NewJWTVerifier(client, redisClient, secret)
+	issuedAt := time.Now().UTC().Add(-time.Minute).Truncate(time.Second)
+	makeToken := func(issuedAtMillis int64, includeMillis bool) string {
+		claims := helper.JWTClaims{
+			UserID: u.ID,
+			RegisteredClaims: jwt.RegisteredClaims{
+				IssuedAt:  jwt.NewNumericDate(issuedAt),
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			},
+		}
+		if includeMillis {
+			claims.IssuedAtMillis = issuedAtMillis
+		}
+		token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(secret))
+		require.NoError(t, err)
+		return token
+	}
+
+	marker := issuedAt.UnixMilli() + 500
+	revokeKey := "revoked_user:" + u.ID.String()
+	require.NoError(t, redisClient.Set(ctx, revokeKey, fmt.Sprintf("%d:%s", marker, uuid.NewString()), time.Hour).Err())
+
+	_, err := verifier.Verify(ctx, makeToken(issuedAt.UnixMilli()+400, true))
+	require.ErrorIs(t, err, ErrUnauthorized)
+
+	_, err = verifier.Verify(ctx, makeToken(issuedAt.UnixMilli()+600, true))
+	require.NoError(t, err)
+
+	_, err = verifier.Verify(ctx, makeToken(0, false))
+	require.ErrorIs(t, err, ErrUnauthorized)
+
+	require.NoError(t, redisClient.Set(ctx, revokeKey, "invalid:marker", time.Hour).Err())
+	_, err = verifier.Verify(ctx, makeToken(issuedAt.UnixMilli()+600, true))
+	require.Error(t, err)
 }

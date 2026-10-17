@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"log/slog"
 
+	messagingpubsub "AtoiTalkAPI/internal/messaging/pubsub"
 	"github.com/redis/go-redis/v9"
 )
 
-type Payload struct {
-	TargetUserID string `json:"target_user_id"`
-	EventData    []byte `json:"event_data"`
-}
+type Payload = messagingpubsub.Payload
 
 type PubSubListener struct {
 	client  redis.UniversalClient

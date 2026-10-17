@@ -45,6 +45,8 @@ type MessageOutbox struct {
 	ProjectedAt *time.Time `json:"projected_at,omitempty"`
 	// PublishedAt holds the value of the "published_at" field.
 	PublishedAt *time.Time `json:"published_at,omitempty"`
+	// DeadLetteredAt holds the value of the "dead_lettered_at" field.
+	DeadLetteredAt *time.Time `json:"dead_lettered_at,omitempty"`
 	// LastError holds the value of the "last_error" field.
 	LastError    *string `json:"last_error,omitempty"`
 	selectValues sql.SelectValues
@@ -63,7 +65,7 @@ func (*MessageOutbox) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case messageoutbox.FieldEventType, messageoutbox.FieldLastError:
 			values[i] = new(sql.NullString)
-		case messageoutbox.FieldCreatedAt, messageoutbox.FieldUpdatedAt, messageoutbox.FieldAvailableAt, messageoutbox.FieldLockedAt, messageoutbox.FieldProjectedAt, messageoutbox.FieldPublishedAt:
+		case messageoutbox.FieldCreatedAt, messageoutbox.FieldUpdatedAt, messageoutbox.FieldAvailableAt, messageoutbox.FieldLockedAt, messageoutbox.FieldProjectedAt, messageoutbox.FieldPublishedAt, messageoutbox.FieldDeadLetteredAt:
 			values[i] = new(sql.NullTime)
 		case messageoutbox.FieldID, messageoutbox.FieldMessageID, messageoutbox.FieldChatID:
 			values[i] = new(uuid.UUID)
@@ -173,6 +175,13 @@ func (_m *MessageOutbox) assignValues(columns []string, values []any) error {
 				_m.PublishedAt = new(time.Time)
 				*_m.PublishedAt = value.Time
 			}
+		case messageoutbox.FieldDeadLetteredAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field dead_lettered_at", values[i])
+			} else if value.Valid {
+				_m.DeadLetteredAt = new(time.Time)
+				*_m.DeadLetteredAt = value.Time
+			}
 		case messageoutbox.FieldLastError:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field last_error", values[i])
@@ -262,6 +271,11 @@ func (_m *MessageOutbox) String() string {
 	builder.WriteString(", ")
 	if v := _m.PublishedAt; v != nil {
 		builder.WriteString("published_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	if v := _m.DeadLetteredAt; v != nil {
+		builder.WriteString("dead_lettered_at=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")

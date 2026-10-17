@@ -19,6 +19,8 @@ type AppConfig struct {
 	AppCorsAllowedOrigins []string
 	RateLimitEnabled      bool
 	CaptchaEnabled        bool
+	CaptchaMaxRetries     int
+	CaptchaRetryDelay     time.Duration
 
 	DBHost     string
 	DBPort     string
@@ -45,22 +47,26 @@ type AppConfig struct {
 	JWTSecret string
 	JWTExp    int
 
-	S3BucketPublic    string
-	S3BucketPrivate   string
-	S3Region          string
-	S3AccessKey       string
-	S3SecretKey       string
-	S3Endpoint        string
-	S3PresignEndpoint string
-	S3PublicDomain    string
+	S3BucketPublic            string
+	S3BucketPrivate           string
+	S3Region                  string
+	S3AccessKey               string
+	S3SecretKey               string
+	S3Endpoint                string
+	S3PresignEndpoint         string
+	S3PublicDomain            string
+	StorageDownloadMaxRetries int
+	StorageDownloadRetryDelay time.Duration
 
-	SMTPHost      string
-	SMTPPort      int
-	SMTPUser      string
-	SMTPPassword  string
-	SMTPFromEmail string
-	SMTPFromName  string
-	SMTPAsync     bool
+	SMTPHost       string
+	SMTPPort       int
+	SMTPUser       string
+	SMTPPassword   string
+	SMTPFromEmail  string
+	SMTPFromName   string
+	SMTPAsync      bool
+	SMTPMaxRetries int
+	SMTPRetryDelay time.Duration
 
 	OTPExp              int
 	OTPRateLimitSeconds int
@@ -75,6 +81,7 @@ type AppConfig struct {
 	EntityCleanupCron      string
 	PrivateChatCleanupCron string
 	MediaCleanupCron       string
+	SchedulerTimezone      string
 
 	OTelEnabled              bool
 	OTelServiceName          string
@@ -89,8 +96,12 @@ type AppConfig struct {
 	MessageWorkerLeaseDuration   time.Duration
 	MessageWorkerPollInterval    time.Duration
 	MessageWorkerBacklogInterval time.Duration
+	MessageWorkerMaxAttempts     int
+	MessageWorkerRetryBaseDelay  time.Duration
+	MessageWorkerRetryMaxDelay   time.Duration
 	MessageEventStream           string
 	MessageEventStreamMaxLen     int
+	MessageOutboxRetentionDays   int
 	RealtimeInstanceID           string
 	RealtimeConsumerGroup        string
 
@@ -107,9 +118,11 @@ func LoadAppConfig() *AppConfig {
 		RealtimePort:          getEnv("REALTIME_PORT", "8081"),
 		AppEnv:                getEnv("APP_ENV", "development"),
 		AppURL:                getEnv("APP_URL", "http://localhost:8080"),
-		AppCorsAllowedOrigins: strings.Split(getEnv("APP_CORS_ALLOWED_ORIGINS", "*"), ","),
+		AppCorsAllowedOrigins: splitCSV(getEnv("APP_CORS_ALLOWED_ORIGINS", "*")),
 		RateLimitEnabled:      getEnvAsBool("RATE_LIMIT_ENABLED", true),
 		CaptchaEnabled:        getEnvAsBool("CAPTCHA_ENABLED", true),
+		CaptchaMaxRetries:     getEnvAsInt("CAPTCHA_MAX_RETRIES", 2),
+		CaptchaRetryDelay:     getEnvAsDuration("CAPTCHA_RETRY_DELAY", 250*time.Millisecond),
 
 		DBHost:     mustGetEnv("DB_HOST"),
 		DBPort:     mustGetEnv("DB_PORT"),
@@ -136,22 +149,26 @@ func LoadAppConfig() *AppConfig {
 		JWTSecret: getEnv("JWT_SECRET", ""),
 		JWTExp:    getEnvAsInt("JWT_EXP", 86400),
 
-		S3BucketPublic:    mustGetEnv("S3_BUCKET_PUBLIC"),
-		S3BucketPrivate:   mustGetEnv("S3_BUCKET_PRIVATE"),
-		S3Region:          getEnv("S3_REGION", ""),
-		S3AccessKey:       getEnv("S3_ACCESS_KEY", ""),
-		S3SecretKey:       getEnv("S3_SECRET_KEY", ""),
-		S3Endpoint:        getEnv("S3_ENDPOINT", ""),
-		S3PresignEndpoint: getEnv("S3_PRESIGN_ENDPOINT", ""),
-		S3PublicDomain:    getEnv("S3_PUBLIC_DOMAIN", ""),
+		S3BucketPublic:            mustGetEnv("S3_BUCKET_PUBLIC"),
+		S3BucketPrivate:           mustGetEnv("S3_BUCKET_PRIVATE"),
+		S3Region:                  getEnv("S3_REGION", ""),
+		S3AccessKey:               getEnv("S3_ACCESS_KEY", ""),
+		S3SecretKey:               getEnv("S3_SECRET_KEY", ""),
+		S3Endpoint:                getEnv("S3_ENDPOINT", ""),
+		S3PresignEndpoint:         getEnv("S3_PRESIGN_ENDPOINT", ""),
+		S3PublicDomain:            getEnv("S3_PUBLIC_DOMAIN", ""),
+		StorageDownloadMaxRetries: getEnvAsInt("STORAGE_DOWNLOAD_MAX_RETRIES", 2),
+		StorageDownloadRetryDelay: getEnvAsDuration("STORAGE_DOWNLOAD_RETRY_DELAY", 250*time.Millisecond),
 
-		SMTPHost:      getEnv("SMTP_HOST", ""),
-		SMTPPort:      getEnvAsInt("SMTP_PORT", 587),
-		SMTPUser:      getEnv("SMTP_USER", ""),
-		SMTPPassword:  getEnv("SMTP_PASSWORD", ""),
-		SMTPFromEmail: getEnv("SMTP_FROM_EMAIL", ""),
-		SMTPFromName:  getEnv("SMTP_FROM_NAME", ""),
-		SMTPAsync:     getEnvAsBool("SMTP_ASYNC", true),
+		SMTPHost:       getEnv("SMTP_HOST", ""),
+		SMTPPort:       getEnvAsInt("SMTP_PORT", 587),
+		SMTPUser:       getEnv("SMTP_USER", ""),
+		SMTPPassword:   getEnv("SMTP_PASSWORD", ""),
+		SMTPFromEmail:  getEnv("SMTP_FROM_EMAIL", ""),
+		SMTPFromName:   getEnv("SMTP_FROM_NAME", ""),
+		SMTPAsync:      getEnvAsBool("SMTP_ASYNC", true),
+		SMTPMaxRetries: getEnvAsInt("SMTP_MAX_RETRIES", 1),
+		SMTPRetryDelay: getEnvAsDuration("SMTP_RETRY_DELAY", 500*time.Millisecond),
 
 		OTPExp:              getEnvAsInt("OTP_EXP", 300),
 		OTPRateLimitSeconds: getEnvAsInt("OTP_RATE_LIMIT_SECONDS", 60),
@@ -165,6 +182,7 @@ func LoadAppConfig() *AppConfig {
 		EntityCleanupCron:      getEnv("ENTITY_CLEANUP_CRON", "0 2 * * *"),
 		PrivateChatCleanupCron: getEnv("PRIVATE_CHAT_CLEANUP_CRON", "30 2 * * *"),
 		MediaCleanupCron:       getEnv("MEDIA_CLEANUP_CRON", "0 3 * * *"),
+		SchedulerTimezone:      getEnv("SCHEDULER_TIMEZONE", "UTC"),
 
 		OTelEnabled:              getEnvAsBool("OTEL_ENABLED", false),
 		OTelServiceName:          getEnv("OTEL_SERVICE_NAME", "atoitalk-api"),
@@ -179,9 +197,13 @@ func LoadAppConfig() *AppConfig {
 		MessageWorkerLeaseDuration:   getEnvAsDuration("MESSAGE_WORKER_LEASE_DURATION", 5*time.Minute),
 		MessageWorkerPollInterval:    getEnvAsDuration("MESSAGE_WORKER_POLL_INTERVAL", time.Second),
 		MessageWorkerBacklogInterval: getEnvAsDuration("MESSAGE_WORKER_BACKLOG_INTERVAL", 5*time.Second),
+		MessageWorkerMaxAttempts:     getEnvAsInt("MESSAGE_WORKER_MAX_ATTEMPTS", 10),
+		MessageWorkerRetryBaseDelay:  getEnvAsDuration("MESSAGE_WORKER_RETRY_BASE_DELAY", time.Second),
+		MessageWorkerRetryMaxDelay:   getEnvAsDuration("MESSAGE_WORKER_RETRY_MAX_DELAY", 64*time.Second),
 		MessageEventStream:           getEnv("MESSAGE_EVENT_STREAM", "events:messages"),
 		MessageEventStreamMaxLen:     getEnvAsInt("MESSAGE_EVENT_STREAM_MAX_LEN", 10000),
-		RealtimeInstanceID:           getEnv("REALTIME_INSTANCE_ID", "realtime-1"),
+		MessageOutboxRetentionDays:   getEnvAsInt("MESSAGE_OUTBOX_RETENTION_DAYS", 7),
+		RealtimeInstanceID:           getEnv("REALTIME_INSTANCE_ID", ""),
 		RealtimeConsumerGroup:        getEnv("REALTIME_CONSUMER_GROUP", ""),
 
 		EnablePprof: getEnvAsBool("ENABLE_PPROF", false),
@@ -194,6 +216,33 @@ func LoadAppConfig() *AppConfig {
 	if cfg.OTPExp <= 0 {
 		slog.Error("OTP_EXP must be greater than 0", "value", cfg.OTPExp)
 		os.Exit(1)
+	}
+	if cfg.CaptchaMaxRetries < 0 {
+		cfg.CaptchaMaxRetries = 0
+	}
+	if cfg.CaptchaRetryDelay <= 0 {
+		cfg.CaptchaRetryDelay = 250 * time.Millisecond
+	}
+	if cfg.StorageDownloadMaxRetries < 0 {
+		cfg.StorageDownloadMaxRetries = 0
+	}
+	if cfg.StorageDownloadRetryDelay <= 0 {
+		cfg.StorageDownloadRetryDelay = 250 * time.Millisecond
+	}
+	if cfg.SMTPMaxRetries < 0 {
+		cfg.SMTPMaxRetries = 0
+	}
+	if cfg.SMTPRetryDelay <= 0 {
+		cfg.SMTPRetryDelay = 500 * time.Millisecond
+	}
+	if cfg.MessageWorkerMaxAttempts <= 0 {
+		cfg.MessageWorkerMaxAttempts = 10
+	}
+	if cfg.MessageWorkerRetryBaseDelay <= 0 {
+		cfg.MessageWorkerRetryBaseDelay = time.Second
+	}
+	if cfg.MessageWorkerRetryMaxDelay < cfg.MessageWorkerRetryBaseDelay {
+		cfg.MessageWorkerRetryMaxDelay = cfg.MessageWorkerRetryBaseDelay
 	}
 
 	return cfg

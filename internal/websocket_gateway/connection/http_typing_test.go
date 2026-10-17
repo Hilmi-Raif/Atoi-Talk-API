@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"AtoiTalkAPI/internal/messaging/events"
+	messagingpubsub "AtoiTalkAPI/internal/messaging/pubsub"
 	"AtoiTalkAPI/internal/websocket_gateway/typing"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
@@ -13,7 +14,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const legacyPubSubChannel = "events:broadcast"
+type typingContextProbe struct {
+	hasDeadline bool
+}
+
+func (p *typingContextProbe) Publish(ctx context.Context, _ uuid.UUID, _ events.Event) error {
+	_, p.hasDeadline = ctx.Deadline()
+	return nil
+}
+
+func TestHTTPHandlerBoundsTypingOperations(t *testing.T) {
+	probe := &typingContextProbe{}
+	handler := NewHTTPHandlerWithTypingRouter(NewGateway(), nil, nil, probe)
+	event, err := json.Marshal(events.Event{Type: events.EventTyping})
+	require.NoError(t, err)
+
+	require.NoError(t, handler.handleIncomingMessage(context.Background(), uuid.New(), event))
+	require.True(t, probe.hasDeadline)
+}
 
 func TestHTTPHandlerRoutesTypingInputThroughPubSub(t *testing.T) {
 	redisServer := miniredis.RunT(t)
@@ -32,7 +50,7 @@ func TestHTTPHandlerRoutesTypingInputThroughPubSub(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	pubsub := client.Subscribe(context.Background(), legacyPubSubChannel)
+	pubsub := client.Subscribe(context.Background(), messagingpubsub.BroadcastChannel)
 	defer pubsub.Close()
 	_, err = pubsub.Receive(context.Background())
 	require.NoError(t, err)

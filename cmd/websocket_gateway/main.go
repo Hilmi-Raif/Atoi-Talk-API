@@ -1,14 +1,11 @@
 package main
 
 import (
-	"AtoiTalkAPI/ent/chat"
-	"AtoiTalkAPI/ent/groupchat"
-	"AtoiTalkAPI/ent/groupmember"
-	"AtoiTalkAPI/ent/privatechat"
-	"AtoiTalkAPI/ent/userblock"
 	"AtoiTalkAPI/internal/bootstrap"
 	"AtoiTalkAPI/internal/infrastructure/config"
+	"AtoiTalkAPI/internal/infrastructure/database/realtimequery"
 	"AtoiTalkAPI/internal/infrastructure/redis"
+	messagingpubsub "AtoiTalkAPI/internal/messaging/pubsub"
 	"AtoiTalkAPI/internal/websocket_gateway/auth"
 	"AtoiTalkAPI/internal/websocket_gateway/connection"
 	"AtoiTalkAPI/internal/websocket_gateway/presence"
@@ -54,101 +51,48 @@ func main() {
 		}
 	}()
 
-	group := connection.RealtimeConsumerGroup(cfg.RealtimeConsumerGroup, cfg.RealtimeInstanceID)
-	redisStream := redis.NewRedisStreamConsumer(redisAdapter.Client(), cfg.MessageEventStream, group, cfg.RealtimeInstanceID)
+	instanceID := connection.ResolveRealtimeInstanceID(cfg.RealtimeInstanceID)
+	groupPrefix := connection.RealtimeConsumerGroupPrefix(cfg.RealtimeConsumerGroup)
+	group := connection.RealtimeConsumerGroup(groupPrefix, instanceID)
+	redisStream := redis.NewRedisStreamConsumerFrom(redisAdapter.Client(), cfg.MessageEventStream, group, instanceID, "$")
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if err := redisStream.EnsureGroup(ctx); err != nil {
+	groupLifecycle := stream.NewGroupLifecycle(redisAdapter.Client(), cfg.MessageEventStream, group, groupPrefix)
+	if err := initializeRealtimeStream(ctx, groupLifecycle, redisStream.EnsureGroup); err != nil {
 		slog.Error("Failed to initialize realtime Redis Stream group", "error", err)
 		os.Exit(1)
 	}
+	if err := groupLifecycle.CleanupStale(ctx); err != nil {
+		slog.Warn("Failed to clean stale realtime Redis Stream groups", "error", err)
+	}
+	go func() {
+		if err := groupLifecycle.Run(ctx); err != nil && ctx.Err() == nil {
+			slog.Error("Realtime Redis Stream group lease lost", "error", err)
+			stop()
+		}
+	}()
+	realtimeQuery := realtimequery.New(entClient)
 
 	presenceManager := presence.NewManager(
 		redisAdapter.Client(),
+		instanceID,
 		func(ctx context.Context, userID uuid.UUID) error {
 			return entClient.User.UpdateOneID(userID).SetLastSeenAt(time.Now().UTC()).Exec(ctx)
 		},
-		func(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
-			privateChats, err := entClient.PrivateChat.Query().Where(
-				privatechat.Or(privatechat.User1ID(userID), privatechat.User2ID(userID)),
-			).Select(privatechat.FieldUser1ID, privatechat.FieldUser2ID).All(ctx)
-			if err != nil {
-				return nil, err
-			}
-			contacts := make([]uuid.UUID, 0, len(privateChats))
-			for _, privateChat := range privateChats {
-				if privateChat.User1ID != nil && *privateChat.User1ID == userID && privateChat.User2ID != nil {
-					contacts = append(contacts, *privateChat.User2ID)
-				} else if privateChat.User2ID != nil && *privateChat.User2ID == userID && privateChat.User1ID != nil {
-					contacts = append(contacts, *privateChat.User1ID)
-				}
-			}
-			return contacts, nil
-		},
-		func(ctx context.Context, senderID, targetID uuid.UUID) (bool, error) {
-			return entClient.UserBlock.Query().Where(
-				userblock.Or(userblock.BlockerID(senderID), userblock.BlockedID(senderID)),
-				userblock.Or(userblock.BlockerID(targetID), userblock.BlockedID(targetID)),
-			).Exist(ctx)
-		},
+		realtimeQuery.Contacts,
+		realtimeQuery.IsBlocked,
 	)
+	go presenceManager.RunReconciler(ctx, time.Minute)
 	gateway := connection.NewGatewayWithPresence(presenceManager)
 	go gateway.Run(ctx)
-	pubSubListener := pubsub.NewPubSubListener(redisAdapter.Client(), "events:broadcast", gateway)
+	pubSubListener := pubsub.NewPubSubListener(redisAdapter.Client(), messagingpubsub.BroadcastChannel, gateway)
 	go func() {
 		if err := pubSubListener.Run(ctx); err != nil && ctx.Err() == nil {
 			slog.Error("Realtime Pub/Sub listener stopped", "error", err)
 			stop()
 		}
 	}()
-	typingRouter := typing.NewRouterWithBlockChecker(redisAdapter.Client(), func(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error) {
-		chatEntity, err := entClient.Chat.Query().Where(chat.ID(chatID), chat.DeletedAtIsNil()).Select(chat.FieldType).Only(ctx)
-		if err != nil {
-			return nil, err
-		}
-		switch chatEntity.Type {
-		case chat.TypePrivate:
-			privateEntity, err := entClient.PrivateChat.Query().Where(privatechat.ChatID(chatID)).Select(privatechat.FieldUser1ID, privatechat.FieldUser2ID).Only(ctx)
-			if err != nil {
-				return nil, err
-			}
-			members := make([]uuid.UUID, 0, 2)
-			if privateEntity.User1ID != nil {
-				members = append(members, *privateEntity.User1ID)
-			}
-			if privateEntity.User2ID != nil {
-				members = append(members, *privateEntity.User2ID)
-			}
-			return members, nil
-		case chat.TypeGroup:
-			groupID, err := entClient.GroupChat.Query().Where(groupchat.ChatID(chatID)).OnlyID(ctx)
-			if err != nil {
-				return nil, err
-			}
-			members, err := entClient.GroupMember.Query().Where(groupmember.GroupChatID(groupID)).Select(groupmember.FieldUserID).All(ctx)
-			if err != nil {
-				return nil, err
-			}
-			userIDs := make([]uuid.UUID, 0, len(members))
-			for _, member := range members {
-				userIDs = append(userIDs, member.UserID)
-			}
-			return userIDs, nil
-		default:
-			return nil, nil
-		}
-	}, func(ctx context.Context, senderID, targetID uuid.UUID) (bool, error) {
-		return entClient.UserBlock.Query().Where(
-			userblock.Or(
-				userblock.BlockerID(senderID),
-				userblock.BlockedID(senderID),
-			),
-			userblock.Or(
-				userblock.BlockerID(targetID),
-				userblock.BlockedID(targetID),
-			),
-		).Exist(ctx)
-	})
+	typingRouter := typing.NewRouterWithBlockChecker(redisAdapter.Client(), realtimeQuery.ChatMembers, realtimeQuery.IsBlocked)
 	consumer := stream.NewConsumer(redisStream, gateway)
 	go func() {
 		if err := consumer.Run(ctx); err != nil && ctx.Err() == nil {
@@ -178,4 +122,41 @@ func main() {
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		slog.Error("Error shutting down WebSocket gateway", "error", err)
 	}
+	closeRealtimeClients(gateway)
+	groupCleanupCtx, groupCleanupCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer groupCleanupCancel()
+	if err := groupLifecycle.Close(groupCleanupCtx); err != nil {
+		slog.Error("Error removing realtime Redis Stream group", "error", err)
+	}
+}
+
+func closeRealtimeClients(gateway *connection.Gateway) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	gateway.CloseAll(ctx)
+}
+
+func initializeRealtimeStream(ctx context.Context, lifecycle *stream.GroupLifecycle, ensureGroup func(context.Context) error) error {
+	if err := lifecycle.RefreshLease(ctx); err != nil {
+		return err
+	}
+	initialized := false
+	defer func() {
+		if initialized {
+			return
+		}
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := lifecycle.Close(cleanupCtx); err != nil {
+			slog.Error("Failed to release realtime Redis Stream group lease after startup error", "error", err)
+		}
+	}()
+	if err := lifecycle.ResetGroup(ctx); err != nil {
+		return err
+	}
+	if err := ensureGroup(ctx); err != nil {
+		return err
+	}
+	initialized = true
+	return nil
 }

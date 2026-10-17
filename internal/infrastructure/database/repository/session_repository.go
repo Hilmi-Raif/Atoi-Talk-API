@@ -7,8 +7,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -133,23 +131,9 @@ func (r *SessionRepository) IsUserRevoked(ctx context.Context, userID uuid.UUID,
 		return false, err
 	}
 
-	if revokedAtStr == "" {
-		return false, nil
-	}
-
-	revokedAtValue := revokedAtStr
-	if sep := strings.IndexByte(revokedAtStr, ':'); sep > 0 {
-		revokedAtValue = revokedAtStr[:sep]
-	}
-
-	revokedAt, err := strconv.ParseInt(revokedAtValue, 10, 64)
+	revoked, err := helper.IsSessionRevoked(revokedAtStr, tokenIssuedAt)
 	if err != nil {
 		return false, fmt.Errorf("invalid revoked timestamp for user %s: %w", userID, err)
 	}
-
-	if revokedAt < 1_000_000_000_000 {
-		revokedAt *= 1000
-	}
-
-	return tokenIssuedAt <= revokedAt, nil
+	return revoked, nil
 }

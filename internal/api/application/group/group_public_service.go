@@ -131,6 +131,9 @@ func (s *GroupChatService) JoinPublicGroup(ctx context.Context, userID uuid.UUID
 	if !gc.IsPublic {
 		return nil, helper.NewForbiddenError("This group is private. You must be added by an admin.")
 	}
+	if err := lockGroupMembership(ctx, tx, gc); err != nil {
+		return nil, err
+	}
 
 	isMember, err := tx.GroupMember.Query().
 		Where(
@@ -144,6 +147,9 @@ func (s *GroupChatService) JoinPublicGroup(ctx context.Context, userID uuid.UUID
 	}
 	if isMember {
 		return nil, helper.NewConflictError("You are already a member of this group")
+	}
+	if err := checkMemberCapacity(ctx, tx, gc, 1); err != nil {
+		return nil, err
 	}
 
 	_, err = tx.GroupMember.Create().

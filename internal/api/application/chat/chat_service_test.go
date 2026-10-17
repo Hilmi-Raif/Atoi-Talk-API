@@ -6,6 +6,7 @@ import (
 	"AtoiTalkAPI/ent/enttest"
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/message"
+	"AtoiTalkAPI/ent/messageoutbox"
 	"AtoiTalkAPI/ent/privatechat"
 	"AtoiTalkAPI/internal/domain/model"
 	"AtoiTalkAPI/internal/infrastructure/config"
@@ -13,6 +14,7 @@ import (
 	adaptermocks "AtoiTalkAPI/internal/infrastructure/mocks"
 	websocket "AtoiTalkAPI/internal/messaging/events"
 	websocketmocks "AtoiTalkAPI/internal/messaging/events/mocks"
+	messageworker "AtoiTalkAPI/internal/messaging/message_worker"
 	"context"
 	"errors"
 	"testing"
@@ -526,7 +528,7 @@ func TestChatServiceMarkAsReadPrivateChatUser2MarksReadWhenBlocked(t *testing.T)
 	require.Zero(t, pc.User2UnreadCount)
 }
 
-func TestChatServiceMarkAsReadPrivateChatReturnsEarlyWhenUnreadIsZero(t *testing.T) {
+func TestChatServiceMarkAsReadPrivateChatRecordsReadWhenUnreadIsZero(t *testing.T) {
 	service, client, _, _, _ := newChatServiceTest(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -543,6 +545,58 @@ func TestChatServiceMarkAsReadPrivateChatReturnsEarlyWhenUnreadIsZero(t *testing
 
 	require.NoError(t, service.MarkAsRead(ctx, user1.ID, chatEntity.ID))
 	require.NoError(t, service.MarkAsRead(ctx, user2.ID, chatEntity.ID))
+	private := client.PrivateChat.Query().Where(privatechat.ChatID(chatEntity.ID)).OnlyX(ctx)
+	require.NotNil(t, private.User1LastReadAt)
+	require.NotNil(t, private.User2LastReadAt)
+}
+
+func TestChatServiceMarkAsReadBeforeOutboxProjectionStaysRead(t *testing.T) {
+	service, client, _, _, _ := newChatServiceTest(t)
+	defer client.Close()
+	ctx := context.Background()
+	sender := client.User.Create().SetUsername("read-race-sender").SaveX(ctx)
+	recipient := client.User.Create().SetUsername("read-race-recipient").SaveX(ctx)
+	chatEntity := client.Chat.Create().SetType(chat.TypePrivate).SaveX(ctx)
+	private := client.PrivateChat.Create().SetChatID(chatEntity.ID).SetUser1ID(sender.ID).SetUser2ID(recipient.ID).SaveX(ctx)
+	msg := client.Message.Create().SetChatID(chatEntity.ID).SetSenderID(sender.ID).SetType(message.TypeRegular).SetContent("already seen").SaveX(ctx)
+	client.MessageOutbox.Create().SetEventType(string(websocket.EventMessageNew)).SetMessageID(msg.ID).SetChatID(chatEntity.ID).SetSenderID(sender.ID).SaveX(ctx)
+
+	require.NoError(t, service.MarkAsRead(ctx, recipient.ID, chatEntity.ID))
+	worker := messageworker.NewEntOutboxStoreWithDialect(client, dialect.SQLite)
+	claimed, err := worker.Claim(ctx, 1, time.Minute)
+	require.NoError(t, err)
+	require.Len(t, claimed, 1)
+	require.NoError(t, worker.Project(ctx, claimed[0]))
+
+	updated := client.PrivateChat.GetX(ctx, private.ID)
+	require.NotNil(t, updated.User2LastReadAt)
+	require.Zero(t, updated.User2UnreadCount)
+	require.NotNil(t, client.MessageOutbox.Query().Where(messageoutbox.MessageID(msg.ID)).OnlyX(ctx).ProjectedAt)
+}
+
+func TestChatServiceMarkGroupAsReadBeforeOutboxProjectionStaysRead(t *testing.T) {
+	service, client, _, _, _ := newChatServiceTest(t)
+	defer client.Close()
+	ctx := context.Background()
+	sender := client.User.Create().SetUsername("group-read-race-sender").SaveX(ctx)
+	recipient := client.User.Create().SetUsername("group-read-race-recipient").SaveX(ctx)
+	chatEntity := client.Chat.Create().SetType(chat.TypeGroup).SaveX(ctx)
+	group := client.GroupChat.Create().SetChatID(chatEntity.ID).SetName("read-race").SetInviteCode("read-race").SaveX(ctx)
+	client.GroupMember.Create().SetGroupChatID(group.ID).SetUserID(sender.ID).SetRole(groupmember.RoleOwner).SaveX(ctx)
+	member := client.GroupMember.Create().SetGroupChatID(group.ID).SetUserID(recipient.ID).SetRole(groupmember.RoleMember).SaveX(ctx)
+	msg := client.Message.Create().SetChatID(chatEntity.ID).SetSenderID(sender.ID).SetType(message.TypeRegular).SetContent("already seen").SaveX(ctx)
+	client.MessageOutbox.Create().SetEventType(string(websocket.EventMessageNew)).SetMessageID(msg.ID).SetChatID(chatEntity.ID).SetSenderID(sender.ID).SaveX(ctx)
+
+	require.NoError(t, service.MarkAsRead(ctx, recipient.ID, chatEntity.ID))
+	worker := messageworker.NewEntOutboxStoreWithDialect(client, dialect.SQLite)
+	claimed, err := worker.Claim(ctx, 1, time.Minute)
+	require.NoError(t, err)
+	require.Len(t, claimed, 1)
+	require.NoError(t, worker.Project(ctx, claimed[0]))
+
+	updated := client.GroupMember.GetX(ctx, member.ID)
+	require.NotNil(t, updated.LastReadAt)
+	require.Zero(t, updated.UnreadCount)
 }
 
 func TestChatServiceMarkAsReadPrivateChatRejectsForbiddenParticipant(t *testing.T) {

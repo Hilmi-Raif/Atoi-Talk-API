@@ -5552,6 +5552,7 @@ type MessageOutboxMutation struct {
 	lock_token       *uuid.UUID
 	projected_at     *time.Time
 	published_at     *time.Time
+	dead_lettered_at *time.Time
 	last_error       *string
 	clearedFields    map[string]struct{}
 	done             bool
@@ -6229,6 +6230,55 @@ func (m *MessageOutboxMutation) ResetPublishedAt() {
 	delete(m.clearedFields, messageoutbox.FieldPublishedAt)
 }
 
+// SetDeadLetteredAt sets the "dead_lettered_at" field.
+func (m *MessageOutboxMutation) SetDeadLetteredAt(t time.Time) {
+	m.dead_lettered_at = &t
+}
+
+// DeadLetteredAt returns the value of the "dead_lettered_at" field in the mutation.
+func (m *MessageOutboxMutation) DeadLetteredAt() (r time.Time, exists bool) {
+	v := m.dead_lettered_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeadLetteredAt returns the old "dead_lettered_at" field's value of the MessageOutbox entity.
+// If the MessageOutbox object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageOutboxMutation) OldDeadLetteredAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeadLetteredAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeadLetteredAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeadLetteredAt: %w", err)
+	}
+	return oldValue.DeadLetteredAt, nil
+}
+
+// ClearDeadLetteredAt clears the value of the "dead_lettered_at" field.
+func (m *MessageOutboxMutation) ClearDeadLetteredAt() {
+	m.dead_lettered_at = nil
+	m.clearedFields[messageoutbox.FieldDeadLetteredAt] = struct{}{}
+}
+
+// DeadLetteredAtCleared returns if the "dead_lettered_at" field was cleared in this mutation.
+func (m *MessageOutboxMutation) DeadLetteredAtCleared() bool {
+	_, ok := m.clearedFields[messageoutbox.FieldDeadLetteredAt]
+	return ok
+}
+
+// ResetDeadLetteredAt resets all changes to the "dead_lettered_at" field.
+func (m *MessageOutboxMutation) ResetDeadLetteredAt() {
+	m.dead_lettered_at = nil
+	delete(m.clearedFields, messageoutbox.FieldDeadLetteredAt)
+}
+
 // SetLastError sets the "last_error" field.
 func (m *MessageOutboxMutation) SetLastError(s string) {
 	m.last_error = &s
@@ -6312,7 +6362,7 @@ func (m *MessageOutboxMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MessageOutboxMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 15)
 	if m.created_at != nil {
 		fields = append(fields, messageoutbox.FieldCreatedAt)
 	}
@@ -6352,6 +6402,9 @@ func (m *MessageOutboxMutation) Fields() []string {
 	if m.published_at != nil {
 		fields = append(fields, messageoutbox.FieldPublishedAt)
 	}
+	if m.dead_lettered_at != nil {
+		fields = append(fields, messageoutbox.FieldDeadLetteredAt)
+	}
 	if m.last_error != nil {
 		fields = append(fields, messageoutbox.FieldLastError)
 	}
@@ -6389,6 +6442,8 @@ func (m *MessageOutboxMutation) Field(name string) (ent.Value, bool) {
 		return m.ProjectedAt()
 	case messageoutbox.FieldPublishedAt:
 		return m.PublishedAt()
+	case messageoutbox.FieldDeadLetteredAt:
+		return m.DeadLetteredAt()
 	case messageoutbox.FieldLastError:
 		return m.LastError()
 	}
@@ -6426,6 +6481,8 @@ func (m *MessageOutboxMutation) OldField(ctx context.Context, name string) (ent.
 		return m.OldProjectedAt(ctx)
 	case messageoutbox.FieldPublishedAt:
 		return m.OldPublishedAt(ctx)
+	case messageoutbox.FieldDeadLetteredAt:
+		return m.OldDeadLetteredAt(ctx)
 	case messageoutbox.FieldLastError:
 		return m.OldLastError(ctx)
 	}
@@ -6528,6 +6585,13 @@ func (m *MessageOutboxMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetPublishedAt(v)
 		return nil
+	case messageoutbox.FieldDeadLetteredAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeadLetteredAt(v)
+		return nil
 	case messageoutbox.FieldLastError:
 		v, ok := value.(string)
 		if !ok {
@@ -6598,6 +6662,9 @@ func (m *MessageOutboxMutation) ClearedFields() []string {
 	if m.FieldCleared(messageoutbox.FieldPublishedAt) {
 		fields = append(fields, messageoutbox.FieldPublishedAt)
 	}
+	if m.FieldCleared(messageoutbox.FieldDeadLetteredAt) {
+		fields = append(fields, messageoutbox.FieldDeadLetteredAt)
+	}
 	if m.FieldCleared(messageoutbox.FieldLastError) {
 		fields = append(fields, messageoutbox.FieldLastError)
 	}
@@ -6632,6 +6699,9 @@ func (m *MessageOutboxMutation) ClearField(name string) error {
 		return nil
 	case messageoutbox.FieldPublishedAt:
 		m.ClearPublishedAt()
+		return nil
+	case messageoutbox.FieldDeadLetteredAt:
+		m.ClearDeadLetteredAt()
 		return nil
 	case messageoutbox.FieldLastError:
 		m.ClearLastError()
@@ -6682,6 +6752,9 @@ func (m *MessageOutboxMutation) ResetField(name string) error {
 		return nil
 	case messageoutbox.FieldPublishedAt:
 		m.ResetPublishedAt()
+		return nil
+	case messageoutbox.FieldDeadLetteredAt:
+		m.ResetDeadLetteredAt()
 		return nil
 	case messageoutbox.FieldLastError:
 		m.ResetLastError()

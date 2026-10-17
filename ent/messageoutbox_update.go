@@ -225,6 +225,26 @@ func (_u *MessageOutboxUpdate) ClearPublishedAt() *MessageOutboxUpdate {
 	return _u
 }
 
+// SetDeadLetteredAt sets the "dead_lettered_at" field.
+func (_u *MessageOutboxUpdate) SetDeadLetteredAt(v time.Time) *MessageOutboxUpdate {
+	_u.mutation.SetDeadLetteredAt(v)
+	return _u
+}
+
+// SetNillableDeadLetteredAt sets the "dead_lettered_at" field if the given value is not nil.
+func (_u *MessageOutboxUpdate) SetNillableDeadLetteredAt(v *time.Time) *MessageOutboxUpdate {
+	if v != nil {
+		_u.SetDeadLetteredAt(*v)
+	}
+	return _u
+}
+
+// ClearDeadLetteredAt clears the value of the "dead_lettered_at" field.
+func (_u *MessageOutboxUpdate) ClearDeadLetteredAt() *MessageOutboxUpdate {
+	_u.mutation.ClearDeadLetteredAt()
+	return _u
+}
+
 // SetLastError sets the "last_error" field.
 func (_u *MessageOutboxUpdate) SetLastError(v string) *MessageOutboxUpdate {
 	_u.mutation.SetLastError(v)
@@ -357,6 +377,12 @@ func (_u *MessageOutboxUpdate) sqlSave(ctx context.Context) (_node int, err erro
 	}
 	if _u.mutation.PublishedAtCleared() {
 		_spec.ClearField(messageoutbox.FieldPublishedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.DeadLetteredAt(); ok {
+		_spec.SetField(messageoutbox.FieldDeadLetteredAt, field.TypeTime, value)
+	}
+	if _u.mutation.DeadLetteredAtCleared() {
+		_spec.ClearField(messageoutbox.FieldDeadLetteredAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.LastError(); ok {
 		_spec.SetField(messageoutbox.FieldLastError, field.TypeString, value)
@@ -581,6 +607,26 @@ func (_u *MessageOutboxUpdateOne) ClearPublishedAt() *MessageOutboxUpdateOne {
 	return _u
 }
 
+// SetDeadLetteredAt sets the "dead_lettered_at" field.
+func (_u *MessageOutboxUpdateOne) SetDeadLetteredAt(v time.Time) *MessageOutboxUpdateOne {
+	_u.mutation.SetDeadLetteredAt(v)
+	return _u
+}
+
+// SetNillableDeadLetteredAt sets the "dead_lettered_at" field if the given value is not nil.
+func (_u *MessageOutboxUpdateOne) SetNillableDeadLetteredAt(v *time.Time) *MessageOutboxUpdateOne {
+	if v != nil {
+		_u.SetDeadLetteredAt(*v)
+	}
+	return _u
+}
+
+// ClearDeadLetteredAt clears the value of the "dead_lettered_at" field.
+func (_u *MessageOutboxUpdateOne) ClearDeadLetteredAt() *MessageOutboxUpdateOne {
+	_u.mutation.ClearDeadLetteredAt()
+	return _u
+}
+
 // SetLastError sets the "last_error" field.
 func (_u *MessageOutboxUpdateOne) SetLastError(v string) *MessageOutboxUpdateOne {
 	_u.mutation.SetLastError(v)
@@ -743,6 +789,12 @@ func (_u *MessageOutboxUpdateOne) sqlSave(ctx context.Context) (_node *MessageOu
 	}
 	if _u.mutation.PublishedAtCleared() {
 		_spec.ClearField(messageoutbox.FieldPublishedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.DeadLetteredAt(); ok {
+		_spec.SetField(messageoutbox.FieldDeadLetteredAt, field.TypeTime, value)
+	}
+	if _u.mutation.DeadLetteredAtCleared() {
+		_spec.ClearField(messageoutbox.FieldDeadLetteredAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.LastError(); ok {
 		_spec.SetField(messageoutbox.FieldLastError, field.TypeString, value)

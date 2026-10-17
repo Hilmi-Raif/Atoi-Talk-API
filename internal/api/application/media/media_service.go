@@ -206,11 +206,11 @@ func (s *MediaService) GetMediaURL(ctx context.Context, userID, mediaID uuid.UUI
 		Where(media.ID(mediaID)).
 		Select(media.FieldID, media.FieldFileName, media.FieldUploadStatus).
 		WithMessage(func(q *ent.MessageQuery) {
-			q.Select(message.FieldID, message.FieldChatID, message.FieldDeletedAt)
+			q.Select(message.FieldID, message.FieldChatID, message.FieldCreatedAt, message.FieldDeletedAt)
 			q.WithChat(func(cq *ent.ChatQuery) {
-				cq.Select(chat.FieldID, chat.FieldType)
+				cq.Select(chat.FieldID, chat.FieldType, chat.FieldDeletedAt)
 				cq.WithPrivateChat(func(pq *ent.PrivateChatQuery) {
-					pq.Select(privatechat.FieldUser1ID, privatechat.FieldUser2ID)
+					pq.Select(privatechat.FieldUser1ID, privatechat.FieldUser2ID, privatechat.FieldUser1HiddenAt, privatechat.FieldUser2HiddenAt)
 				})
 				cq.WithGroupChat(func(gq *ent.GroupChatQuery) {
 					gq.Select(groupchat.FieldID)
@@ -230,6 +230,9 @@ func (s *MediaService) GetMediaURL(ctx context.Context, userID, mediaID uuid.UUI
 	if m.Edges.Message == nil || m.Edges.Message.Edges.Chat == nil {
 		return nil, helper.NewForbiddenError("Media is not associated with a chat")
 	}
+	if m.Edges.Message.Edges.Chat.DeletedAt != nil {
+		return nil, helper.NewForbiddenError("Chat is no longer available")
+	}
 	if m.UploadStatus != media.UploadStatusCompleted {
 		return nil, helper.NewBadRequestError("Media upload is not completed")
 	}
@@ -241,8 +244,16 @@ func (s *MediaService) GetMediaURL(ctx context.Context, userID, mediaID uuid.UUI
 	isMember := false
 	if c.Type == chat.TypePrivate && c.Edges.PrivateChat != nil {
 		pc := c.Edges.PrivateChat
-		if (pc.User1ID != nil && *pc.User1ID == userID) || (pc.User2ID != nil && *pc.User2ID == userID) {
+		var hiddenAt *time.Time
+		if pc.User1ID != nil && *pc.User1ID == userID {
 			isMember = true
+			hiddenAt = pc.User1HiddenAt
+		} else if pc.User2ID != nil && *pc.User2ID == userID {
+			isMember = true
+			hiddenAt = pc.User2HiddenAt
+		}
+		if hiddenAt != nil && !m.Edges.Message.CreatedAt.After(*hiddenAt) {
+			return nil, helper.NewForbiddenError("Media is no longer available")
 		}
 	} else if c.Type == chat.TypeGroup && c.Edges.GroupChat != nil {
 		exists, err := s.client.GroupMember.Query().

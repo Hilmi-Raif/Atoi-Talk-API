@@ -8,6 +8,7 @@ import (
 	"AtoiTalkAPI/ent/media"
 	"AtoiTalkAPI/ent/message"
 	"AtoiTalkAPI/ent/messageoutbox"
+	"AtoiTalkAPI/internal/domain/constant"
 	"AtoiTalkAPI/internal/domain/model"
 	"AtoiTalkAPI/internal/infrastructure/config"
 	repositorymocks "AtoiTalkAPI/internal/infrastructure/database/repository/mocks"
@@ -198,6 +199,20 @@ func TestGroupChatServiceCreateGroupChatErrorBranches(t *testing.T) {
 
 	_, err = service.CreateGroupChat(ctx, owner.ID, model.CreateGroupChatRequest{Name: "Team", MemberIDs: []uuid.UUID{banned.ID}})
 	require.Error(t, err)
+}
+
+func TestGroupChatServiceCreateGroupChatCountsCreatorTowardCapacity(t *testing.T) {
+	service, client, _, _, _ := newGroupChatServiceTest(t)
+	defer client.Close()
+	ctx := context.Background()
+	creator := client.User.Create().SetUsername("capacity_creator").SetFullName("Creator").SaveX(ctx)
+	members := make([]uuid.UUID, constant.MaxGroupMembers)
+	for i := range members {
+		members[i] = uuid.New()
+	}
+	_, err := service.CreateGroupChat(ctx, creator.ID, model.CreateGroupChatRequest{Name: "Too many", MemberIDs: members})
+	require.Error(t, err)
+	require.Equal(t, 0, client.GroupChat.Query().CountX(ctx))
 }
 
 func TestGroupChatServiceCreateGroupChatAllowsExpiredBanUser(t *testing.T) {

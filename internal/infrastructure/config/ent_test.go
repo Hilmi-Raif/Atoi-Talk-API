@@ -11,6 +11,17 @@ import (
 
 func TestQueryIndexStatementsCoverSearchAndCleanupQueries(t *testing.T) {
 	statements := strings.Join(queryIndexStatements(), "\n")
+	if !strings.Contains(statements, "dead_lettered_at IS NULL") {
+		t.Fatal("message outbox indexes must exclude dead-letter rows")
+	}
+	if !strings.Contains(statements, "message_outboxes_active_chat_order_idx") ||
+		!strings.Contains(statements, "(chat_id, created_at, id)") {
+		t.Fatal("message outbox indexes must support per-chat ordering")
+	}
+	if !strings.Contains(statements, "message_outboxes_published_cleanup_idx") ||
+		!strings.Contains(statements, "message_outboxes_dead_letter_cleanup_idx") {
+		t.Fatal("message outbox indexes must support terminal row retention cleanup")
+	}
 
 	requiredFragments := []string{
 		"CREATE EXTENSION IF NOT EXISTS pg_trgm",
@@ -38,8 +49,8 @@ func TestQueryIndexStatementsCoverSearchAndCleanupQueries(t *testing.T) {
 		"messages_chat_id_id_idx",
 		"private_chats_user1_chat_idx",
 		"private_chats_user2_chat_idx",
-		"message_outboxes_claim_idx",
-		"message_outboxes_locked_idx",
+		"message_outboxes_active_claim_idx",
+		"message_outboxes_active_locked_idx",
 		"users_deleted_at_id_idx",
 		"chats_deleted_at_id_idx",
 		"private_chats_abandoned_idx",
@@ -55,6 +66,15 @@ func TestQueryIndexStatementsCoverSearchAndCleanupQueries(t *testing.T) {
 	for _, fragment := range requiredFragments {
 		if !strings.Contains(statements, fragment) {
 			t.Fatalf("query index statements missing %q", fragment)
+		}
+	}
+}
+
+func TestQueryIndexStatementsRemoveSupersededOutboxIndexes(t *testing.T) {
+	statements := strings.Join(queryIndexStatements(), "\n")
+	for _, index := range []string{"message_outboxes_claim_idx", "message_outboxes_locked_idx"} {
+		if !strings.Contains(statements, "DROP INDEX CONCURRENTLY IF EXISTS "+index) {
+			t.Fatalf("query index statements do not remove superseded index %q", index)
 		}
 	}
 }

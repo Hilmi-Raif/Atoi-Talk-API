@@ -81,6 +81,17 @@ func TestStorageAdapterDownloadReturnsRetryableStatusError(t *testing.T) {
 	}
 }
 
+func TestNewStorageAdapterUsesConfiguredDownloadRetryPolicy(t *testing.T) {
+	adapter := NewStorageAdapter(&config.AppConfig{
+		StorageDownloadMaxRetries: 4,
+		StorageDownloadRetryDelay: 125 * time.Millisecond,
+	}, nil, &http.Client{})
+
+	if adapter.downloadMaxRetries != 4 || adapter.downloadRetryDelay != 125*time.Millisecond {
+		t.Fatalf("unexpected retry policy: retries=%d delay=%s", adapter.downloadMaxRetries, adapter.downloadRetryDelay)
+	}
+}
+
 func TestStorageAdapterStoreFromReaderRejectsMissingClient(t *testing.T) {
 	adapter := &StorageAdapter{}
 	if err := adapter.StoreFromReader(strings.NewReader("payload"), "text/plain", "file.txt", false); err == nil {

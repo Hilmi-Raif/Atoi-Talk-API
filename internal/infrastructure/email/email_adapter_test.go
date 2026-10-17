@@ -61,6 +61,17 @@ func TestEmailAdapterRetriesUnavailableServer(t *testing.T) {
 	}
 }
 
+func TestNewEmailAdapterUsesConfiguredRetryPolicy(t *testing.T) {
+	adapter := NewEmailAdapter(&config.AppConfig{
+		SMTPMaxRetries: 4,
+		SMTPRetryDelay: 125 * time.Millisecond,
+	})
+
+	if adapter.maxRetries != 4 || adapter.retryDelay != 125*time.Millisecond {
+		t.Fatalf("unexpected retry policy: retries=%d delay=%s", adapter.maxRetries, adapter.retryDelay)
+	}
+}
+
 func TestEmailAdapterRejectsAuthWhenServerDoesNotAdvertiseIt(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

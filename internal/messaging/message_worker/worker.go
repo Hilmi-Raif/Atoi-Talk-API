@@ -1,6 +1,7 @@
 package messageworker
 
 import (
+	"AtoiTalkAPI/internal/domain/helper"
 	"AtoiTalkAPI/internal/infrastructure/config"
 	"AtoiTalkAPI/internal/infrastructure/observability"
 	"AtoiTalkAPI/internal/messaging/events"
@@ -21,6 +22,7 @@ type OutboxRecord struct {
 	ChatID       uuid.UUID
 	SenderID     uuid.UUID
 	TargetUserID uuid.UUID
+	Payload      map[string]interface{}
 	AttemptCount int
 }
 
@@ -30,6 +32,7 @@ type OutboxStore interface {
 	BuildEvents(context.Context, OutboxRecord) ([]events.MessageEvent, error)
 	MarkPublished(context.Context, uuid.UUID, uuid.UUID, time.Time) error
 	MarkFailed(context.Context, uuid.UUID, uuid.UUID, error, time.Time) error
+	MarkDeadLetter(context.Context, uuid.UUID, uuid.UUID, error, time.Time) error
 }
 
 type StreamPublisher interface {
@@ -42,6 +45,9 @@ type WorkerConfig struct {
 	LeaseDuration   time.Duration
 	PollInterval    time.Duration
 	BacklogInterval time.Duration
+	MaxAttempts     int
+	RetryBaseDelay  time.Duration
+	RetryMaxDelay   time.Duration
 }
 
 func ConfigFromAppConfig(cfg *config.AppConfig) WorkerConfig {
@@ -54,6 +60,9 @@ func ConfigFromAppConfig(cfg *config.AppConfig) WorkerConfig {
 		LeaseDuration:   cfg.MessageWorkerLeaseDuration,
 		PollInterval:    cfg.MessageWorkerPollInterval,
 		BacklogInterval: cfg.MessageWorkerBacklogInterval,
+		MaxAttempts:     cfg.MessageWorkerMaxAttempts,
+		RetryBaseDelay:  cfg.MessageWorkerRetryBaseDelay,
+		RetryMaxDelay:   cfg.MessageWorkerRetryMaxDelay,
 	}
 }
 
@@ -92,6 +101,15 @@ func NewWorkerWithMetrics(store OutboxStore, publisher StreamPublisher, cfg Work
 	if cfg.BacklogInterval <= 0 {
 		cfg.BacklogInterval = 5 * time.Second
 	}
+	if cfg.MaxAttempts <= 0 {
+		cfg.MaxAttempts = 10
+	}
+	if cfg.RetryBaseDelay <= 0 {
+		cfg.RetryBaseDelay = time.Second
+	}
+	if cfg.RetryMaxDelay <= 0 {
+		cfg.RetryMaxDelay = 64 * time.Second
+	}
 	return &Worker{store: store, publisher: publisher, config: cfg, metrics: metrics}
 }
 
@@ -103,7 +121,7 @@ func (w *Worker) Run(ctx context.Context, wakeup <-chan struct{}) error {
 
 	for {
 		processed, err := w.ProcessBatch(ctx)
-		if err == nil && processed == w.config.BatchSize {
+		if err == nil && processed > 0 {
 			if ctx.Err() != nil {
 				return nil
 			}
@@ -139,8 +157,22 @@ func (w *Worker) ProcessBatch(ctx context.Context) (int, error) {
 	if concurrency <= 0 {
 		concurrency = 5
 	}
-	if concurrency > len(records) {
-		concurrency = len(records)
+
+	groups := make(map[uuid.UUID][]OutboxRecord)
+	groupOrder := make([]uuid.UUID, 0)
+	for _, record := range records {
+		key := record.ChatID
+		if key == uuid.Nil {
+			key = record.ID
+		}
+		if _, exists := groups[key]; !exists {
+			groupOrder = append(groupOrder, key)
+		}
+		groups[key] = append(groups[key], record)
+	}
+
+	if concurrency > len(groupOrder) {
+		concurrency = len(groupOrder)
 	}
 
 	var (
@@ -152,23 +184,26 @@ func (w *Worker) ProcessBatch(ctx context.Context) (int, error) {
 		errOnce   sync.Once
 	)
 
-	for _, record := range records {
+	for _, key := range groupOrder {
+		groupRecords := groups[key]
 		sem <- struct{}{}
 		wg.Add(1)
-		go func(rec OutboxRecord) {
+		go func(recs []OutboxRecord) {
 			defer func() {
 				<-sem
 				wg.Done()
 			}()
-			if err := w.processRecord(ctx, rec); err != nil {
-				failed.Add(1)
-				errOnce.Do(func() {
-					firstErr = err
-				})
-				return
+			for _, rec := range recs {
+				if err := w.processRecord(ctx, rec); err != nil {
+					failed.Add(1)
+					errOnce.Do(func() {
+						firstErr = err
+					})
+					return
+				}
+				processed.Add(1)
 			}
-			processed.Add(1)
-		}(record)
+		}(groupRecords)
 	}
 	wg.Wait()
 
@@ -221,7 +256,15 @@ func (w *Worker) processRecord(ctx context.Context, record OutboxRecord) error {
 	}
 	if err != nil {
 		w.recordFailure(ctx, stage)
-		markErr := w.store.MarkFailed(ctx, record.ID, recordLockToken(record), err, retryAt(record.AttemptCount))
+		if record.AttemptCount >= w.config.MaxAttempts {
+			markErr := w.store.MarkDeadLetter(ctx, record.ID, recordLockToken(record), err, time.Now().UTC())
+			if markErr != nil {
+				return fmt.Errorf("process outbox record: %w (mark dead letter: %v)", err, markErr)
+			}
+			return err
+		}
+		retryDelay := helper.BackoffDelay(record.AttemptCount-1, w.config.RetryBaseDelay, w.config.RetryMaxDelay)
+		markErr := w.store.MarkFailed(ctx, record.ID, recordLockToken(record), err, time.Now().UTC().Add(retryDelay))
 		if markErr != nil {
 			return fmt.Errorf("process outbox record: %w (mark failed: %v)", err, markErr)
 		}
@@ -243,19 +286,4 @@ func (w *Worker) recordFailure(ctx context.Context, stage string) {
 
 func recordLockToken(record OutboxRecord) uuid.UUID {
 	return record.LockToken
-}
-
-func retryAt(attemptCount int) time.Time {
-	if attemptCount < 0 {
-		attemptCount = 0
-	}
-	delay := time.Second * time.Duration(1<<min(attemptCount, 6))
-	return time.Now().UTC().Add(delay)
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

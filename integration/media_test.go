@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -114,7 +115,8 @@ func TestGetMediaURL(t *testing.T) {
 	token3, _ := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, u3.ID)
 
 	chatPrivate, _ := testClient.Chat.Create().SetType(chat.TypePrivate).Save(context.Background())
-	testClient.PrivateChat.Create().SetChat(chatPrivate).SetUser1(u1).SetUser2(u2).Save(context.Background())
+	privateChat, err := testClient.PrivateChat.Create().SetChat(chatPrivate).SetUser1(u1).SetUser2(u2).Save(context.Background())
+	assert.NoError(t, err)
 
 	chatGroup, _ := testClient.Chat.Create().SetType(chat.TypeGroup).Save(context.Background())
 	gc, _ := testClient.GroupChat.Create().SetChat(chatGroup).SetCreator(u1).SetName("Test Group").SetInviteCode("test").Save(context.Background())
@@ -170,5 +172,38 @@ func TestGetMediaURL(t *testing.T) {
 	t.Run("Fail - Media Not Found", func(t *testing.T) {
 		rr := makeRequest("GET", fmt.Sprintf("/api/media/%s/url", uuid.Nil), nil, token1)
 		assert.Equal(t, http.StatusNotFound, rr.Code)
+	})
+
+	t.Run("Fail - Hidden Private Chat History", func(t *testing.T) {
+		err := testClient.PrivateChat.UpdateOneID(privateChat.ID).SetUser1HiddenAt(time.Now().UTC()).Exec(context.Background())
+		if assert.NoError(t, err) {
+			rr := makeRequest("GET", fmt.Sprintf("/api/media/%s/url", mediaPrivate.ID), nil, token1)
+			assert.Equal(t, http.StatusForbidden, rr.Code)
+			token2, err := helper.GenerateJWT(testConfig.JWTSecret, testConfig.JWTExp, u2.ID)
+			assert.NoError(t, err)
+			rr = makeRequest("GET", fmt.Sprintf("/api/media/%s/url", mediaPrivate.ID), nil, token2)
+			assert.Equal(t, http.StatusOK, rr.Code)
+		}
+	})
+
+	t.Run("Success - New Attachment After Hiding Private History", func(t *testing.T) {
+		newMedia, err := testClient.Media.Create().SetFileName("new-private.jpg").SetOriginalName("new-private.jpg").SetFileSize(100).SetMimeType("image/jpeg").SetUploader(u2).Save(context.Background())
+		if !assert.NoError(t, err) {
+			return
+		}
+		_, err = testClient.Message.Create().SetChat(chatPrivate).SetSender(u2).SetType(message.TypeRegular).AddAttachments(newMedia).Save(context.Background())
+		if !assert.NoError(t, err) {
+			return
+		}
+		rr := makeRequest("GET", fmt.Sprintf("/api/media/%s/url", newMedia.ID), nil, token1)
+		assert.Equal(t, http.StatusOK, rr.Code)
+	})
+
+	t.Run("Fail - Deleted Chat", func(t *testing.T) {
+		err := testClient.Chat.UpdateOneID(chatPrivate.ID).SetDeletedAt(time.Now().UTC()).Exec(context.Background())
+		if assert.NoError(t, err) {
+			rr := makeRequest("GET", fmt.Sprintf("/api/media/%s/url", mediaPrivate.ID), nil, token1)
+			assert.Equal(t, http.StatusForbidden, rr.Code)
+		}
 	})
 }

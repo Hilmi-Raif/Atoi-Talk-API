@@ -1,10 +1,45 @@
 package helper
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 )
+
+func TestBackoffDelayCapsExponentialGrowth(t *testing.T) {
+	if got := BackoffDelay(0, time.Second, 0); got != time.Second {
+		t.Fatalf("expected initial delay 1s, got %s", got)
+	}
+	if got := BackoffDelay(3, time.Second, 0); got != 8*time.Second {
+		t.Fatalf("expected exponential delay 8s, got %s", got)
+	}
+	if got := BackoffDelay(10, time.Second, 64*time.Second); got != 64*time.Second {
+		t.Fatalf("expected capped delay 64s, got %s", got)
+	}
+	if got := BackoffDelay(-1, time.Second, 0); got != time.Second {
+		t.Fatalf("expected negative attempt to use initial delay, got %s", got)
+	}
+}
+
+func TestRetryWithBackoffContextStopsDuringDelay(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	attempts := 0
+
+	_, err := RetryWithBackoffContext(ctx, func() (string, bool, error) {
+		attempts++
+		cancel()
+		return "", true, errors.New("temporary")
+	}, 3, time.Hour)
+
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context cancellation, got %v", err)
+	}
+	if attempts != 1 {
+		t.Fatalf("expected one attempt before cancellation, got %d", attempts)
+	}
+}
 
 func TestRetryWithBackoffStopsAndReturnsFinalError(t *testing.T) {
 	called := 0

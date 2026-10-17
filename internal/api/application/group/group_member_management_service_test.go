@@ -5,6 +5,7 @@ import (
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/message"
 	"AtoiTalkAPI/ent/messageoutbox"
+	"AtoiTalkAPI/internal/domain/constant"
 	"AtoiTalkAPI/internal/domain/model"
 	websocket "AtoiTalkAPI/internal/messaging/events"
 	websocketmocks "AtoiTalkAPI/internal/messaging/events/mocks"
@@ -16,6 +17,27 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+func TestGroupMemberMgtServiceAddMemberRejectsOverflow(t *testing.T) {
+	service, client, _, _, _ := newGroupChatServiceTest(t)
+	defer client.Close()
+	ctx := context.Background()
+	owner := client.User.Create().SaveX(ctx)
+	parent := client.Chat.Create().SetType(chat.TypeGroup).SaveX(ctx)
+	groupEntity := client.GroupChat.Create().SetChatID(parent.ID).SetName("near full").SetInviteCode("near-full").SaveX(ctx)
+	client.GroupMember.Create().SetGroupChatID(groupEntity.ID).SetUserID(owner.ID).SetRole(groupmember.RoleOwner).SaveX(ctx)
+	for i := 1; i < constant.MaxGroupMembers-1; i++ {
+		member := client.User.Create().SaveX(ctx)
+		client.GroupMember.Create().SetGroupChatID(groupEntity.ID).SetUserID(member.ID).SetRole(groupmember.RoleMember).SaveX(ctx)
+	}
+	first := client.User.Create().SaveX(ctx)
+	second := client.User.Create().SaveX(ctx)
+
+	result, err := service.AddMember(ctx, owner.ID, parent.ID, model.AddGroupMemberRequest{UserIDs: []uuid.UUID{first.ID, second.ID}})
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Equal(t, constant.MaxGroupMembers-1, client.GroupMember.Query().Where(groupmember.GroupChatID(groupEntity.ID)).CountX(ctx))
+}
 
 func TestGroupMemberMgtServiceAddMemberSuccessAndBroadcasts(t *testing.T) {
 	service, client, _, _, _ := newGroupChatServiceTest(t)

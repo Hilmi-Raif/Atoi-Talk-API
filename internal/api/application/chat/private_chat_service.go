@@ -179,11 +179,12 @@ func (s *PrivateChatService) CreatePrivateChat(ctx context.Context, userID uuid.
 		Save(ctx)
 	if err != nil {
 		if ent.IsConstraintError(err) {
-			for i := 0; i < 3; i++ {
-				if existing, findErr := s.findExistingPrivateChat(ctx, userID, req.TargetUserID); findErr == nil {
-					return privateChatToResponse(existing), nil
-				}
-				time.Sleep(20 * time.Millisecond)
+			existing, findErr := helper.RetryWithBackoffContext(ctx, func() (*ent.PrivateChat, bool, error) {
+				existing, findErr := s.findExistingPrivateChat(ctx, userID, req.TargetUserID)
+				return existing, findErr != nil, findErr
+			}, 2, 20*time.Millisecond)
+			if findErr == nil {
+				return privateChatToResponse(existing), nil
 			}
 			return nil, helper.NewConflictError("Private chat already exists")
 		}

@@ -236,6 +236,7 @@ var (
 		{Name: "lock_token", Type: field.TypeUUID, Nullable: true},
 		{Name: "projected_at", Type: field.TypeTime, Nullable: true},
 		{Name: "published_at", Type: field.TypeTime, Nullable: true},
+		{Name: "dead_lettered_at", Type: field.TypeTime, Nullable: true},
 		{Name: "last_error", Type: field.TypeString, Nullable: true, Size: 2147483647},
 	}
 	// MessageOutboxesTable holds the schema information for the "message_outboxes" table.

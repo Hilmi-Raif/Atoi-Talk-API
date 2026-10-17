@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -84,10 +85,9 @@ func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := h.gateway.Register(userID)
-	client.close = func() { _ = conn.Close() }
+	client := h.gateway.RegisterWithClose(userID, defaultClientBuffer, func() { _ = conn.Close() })
 	go h.writePump(conn, client)
-	go h.readPump(conn, client)
+	go h.readPump(conn, client, token)
 }
 
 func (h *HTTPHandler) checkOrigin(r *http.Request) bool {
@@ -124,7 +124,7 @@ func (h *HTTPHandler) writePump(conn *websocket.Conn, client *Client) {
 	}
 }
 
-func (h *HTTPHandler) readPump(conn *websocket.Conn, client *Client) {
+func (h *HTTPHandler) readPump(conn *websocket.Conn, client *Client, token string) {
 	defer func() {
 		h.gateway.Unregister(client)
 		_ = conn.Close()
@@ -132,6 +132,10 @@ func (h *HTTPHandler) readPump(conn *websocket.Conn, client *Client) {
 	conn.SetReadLimit(512)
 	_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	conn.SetPongHandler(func(string) error {
+		if err := h.verifyClient(conn, client, token); err != nil {
+			return err
+		}
+		h.gateway.RefreshPresence(client)
 		return conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	})
 	for {
@@ -139,8 +143,24 @@ func (h *HTTPHandler) readPump(conn *websocket.Conn, client *Client) {
 		if err != nil {
 			return
 		}
-		_ = h.handleIncomingMessage(context.Background(), client.UserID, message)
+		if err := h.verifyClient(conn, client, token); err != nil {
+			return
+		}
+		if err := h.handleIncomingMessage(context.Background(), client.UserID, message); err != nil {
+			slog.Warn("failed to handle incoming realtime event", "error", err, "userID", client.UserID)
+		}
 	}
+}
+
+func (h *HTTPHandler) verifyClient(conn *websocket.Conn, client *Client, token string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), dependencyTimeout)
+	defer cancel()
+	userID, err := h.verifier.Verify(ctx, token)
+	if err != nil || userID != client.UserID {
+		_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "session revoked"), time.Now().Add(time.Second))
+		return ErrUnauthorized
+	}
+	return nil
 }
 
 func (h *HTTPHandler) handleIncomingMessage(ctx context.Context, userID uuid.UUID, data []byte) error {
@@ -151,5 +171,7 @@ func (h *HTTPHandler) handleIncomingMessage(ctx context.Context, userID uuid.UUI
 	if err := json.Unmarshal(data, &event); err != nil {
 		return err
 	}
-	return h.typingRouter.Publish(ctx, userID, event)
+	operationCtx, cancel := context.WithTimeout(ctx, dependencyTimeout)
+	defer cancel()
+	return h.typingRouter.Publish(operationCtx, userID, event)
 }

@@ -8,7 +8,6 @@ import (
 	"AtoiTalkAPI/internal/scheduler/job"
 	"context"
 	"log/slog"
-	"net/http"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -26,10 +25,16 @@ type Scheduler struct {
 }
 
 func New(cfg *config.AppConfig, client *ent.Client, s3Client *s3.Client) *Scheduler {
-	httpClient := &http.Client{Timeout: 30 * time.Second}
+	httpClient := config.NewHTTPClient()
 	storageAdapter := objectstorage.NewStorageAdapter(cfg, s3Client, httpClient)
 
+	location, err := time.LoadLocation(cfg.SchedulerTimezone)
+	if err != nil {
+		location = time.UTC
+	}
+
 	c := cron.New(
+		cron.WithLocation(location),
 		cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)),
 	)
 

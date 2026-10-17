@@ -4,10 +4,27 @@ import (
 	"AtoiTalkAPI/ent/enttest"
 	"AtoiTalkAPI/internal/infrastructure/config"
 	"testing"
+	"time"
 
 	"entgo.io/ent/dialect"
 	_ "github.com/mattn/go-sqlite3"
 )
+
+func TestSchedulerUsesConfiguredTimezone(t *testing.T) {
+	scheduler := New(&config.AppConfig{SchedulerTimezone: "Asia/Jakarta"}, nil, nil)
+
+	if scheduler.cron.Location().String() != "Asia/Jakarta" {
+		t.Fatalf("expected Asia/Jakarta scheduler timezone, got %s", scheduler.cron.Location())
+	}
+}
+
+func TestSchedulerFallsBackToUTCForInvalidTimezone(t *testing.T) {
+	scheduler := New(&config.AppConfig{SchedulerTimezone: "invalid/timezone"}, nil, nil)
+
+	if scheduler.cron.Location() != time.UTC {
+		t.Fatalf("expected UTC fallback, got %s", scheduler.cron.Location())
+	}
+}
 
 func TestSchedulerStartAndStopRegistersJobs(t *testing.T) {
 	client := enttest.Open(t, dialect.SQLite, "file:scheduler-test?mode=memory&cache=shared&_fk=1")

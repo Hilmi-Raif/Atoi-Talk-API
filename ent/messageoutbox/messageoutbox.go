@@ -40,6 +40,8 @@ const (
 	FieldProjectedAt = "projected_at"
 	// FieldPublishedAt holds the string denoting the published_at field in the database.
 	FieldPublishedAt = "published_at"
+	// FieldDeadLetteredAt holds the string denoting the dead_lettered_at field in the database.
+	FieldDeadLetteredAt = "dead_lettered_at"
 	// FieldLastError holds the string denoting the last_error field in the database.
 	FieldLastError = "last_error"
 	// Table holds the table name of the messageoutbox in the database.
@@ -62,6 +64,7 @@ var Columns = []string{
 	FieldLockToken,
 	FieldProjectedAt,
 	FieldPublishedAt,
+	FieldDeadLetteredAt,
 	FieldLastError,
 }
 
@@ -156,6 +159,11 @@ func ByProjectedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByPublishedAt orders the results by the published_at field.
 func ByPublishedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPublishedAt, opts...).ToFunc()
+}
+
+// ByDeadLetteredAt orders the results by the dead_lettered_at field.
+func ByDeadLetteredAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDeadLetteredAt, opts...).ToFunc()
 }
 
 // ByLastError orders the results by the last_error field.

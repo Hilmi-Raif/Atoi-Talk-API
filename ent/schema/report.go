@@ -1,8 +1,6 @@
 package schema
 
 import (
-	"time"
-
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
@@ -41,8 +39,8 @@ func (Report) Fields() []ent.Field {
 		field.Time("resolved_at").Optional().Nillable(),
 		field.UUID("resolved_by_id", uuid.UUID{}).Optional().Nillable(),
 
-		field.Time("created_at").Default(time.Now).Immutable(),
-		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
+		field.Time("created_at").Default(nowUTC).Immutable(),
+		field.Time("updated_at").Default(nowUTC).UpdateDefault(nowUTC),
 	}
 }
 

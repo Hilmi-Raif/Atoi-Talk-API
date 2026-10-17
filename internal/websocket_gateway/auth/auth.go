@@ -47,6 +47,23 @@ func (v *JWTVerifier) Verify(ctx context.Context, tokenString string) (uuid.UUID
 		if blacklisted != "" {
 			return uuid.Nil, ErrUnauthorized
 		}
+		revokedAtStr, err := v.redis.Get(ctx, "revoked_user:"+claims.UserID.String()).Result()
+		if err != nil && err != redis.Nil {
+			return uuid.Nil, err
+		}
+		if err == nil && revokedAtStr != "" {
+			tokenIssuedAt := claims.IssuedAt.UnixMilli()
+			if claims.IssuedAtMillis > 0 {
+				tokenIssuedAt = claims.IssuedAtMillis
+			}
+			revoked, err := helper.IsSessionRevoked(revokedAtStr, tokenIssuedAt)
+			if err != nil {
+				return uuid.Nil, fmt.Errorf("invalid revoked timestamp for user %s: %w", claims.UserID, err)
+			}
+			if revoked {
+				return uuid.Nil, ErrUnauthorized
+			}
+		}
 	}
 	if v.client == nil {
 		return uuid.Nil, ErrUnauthorized

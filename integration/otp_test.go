@@ -8,11 +8,43 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestConcurrentOTPVerificationConsumesOnlyOnce(t *testing.T) {
+	clearDatabase(context.Background())
+	email := "single-use@example.com"
+	code := "123456"
+	key := "otp:reset:" + email
+	require.NoError(t, redisAdapter.Set(context.Background(), key, helper.HashOTP(code, testConfig.OTPSecret), time.Minute))
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+	results := make(chan bool, 16)
+	for i := 0; i < cap(results); i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			consumed, err := redisAdapter.ConsumeIfMatch(context.Background(), key, helper.HashOTP(code, testConfig.OTPSecret))
+			results <- err == nil && consumed
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(results)
+	count := 0
+	for success := range results {
+		if success {
+			count++
+		}
+	}
+	require.Equal(t, 1, count)
+}
 
 func TestSendOTP(t *testing.T) {
 	ctx := context.Background()

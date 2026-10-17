@@ -9,8 +9,9 @@ import (
 	"AtoiTalkAPI/ent/messageoutbox"
 	"AtoiTalkAPI/ent/privatechat"
 	"AtoiTalkAPI/ent/user"
-	"AtoiTalkAPI/ent/userblock"
+	"AtoiTalkAPI/internal/domain/model"
 	"AtoiTalkAPI/internal/infrastructure/database/mapper"
+	"AtoiTalkAPI/internal/infrastructure/database/realtimequery"
 	objectstorage "AtoiTalkAPI/internal/infrastructure/object_storage"
 	"AtoiTalkAPI/internal/infrastructure/observability"
 	"AtoiTalkAPI/internal/messaging/events"
@@ -31,10 +32,11 @@ const maxStoredOutboxErrorLength = 2048
 var ErrOutboxLeaseLost = errors.New("outbox lease ownership lost")
 
 type EntOutboxStore struct {
-	client  *ent.Client
-	dialect string
-	now     func() time.Time
-	urlGen  objectstorage.URLGenerator
+	client   *ent.Client
+	dialect  string
+	now      func() time.Time
+	urlGen   objectstorage.URLGenerator
+	realtime *realtimequery.Query
 }
 
 func NewEntOutboxStore(client *ent.Client) *EntOutboxStore {
@@ -42,7 +44,7 @@ func NewEntOutboxStore(client *ent.Client) *EntOutboxStore {
 }
 
 func NewEntOutboxStoreWithDialect(client *ent.Client, driverDialect string) *EntOutboxStore {
-	return &EntOutboxStore{client: client, dialect: driverDialect, now: time.Now}
+	return &EntOutboxStore{client: client, dialect: driverDialect, now: time.Now, realtime: realtimequery.New(client)}
 }
 
 func NewEntOutboxStoreWithURLGenerator(client *ent.Client, urlGen objectstorage.URLGenerator) *EntOutboxStore {
@@ -60,13 +62,14 @@ func (s *EntOutboxStore) BuildEvents(ctx context.Context, record OutboxRecord) (
 		return nil, errors.New("message and chat IDs are required to build events")
 	}
 
-	targets, err := s.eventTargets(ctx, record)
-	if err != nil {
-		return nil, err
-	}
-
 	var payloadData interface{}
+	var messageCreatedAt *time.Time
 	if record.EventType == string(events.EventMessageDelete) {
+		createdAt, loadErr := s.client.Message.Query().Where(message.ID(record.MessageID)).Select(message.FieldCreatedAt).Only(ctx)
+		if loadErr != nil {
+			return nil, fmt.Errorf("load deleted message %s for events: %w", record.MessageID, loadErr)
+		}
+		messageCreatedAt = &createdAt.CreatedAt
 		payloadData = map[string]uuid.UUID{"message_id": record.MessageID}
 	} else {
 		msg, loadErr := s.client.Message.Query().
@@ -85,10 +88,19 @@ func (s *EntOutboxStore) BuildEvents(ctx context.Context, record OutboxRecord) (
 		if loadErr != nil {
 			return nil, fmt.Errorf("load message %s for events: %w", record.MessageID, loadErr)
 		}
+		messageCreatedAt = &msg.CreatedAt
 		if msg.Edges.Sender == nil && record.SenderID != uuid.Nil {
 			return nil, fmt.Errorf("message %s sender is unavailable", record.MessageID)
 		}
-		payloadData = mapper.ToMessageResponse(msg, s.urlGen, nil, "")
+		messageSnapshot := *msg
+		applyMessageEntitySnapshot(&messageSnapshot, record.Payload)
+		response := mapper.ToMessageResponse(&messageSnapshot, s.urlGen, nil, "")
+		applyMessageSnapshot(response, record.Payload)
+		payloadData = response
+	}
+	targets, err := s.eventTargets(ctx, record, messageCreatedAt)
+	if err != nil {
+		return nil, err
 	}
 
 	unreadMap, countErr := s.batchRecipientsUnreadCount(ctx, record.ChatID, targets)
@@ -124,6 +136,48 @@ func (s *EntOutboxStore) BuildEvents(ctx context.Context, record OutboxRecord) (
 		})
 	}
 	return built, nil
+}
+
+func applyMessageEntitySnapshot(message *ent.Message, payload map[string]interface{}) {
+	if message == nil || payload == nil {
+		return
+	}
+	if content, exists := payload["content"]; exists {
+		message.Content = nil
+		if value, ok := content.(string); ok {
+			message.Content = &value
+		}
+	}
+	if actionData, exists := payload["action_data"]; exists {
+		message.ActionData, _ = actionData.(map[string]interface{})
+	}
+	if deletedAt, exists := payload["deleted_at"]; exists && deletedAt == nil {
+		message.DeletedAt = nil
+	}
+}
+
+func applyMessageSnapshot(response *model.MessageResponse, payload map[string]interface{}) {
+	if response == nil || payload == nil {
+		return
+	}
+	if content, exists := payload["content"]; exists {
+		response.Content, _ = content.(string)
+	}
+	if actionData, exists := payload["action_data"]; exists {
+		response.ActionData, _ = actionData.(map[string]interface{})
+	}
+	if editedAt, exists := payload["edited_at"]; exists {
+		response.EditedAt = nil
+		if value, ok := editedAt.(string); ok {
+			response.EditedAt = &value
+		}
+	}
+	if deletedAt, exists := payload["deleted_at"]; exists {
+		response.DeletedAt = nil
+		if value, ok := deletedAt.(string); ok {
+			response.DeletedAt = &value
+		}
+	}
 }
 
 func (s *EntOutboxStore) batchRecipientsUnreadCount(ctx context.Context, chatID uuid.UUID, targets []uuid.UUID) (map[uuid.UUID]int, error) {
@@ -169,69 +223,58 @@ func (s *EntOutboxStore) batchRecipientsUnreadCount(ctx context.Context, chatID 
 	return unreadMap, nil
 }
 
-func (s *EntOutboxStore) eventTargets(ctx context.Context, record OutboxRecord) ([]uuid.UUID, error) {
-	chatEntity, err := s.client.Chat.Query().Where(chat.ID(record.ChatID)).Select(chat.FieldType).Only(ctx)
+func (s *EntOutboxStore) eventTargets(ctx context.Context, record OutboxRecord, messageCreatedAt *time.Time) ([]uuid.UUID, error) {
+	candidates, err := s.realtime.ChatMembers(ctx, record.ChatID)
 	if err != nil {
-		return nil, fmt.Errorf("load chat %s for events: %w", record.ChatID, err)
+		return nil, fmt.Errorf("load chat members %s for events: %w", record.ChatID, err)
 	}
-
-	var candidates []uuid.UUID
-	switch chatEntity.Type {
-	case chat.TypePrivate:
-		private, err := s.client.PrivateChat.Query().Where(privatechat.ChatID(record.ChatID)).Only(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("load private chat %s for events: %w", record.ChatID, err)
+	if messageCreatedAt != nil && len(candidates) > 0 {
+		private, privateErr := s.client.PrivateChat.Query().Where(privatechat.ChatID(record.ChatID)).Only(ctx)
+		if privateErr != nil && !ent.IsNotFound(privateErr) {
+			return nil, fmt.Errorf("load private chat %s for event targets: %w", record.ChatID, privateErr)
 		}
-		if private.User1ID != nil {
-			candidates = append(candidates, *private.User1ID)
+		if privateErr == nil {
+			filtered := candidates[:0]
+			for _, candidate := range candidates {
+				if private.User1ID != nil && candidate == *private.User1ID && private.User1HiddenAt != nil && !private.User1HiddenAt.Before(*messageCreatedAt) {
+					continue
+				}
+				if private.User2ID != nil && candidate == *private.User2ID && private.User2HiddenAt != nil && !private.User2HiddenAt.Before(*messageCreatedAt) {
+					continue
+				}
+				filtered = append(filtered, candidate)
+			}
+			candidates = filtered
+		} else {
+			groupID, groupErr := s.client.GroupChat.Query().Where(groupchat.ChatID(record.ChatID)).OnlyID(ctx)
+			if groupErr != nil {
+				return nil, fmt.Errorf("load group chat %s for event targets: %w", record.ChatID, groupErr)
+			}
+			members, memberErr := s.client.GroupMember.Query().Where(
+				groupmember.GroupChatID(groupID),
+				groupmember.UserIDIn(candidates...),
+				groupmember.JoinedAtLTE(*messageCreatedAt),
+			).Select(groupmember.FieldUserID).All(ctx)
+			if memberErr != nil {
+				return nil, fmt.Errorf("load group members for event %s: %w", record.ID, memberErr)
+			}
+			candidates = candidates[:0]
+			for _, member := range members {
+				candidates = append(candidates, member.UserID)
+			}
 		}
-		if private.User2ID != nil {
-			candidates = append(candidates, *private.User2ID)
-		}
-	case chat.TypeGroup:
-		group, err := s.client.GroupChat.Query().Where(groupchat.ChatID(record.ChatID)).Only(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("load group chat %s for events: %w", record.ChatID, err)
-		}
-		members, err := s.client.GroupMember.Query().
-			Where(groupmember.GroupChatID(group.ID)).
-			Select(groupmember.FieldUserID).
-			All(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("load group members %s for events: %w", record.ChatID, err)
-		}
-		for _, member := range members {
-			candidates = append(candidates, member.UserID)
-		}
-	default:
-		return nil, fmt.Errorf("unsupported chat type %q", chatEntity.Type)
 	}
-
-	targets := make([]uuid.UUID, 0, len(candidates))
+	blockedSet := map[uuid.UUID]bool{}
 	if len(candidates) > 0 && record.SenderID != uuid.Nil {
-		blocks, err := s.client.UserBlock.Query().Where(
-			userblock.Or(
-				userblock.And(userblock.BlockerID(record.SenderID), userblock.BlockedIDIn(candidates...)),
-				userblock.And(userblock.BlockerIDIn(candidates...), userblock.BlockedID(record.SenderID)),
-			),
-		).Select(userblock.FieldBlockerID, userblock.FieldBlockedID).All(ctx)
+		blockedSet, err = s.realtime.BlockedContacts(ctx, record.SenderID)
 		if err != nil {
 			return nil, fmt.Errorf("batch check message recipient block state: %w", err)
 		}
-
-		blockedSet := make(map[uuid.UUID]bool, len(blocks))
-		for _, b := range blocks {
-			if b.BlockerID == record.SenderID {
-				blockedSet[b.BlockedID] = true
-			} else {
-				blockedSet[b.BlockerID] = true
-			}
-		}
-
-		for _, candidate := range candidates {
-			if candidate != record.SenderID && candidate != uuid.Nil && !blockedSet[candidate] {
-				targets = append(targets, candidate)
-			}
+	}
+	targets := make([]uuid.UUID, 0, len(candidates))
+	for _, candidate := range candidates {
+		if candidate != record.SenderID && candidate != uuid.Nil && !blockedSet[candidate] {
+			targets = append(targets, candidate)
 		}
 	}
 	return targets, nil
@@ -255,11 +298,29 @@ func (s *EntOutboxStore) Claim(ctx context.Context, limit int, leaseDuration tim
 	query := tx.MessageOutbox.Query().
 		Where(
 			messageoutbox.PublishedAtIsNil(),
+			messageoutbox.DeadLetteredAtIsNil(),
 			messageoutbox.AvailableAtLTE(now),
 			messageoutbox.Or(
 				messageoutbox.LockedAtIsNil(),
 				messageoutbox.LockedAtLTE(now.Add(-leaseDuration)),
 			),
+			func(selector *entsql.Selector) {
+				earlier := entsql.Table(messageoutbox.Table).As("earlier_outbox")
+				selector.Where(entsql.NotExists(
+					entsql.Select(earlier.C(messageoutbox.FieldID)).From(earlier).Where(entsql.And(
+						entsql.ColumnsEQ(earlier.C(messageoutbox.FieldChatID), selector.C(messageoutbox.FieldChatID)),
+						entsql.IsNull(earlier.C(messageoutbox.FieldPublishedAt)),
+						entsql.IsNull(earlier.C(messageoutbox.FieldDeadLetteredAt)),
+						entsql.Or(
+							entsql.ColumnsLT(earlier.C(messageoutbox.FieldCreatedAt), selector.C(messageoutbox.FieldCreatedAt)),
+							entsql.And(
+								entsql.ColumnsEQ(earlier.C(messageoutbox.FieldCreatedAt), selector.C(messageoutbox.FieldCreatedAt)),
+								entsql.ColumnsLT(earlier.C(messageoutbox.FieldID), selector.C(messageoutbox.FieldID)),
+							),
+						),
+					)),
+				))
+			},
 		).
 		Order(messageoutbox.ByCreatedAt()).
 		Limit(limit)
@@ -308,17 +369,22 @@ func (s *EntOutboxStore) Claim(ctx context.Context, limit int, leaseDuration tim
 func (s *EntOutboxStore) Backlog(ctx context.Context) (observability.MessageWorkerBacklog, error) {
 	var backlog observability.MessageWorkerBacklog
 	var err error
-	if backlog.Pending, err = s.client.MessageOutbox.Query().Where(messageoutbox.PublishedAtIsNil()).Count(ctx); err != nil {
+	if backlog.Pending, err = s.client.MessageOutbox.Query().Where(
+		messageoutbox.PublishedAtIsNil(),
+		messageoutbox.DeadLetteredAtIsNil(),
+	).Count(ctx); err != nil {
 		return backlog, fmt.Errorf("count pending outbox rows: %w", err)
 	}
 	if backlog.Locked, err = s.client.MessageOutbox.Query().Where(
 		messageoutbox.PublishedAtIsNil(),
+		messageoutbox.DeadLetteredAtIsNil(),
 		messageoutbox.LockedAtNotNil(),
 	).Count(ctx); err != nil {
 		return backlog, fmt.Errorf("count locked outbox rows: %w", err)
 	}
 	if backlog.Unprojected, err = s.client.MessageOutbox.Query().Where(
 		messageoutbox.PublishedAtIsNil(),
+		messageoutbox.DeadLetteredAtIsNil(),
 		messageoutbox.ProjectedAtIsNil(),
 	).Count(ctx); err != nil {
 		return backlog, fmt.Errorf("count unprojected outbox rows: %w", err)
@@ -378,7 +444,7 @@ func (s *EntOutboxStore) Project(ctx context.Context, record OutboxRecord) error
 		).SetLastMessageID(msg.ID).SetLastMessageAt(msg.CreatedAt).Save(ctx); err != nil {
 			return fmt.Errorf("project chat metadata for %s: %w", record.ChatID, err)
 		}
-		if err := s.projectUnread(ctx, tx, record); err != nil {
+		if err := s.projectUnread(ctx, tx, record, msg.CreatedAt); err != nil {
 			return err
 		}
 	}
@@ -392,22 +458,25 @@ func (s *EntOutboxStore) Project(ctx context.Context, record OutboxRecord) error
 	return nil
 }
 
-func (s *EntOutboxStore) projectUnread(ctx context.Context, tx *ent.Tx, record OutboxRecord) error {
+func (s *EntOutboxStore) projectUnread(ctx context.Context, tx *ent.Tx, record OutboxRecord, messageCreatedAt time.Time) error {
 	private, err := tx.PrivateChat.Query().Where(privatechat.ChatID(record.ChatID)).Only(ctx)
 	if err == nil {
-		now := s.now().UTC()
 		switch {
 		case private.User1ID != nil && *private.User1ID == record.SenderID:
 			_, err = tx.PrivateChat.UpdateOne(private).
-				SetUser1UnreadCount(0).
-				SetUser1LastReadAt(now).
-				AddUser2UnreadCount(1).
+				Modify(func(builder *entsql.UpdateBuilder) {
+					builder.Set(privatechat.FieldUser1UnreadCount, entsql.ExprFunc(senderUnreadAfterProjection(privatechat.FieldUser1UnreadCount, privatechat.FieldUser1LastReadAt, messageCreatedAt)))
+					builder.Set(privatechat.FieldUser1LastReadAt, entsql.ExprFunc(readAtAfterProjection(privatechat.FieldUser1LastReadAt, messageCreatedAt)))
+					builder.Set(privatechat.FieldUser2UnreadCount, entsql.ExprFunc(unreadCountAfterProjection(privatechat.FieldUser2UnreadCount, privatechat.FieldUser2LastReadAt, messageCreatedAt, privatechat.FieldUser2HiddenAt)))
+				}).
 				Save(ctx)
 		case private.User2ID != nil && *private.User2ID == record.SenderID:
 			_, err = tx.PrivateChat.UpdateOne(private).
-				SetUser2UnreadCount(0).
-				SetUser2LastReadAt(now).
-				AddUser1UnreadCount(1).
+				Modify(func(builder *entsql.UpdateBuilder) {
+					builder.Set(privatechat.FieldUser2UnreadCount, entsql.ExprFunc(senderUnreadAfterProjection(privatechat.FieldUser2UnreadCount, privatechat.FieldUser2LastReadAt, messageCreatedAt)))
+					builder.Set(privatechat.FieldUser2LastReadAt, entsql.ExprFunc(readAtAfterProjection(privatechat.FieldUser2LastReadAt, messageCreatedAt)))
+					builder.Set(privatechat.FieldUser1UnreadCount, entsql.ExprFunc(unreadCountAfterProjection(privatechat.FieldUser1UnreadCount, privatechat.FieldUser1LastReadAt, messageCreatedAt, privatechat.FieldUser1HiddenAt)))
+				}).
 				Save(ctx)
 		default:
 			return fmt.Errorf("sender %s is not a member of private chat %s", record.SenderID, record.ChatID)
@@ -425,19 +494,49 @@ func (s *EntOutboxStore) projectUnread(ctx context.Context, tx *ent.Tx, record O
 	if err != nil {
 		return fmt.Errorf("load group chat for %s: %w", record.ChatID, err)
 	}
-	if _, err := tx.GroupMember.Update().Where(groupmember.GroupChatID(group.ID)).Modify(func(builder *entsql.UpdateBuilder) {
+	if _, err := tx.GroupMember.Update().Where(groupmember.GroupChatID(group.ID), groupmember.JoinedAtLTE(messageCreatedAt)).Modify(func(builder *entsql.UpdateBuilder) {
 		builder.Set(groupmember.FieldUnreadCount, entsql.ExprFunc(func(b *entsql.Builder) {
 			b.WriteString("CASE WHEN ").Ident(groupmember.FieldUserID).WriteString(" = ").Arg(record.SenderID)
-			b.WriteString(" THEN 0 ELSE ").Ident(groupmember.FieldUnreadCount).WriteString(" + 1 END")
+			b.WriteString(" THEN ")
+			senderUnreadAfterProjection(groupmember.FieldUnreadCount, groupmember.FieldLastReadAt, messageCreatedAt)(b)
+			b.WriteString(" ELSE ")
+			unreadCountAfterProjection(groupmember.FieldUnreadCount, groupmember.FieldLastReadAt, messageCreatedAt)(b)
+			b.WriteString(" END")
 		}))
 		builder.Set(groupmember.FieldLastReadAt, entsql.ExprFunc(func(b *entsql.Builder) {
 			b.WriteString("CASE WHEN ").Ident(groupmember.FieldUserID).WriteString(" = ").Arg(record.SenderID)
-			b.WriteString(" THEN ").Arg(s.now().UTC()).WriteString(" ELSE ").Ident(groupmember.FieldLastReadAt).WriteString(" END")
+			b.WriteString(" THEN ")
+			readAtAfterProjection(groupmember.FieldLastReadAt, messageCreatedAt)(b)
+			b.WriteString(" ELSE ").Ident(groupmember.FieldLastReadAt).WriteString(" END")
 		}))
 	}).Save(ctx); err != nil {
 		return fmt.Errorf("project group unread state for %s: %w", record.ChatID, err)
 	}
 	return nil
+}
+
+func unreadCountAfterProjection(countField, readAtField string, messageCreatedAt time.Time, hiddenAtField ...string) func(*entsql.Builder) {
+	return func(b *entsql.Builder) {
+		b.WriteString("CASE WHEN ").Ident(readAtField).WriteString(" >= ").Arg(messageCreatedAt)
+		if len(hiddenAtField) > 0 {
+			b.WriteString(" OR ").Ident(hiddenAtField[0]).WriteString(" >= ").Arg(messageCreatedAt)
+		}
+		b.WriteString(" THEN ").Ident(countField).WriteString(" ELSE ").Ident(countField).WriteString(" + 1 END")
+	}
+}
+
+func senderUnreadAfterProjection(countField, readAtField string, messageCreatedAt time.Time) func(*entsql.Builder) {
+	return func(b *entsql.Builder) {
+		b.WriteString("CASE WHEN ").Ident(readAtField).WriteString(" >= ").Arg(messageCreatedAt)
+		b.WriteString(" THEN ").Ident(countField).WriteString(" ELSE 0 END")
+	}
+}
+
+func readAtAfterProjection(readAtField string, messageCreatedAt time.Time) func(*entsql.Builder) {
+	return func(b *entsql.Builder) {
+		b.WriteString("CASE WHEN ").Ident(readAtField).WriteString(" >= ").Arg(messageCreatedAt)
+		b.WriteString(" THEN ").Ident(readAtField).WriteString(" ELSE ").Arg(messageCreatedAt).WriteString(" END")
+	}
 }
 
 func (s *EntOutboxStore) MarkFailed(ctx context.Context, id, lockToken uuid.UUID, processingErr error, availableAt time.Time) error {
@@ -462,12 +561,36 @@ func (s *EntOutboxStore) MarkFailed(ctx context.Context, id, lockToken uuid.UUID
 	return nil
 }
 
+func (s *EntOutboxStore) MarkDeadLetter(ctx context.Context, id, lockToken uuid.UUID, processingErr error, deadLetteredAt time.Time) error {
+	lastError := truncateOutboxError(processingErr)
+	affected, err := s.client.MessageOutbox.Update().
+		Where(
+			messageoutbox.ID(id),
+			messageoutbox.LockToken(lockToken),
+			messageoutbox.PublishedAtIsNil(),
+			messageoutbox.DeadLetteredAtIsNil(),
+		).
+		SetDeadLetteredAt(deadLetteredAt.UTC()).
+		SetLastError(lastError).
+		ClearLockedAt().
+		ClearLockToken().
+		Save(ctx)
+	if err != nil {
+		return fmt.Errorf("mark outbox row %s dead letter: %w", id, err)
+	}
+	if affected != 1 {
+		return fmt.Errorf("%w: mark dead letter for %s", ErrOutboxLeaseLost, id)
+	}
+	return nil
+}
+
 func outboxRecord(row *ent.MessageOutbox) OutboxRecord {
 	record := OutboxRecord{
 		ID:           row.ID,
 		EventType:    row.EventType,
 		MessageID:    row.MessageID,
 		ChatID:       row.ChatID,
+		Payload:      row.Payload,
 		AttemptCount: row.AttemptCount,
 	}
 	if row.SenderID != nil {

@@ -4,7 +4,6 @@ import (
 	"AtoiTalkAPI/ent/messageoutbox"
 	"AtoiTalkAPI/internal/domain/model"
 	websocket "AtoiTalkAPI/internal/messaging/events"
-	websocketmocks "AtoiTalkAPI/internal/messaging/events/mocks"
 	"context"
 	"testing"
 
@@ -15,9 +14,6 @@ func TestMessageServiceSendMessagePersistsOutboxWithoutDirectBroadcast(t *testin
 	service, client, _ := newMessageServiceTest(t)
 	defer client.Close()
 	ctx, current, _, chatEntity, _ := createPrivateMessageServiceFixture(t, client)
-
-	publisher := websocketmocks.NewMockPublisher(t)
-	service.wsHub = publisher
 
 	result, err := service.SendMessage(ctx, current.ID, model.SendMessageRequest{
 		ChatID:  chatEntity.ID,
@@ -33,7 +29,7 @@ func TestMessageServiceSendMessagePersistsOutboxWithoutDirectBroadcast(t *testin
 	require.NoError(t, err)
 	require.Equal(t, result.ID, outbox.MessageID)
 	require.Equal(t, current.ID, *outbox.SenderID)
-	publisher.AssertNotCalled(t, "BroadcastToChat")
+	require.Equal(t, "durable message", outbox.Payload["content"])
 }
 
 func TestMessageServiceSendMessageRollsBackOutboxWithMessage(t *testing.T) {
@@ -78,9 +74,6 @@ func TestMessageServiceEditMessagePersistsOutboxWithoutDirectBroadcast(t *testin
 	defer client.Close()
 	ctx, current, _, chatEntity, messageEntity := createPrivateMessageServiceFixture(t, client)
 
-	publisher := websocketmocks.NewMockPublisher(t)
-	service.wsHub = publisher
-
 	result, err := service.EditMessage(ctx, current.ID, messageEntity.ID, model.EditMessageRequest{
 		Content: "edited durable message",
 	})
@@ -94,16 +87,13 @@ func TestMessageServiceEditMessagePersistsOutboxWithoutDirectBroadcast(t *testin
 	).Only(ctx)
 	require.NoError(t, err)
 	require.Equal(t, messageEntity.ID, outbox.MessageID)
-	publisher.AssertNotCalled(t, "BroadcastToChat")
+	require.Equal(t, "edited durable message", outbox.Payload["content"])
 }
 
 func TestMessageServiceDeleteMessagePersistsOutboxWithoutDirectBroadcast(t *testing.T) {
 	service, client, _ := newMessageServiceTest(t)
 	defer client.Close()
 	ctx, current, _, chatEntity, messageEntity := createPrivateMessageServiceFixture(t, client)
-
-	publisher := websocketmocks.NewMockPublisher(t)
-	service.wsHub = publisher
 
 	require.NoError(t, service.DeleteMessage(ctx, current.ID, messageEntity.ID))
 	outbox, err := client.MessageOutbox.Query().Where(
@@ -113,5 +103,4 @@ func TestMessageServiceDeleteMessagePersistsOutboxWithoutDirectBroadcast(t *test
 	).Only(ctx)
 	require.NoError(t, err)
 	require.Equal(t, messageEntity.ID, outbox.MessageID)
-	publisher.AssertNotCalled(t, "BroadcastToChat")
 }

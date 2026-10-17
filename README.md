@@ -191,7 +191,7 @@ erDiagram
 
 | Layer | Technology |
 |---|---|
-| Language | Go 1.25 |
+| Language | Go 1.26 |
 | Router | Chi v5 |
 | ORM | Ent |
 | Database | PostgreSQL |
@@ -265,7 +265,7 @@ Release images use the version, `latest`, and immutable SHA tags. Release Please
 
 ### Prerequisites
 
-- Go 1.25+
+- Go 1.26+
 - PostgreSQL
 - Redis
 - S3-compatible storage with public and private buckets for media operations
@@ -390,6 +390,8 @@ Copy `.env.example` to `.env` and fill in the values. Only the API runs database
 
 The API, message worker, WebSocket Gateway, and scheduler share database and Redis connectivity. The tables below separate process-wide settings from process-specific settings.
 
+Timestamps represent instants: application-generated database timestamps use UTC, event and session-revocation timestamps use Unix milliseconds, and API date strings use RFC3339 (which may include an offset). Cron schedules use `SCHEDULER_TIMEZONE` (default `UTC`); this setting changes job execution time, not stored instants.
+
 The native default for `DB_PORT` is `5432`. The local dependency Compose file publishes PostgreSQL on host port `5434`, so native processes use `DB_PORT=5434` when connecting to that stack.
 
 | Variable | Description | Default |
@@ -493,6 +495,7 @@ These settings are used by the API, message worker, and WebSocket Gateway.
 | `ENTITY_CLEANUP_CRON` | Cron schedule for entity cleanup | `0 2 * * *` |
 | `PRIVATE_CHAT_CLEANUP_CRON` | Cron schedule for private chat GC | `30 2 * * *` |
 | `MEDIA_CLEANUP_CRON` | Cron schedule for media cleanup | `0 3 * * *` |
+| `SCHEDULER_TIMEZONE` | IANA time zone for cron schedules; invalid values fall back to UTC | `UTC` |
 
 #### Message Worker Only
 
@@ -505,14 +508,17 @@ These settings are used by the API, message worker, and WebSocket Gateway.
 | `MESSAGE_WORKER_BACKLOG_INTERVAL` | Interval for backlog metrics | `5s` |
 | `MESSAGE_EVENT_STREAM` | Redis Stream used for durable message events | `events:messages` |
 | `MESSAGE_EVENT_STREAM_MAX_LEN` | Approximate maximum Redis Stream length | `10000` |
+| `MESSAGE_OUTBOX_RETENTION_DAYS` | Retention for published and dead-letter outbox rows | `7` |
 
 #### WebSocket Gateway Only
 
 | Variable | Description | Default |
 |---|---|---:|
 | `REALTIME_PORT` | WebSocket Gateway HTTP port | `8081` |
-| `REALTIME_INSTANCE_ID` | Unique gateway instance identifier | `realtime-1` |
-| `REALTIME_CONSUMER_GROUP` | Optional Redis Stream consumer group override | derived from instance ID |
+| `REALTIME_INSTANCE_ID` | Unique gateway instance identifier | hostname or generated UUID |
+| `REALTIME_CONSUMER_GROUP` | Optional Redis Stream consumer group prefix; instance ID is always appended | `realtime` |
+
+Realtime socket delivery is best-effort after an event reaches a gateway. A client whose local send buffer is full is disconnected; after reconnecting, it must resynchronize message history through the API.
 
 ### `.env.test` — Test Config
 

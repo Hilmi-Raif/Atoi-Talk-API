@@ -9,7 +9,7 @@ on:
 
 permissions:
   contents: read
-  packages: write
+  pull-requests: read
 
 jobs:
   changes:
@@ -39,9 +39,7 @@ jobs:
           filters: |
              api:
                - 'cmd/api/**'
-               - 'internal/api/http/controller/**'
-               - 'internal/api/http/middleware/**'
-               - 'internal/api/application/**'
+               - 'internal/api/**'
                - 'internal/messaging/events/**'
                - 'internal/infrastructure/redis/pubsub_publisher.go'
              gateway:
@@ -57,20 +55,15 @@ jobs:
                - 'cmd/scheduler/**'
                - 'internal/scheduler/**'
              shared:
-               - 'internal/infrastructure/captcha/**'
-               - 'internal/infrastructure/email/**'
-               - 'internal/infrastructure/object_storage/**'
-               - 'internal/infrastructure/redis/**'
-               - 'internal/infrastructure/mocks/**'
-               - 'internal/infrastructure/config/**'
-               - 'internal/domain/constant/**'
-               - 'internal/domain/helper/**'
-               - 'internal/infrastructure/database/repository/**'
+               - 'internal/bootstrap/**'
+               - 'internal/infrastructure/**'
+               - 'internal/domain/**'
                - 'ent/**'
                - 'go.mod'
                - 'go.sum'
              integration:
                - 'integration/**'
+               - 'deployments/integration/**'
              tooling:
                - '.github/**'
                - 'Makefile'
@@ -100,7 +93,7 @@ jobs:
       - name: Set Up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25.13"
+          go-version: "1.26.9"
 
       - name: Download Dependencies
         run: go mod download
@@ -140,19 +133,13 @@ jobs:
     needs: changes
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.api == 'true' || needs.changes.outputs.gateway == 'true' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.scheduler == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.integration == 'true' || needs.changes.outputs.tooling == 'true' || needs.changes.outputs.build_api == 'true' || needs.changes.outputs.build_scheduler == 'true' || needs.changes.outputs.build_worker == 'true' || needs.changes.outputs.build_gateway == 'true' }}
     runs-on: ubuntu-latest
-    env:
-      FULL_UNIT: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.gateway == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.integration == 'true' || needs.changes.outputs.tooling == 'true' }}
-      API_CHANGED: ${{ needs.changes.outputs.api }}
-      GATEWAY_CHANGED: ${{ needs.changes.outputs.gateway }}
-      WORKER_CHANGED: ${{ needs.changes.outputs.worker }}
-      SCHEDULER_CHANGED: ${{ needs.changes.outputs.scheduler }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Set Up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25.13"
+          go-version: "1.26.9"
 
       - name: Download Dependencies
         run: go mod download
@@ -160,31 +147,11 @@ jobs:
       - name: Run Impacted Unit Tests
         shell: bash
         run: |
-          if [[ "$FULL_UNIT" == "true" ]]; then
-            go test ./internal/... -covermode=atomic -coverprofile=coverage-unit.out -count=1
-            go run ./scripts/check-coverage -profile coverage-unit.out -min 85 -exclude internal/domain/model,internal/bootstrap,scripts,ent,docs,cmd,internal/infrastructure/mocks,internal/infrastructure/database/repository/mocks,internal/api/application/mocks,internal/messaging/events/mocks
-            go test -race ./internal/... -count=1
-            exit 0
-          fi
-
-          packages=()
-          if [[ "$API_CHANGED" == "true" ]]; then
-             packages+=(./internal/api/http/controller ./internal/api/http/middleware ./internal/api/application)
-          fi
-          if [[ "$GATEWAY_CHANGED" == "true" ]]; then
-             packages+=(./internal/websocket_gateway ./cmd/websocket_gateway)
-          fi
-          if [[ "$WORKER_CHANGED" == "true" ]]; then
-            packages+=(./internal/messaging/message_worker ./cmd/message_worker)
-          fi
-          if [[ "$SCHEDULER_CHANGED" == "true" ]]; then
-            packages+=(./internal/scheduler/...)
-          fi
-          go test "${packages[@]}" -count=1
-          go test -race "${packages[@]}" -count=1
+          go test ./... -covermode=atomic -coverprofile=coverage-unit.out -count=1
+          go run ./scripts/check-coverage -profile coverage-unit.out -min 85 -exclude deployments,internal/domain/model,internal/bootstrap,scripts,ent,docs,cmd,internal/infrastructure/mocks,internal/infrastructure/database/repository/mocks,internal/api/application/mocks,internal/messaging/events/mocks
+          go test -race ./... -count=1
 
       - name: Upload Unit Coverage
-        if: ${{ env.FULL_UNIT == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: coverage-unit
@@ -193,7 +160,7 @@ jobs:
   integration:
     name: Impacted Integration Tests
     needs: changes
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.gateway == 'true' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.integration == 'true' || needs.changes.outputs.tooling == 'true' || needs.changes.outputs.build_worker == 'true' || needs.changes.outputs.build_gateway == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.api == 'true' || needs.changes.outputs.scheduler == 'true' || needs.changes.outputs.gateway == 'true' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.integration == 'true' || needs.changes.outputs.tooling == 'true' || needs.changes.outputs.build_worker == 'true' || needs.changes.outputs.build_gateway == 'true' || needs.changes.outputs.build_api == 'true' || needs.changes.outputs.build_scheduler == 'true' }}
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -273,13 +240,13 @@ jobs:
       - name: Set Up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25.13"
+          go-version: "1.26.9"
       - name: Download Dependencies
         run: go mod download
       - name: Run Integration Tests With Coverage
         run: |
           go test -tags=integration -coverpkg=./... -covermode=atomic -coverprofile=coverage-integration.out ./integration/... -v -count=1
-          go run ./scripts/check-coverage -profile coverage-integration.out -min 68 -exclude internal/domain/model,internal/bootstrap,scripts,ent,docs,cmd,internal/infrastructure/mocks,internal/infrastructure/database/repository/mocks,internal/api/application/mocks,internal/messaging/events/mocks
+          go run ./scripts/check-coverage -profile coverage-integration.out -min 68 -exclude deployments,internal/domain/model,internal/bootstrap,scripts,ent,docs,cmd,internal/infrastructure/mocks,internal/infrastructure/database/repository/mocks,internal/api/application/mocks,internal/messaging/events/mocks
       - name: Upload Integration Coverage
         uses: actions/upload-artifact@v4
         with:
@@ -289,13 +256,13 @@ jobs:
   coverage:
     name: Combined Coverage Report
     needs: [changes, unit, integration]
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.gateway == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.integration == 'true' || needs.changes.outputs.tooling == 'true') }}
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.api == 'true' || needs.changes.outputs.scheduler == 'true' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.gateway == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.integration == 'true' || needs.changes.outputs.tooling == 'true' || needs.changes.outputs.build_api == 'true' || needs.changes.outputs.build_scheduler == 'true' || needs.changes.outputs.build_worker == 'true' || needs.changes.outputs.build_gateway == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.25.13"
+          go-version: "1.26.9"
       - run: go mod download
       - uses: actions/download-artifact@v4
         with:
@@ -308,7 +275,7 @@ jobs:
       - name: Merge Coverage Profiles
         run: |
           go run ./scripts/merge-coverage -output coverage-merged.out coverage-artifacts/unit/coverage-unit.out coverage-artifacts/integration/coverage-integration.out
-          go run ./scripts/check-coverage -profile coverage-merged.out -min 0 -exclude internal/domain/model,internal/bootstrap,scripts,ent,docs,cmd,internal/infrastructure/mocks,internal/infrastructure/database/repository/mocks,internal/api/application/mocks,internal/messaging/events/mocks
+          go run ./scripts/check-coverage -profile coverage-merged.out -min 0 -exclude deployments,internal/domain/model,internal/bootstrap,scripts,ent,docs,cmd,internal/infrastructure/mocks,internal/infrastructure/database/repository/mocks,internal/api/application/mocks,internal/messaging/events/mocks
       - uses: actions/upload-artifact@v4
         with:
           name: coverage-merged
@@ -317,7 +284,10 @@ jobs:
   build_api:
     name: Build API Image
     needs: [changes, quality, unit, integration, coverage]
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.build_api == 'true') && needs.quality.result == 'success' && needs.unit.result == 'success' && (needs.changes.outputs.shared != 'true' || (needs.integration.result == 'success' && needs.coverage.result == 'success')) }}
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.build_api == 'true') && needs.quality.result == 'success' && needs.unit.result == 'success' && needs.integration.result == 'success' && needs.coverage.result == 'success' }}
+    permissions:
+      contents: read
+      packages: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -347,7 +317,10 @@ jobs:
   build_scheduler:
     name: Build Scheduler Image
     needs: [changes, quality, unit, integration, coverage]
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.scheduler == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.build_scheduler == 'true') && needs.quality.result == 'success' && needs.unit.result == 'success' && (needs.changes.outputs.shared != 'true' || (needs.integration.result == 'success' && needs.coverage.result == 'success')) }}
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.scheduler == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.build_scheduler == 'true') && needs.quality.result == 'success' && needs.unit.result == 'success' && needs.integration.result == 'success' && needs.coverage.result == 'success' }}
+    permissions:
+      contents: read
+      packages: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -377,7 +350,10 @@ jobs:
   build_worker:
     name: Build Message Worker Image
     needs: [changes, quality, unit, integration, coverage]
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.build_worker == 'true') && needs.quality.result == 'success' && needs.unit.result == 'success' && (needs.changes.outputs.shared != 'true' || (needs.integration.result == 'success' && needs.coverage.result == 'success')) }}
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.build_worker == 'true') && needs.quality.result == 'success' && needs.unit.result == 'success' && needs.integration.result == 'success' && needs.coverage.result == 'success' }}
+    permissions:
+      contents: read
+      packages: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -407,7 +383,10 @@ jobs:
   build_gateway:
     name: Build WebSocket Gateway Image
     needs: [changes, quality, unit, integration, coverage]
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.gateway == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.build_gateway == 'true') && needs.quality.result == 'success' && needs.unit.result == 'success' && (needs.changes.outputs.shared != 'true' || (needs.integration.result == 'success' && needs.coverage.result == 'success')) }}
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.gateway == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.build_gateway == 'true') && needs.quality.result == 'success' && needs.unit.result == 'success' && needs.integration.result == 'success' && needs.coverage.result == 'success' }}
+    permissions:
+      contents: read
+      packages: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -448,8 +427,9 @@ jobs:
           GATEWAY_REQUIRED: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.gateway == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.build_gateway == 'true' }}
           QUALITY_REQUIRED: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.api == 'true' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.gateway == 'true' || needs.changes.outputs.scheduler == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.integration == 'true' || needs.changes.outputs.tooling == 'true' || needs.changes.outputs.build_api == 'true' || needs.changes.outputs.build_scheduler == 'true' || needs.changes.outputs.build_worker == 'true' || needs.changes.outputs.build_gateway == 'true' }}
           UNIT_REQUIRED: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.api == 'true' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.gateway == 'true' || needs.changes.outputs.scheduler == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.integration == 'true' || needs.changes.outputs.tooling == 'true' || needs.changes.outputs.build_api == 'true' || needs.changes.outputs.build_scheduler == 'true' || needs.changes.outputs.build_worker == 'true' || needs.changes.outputs.build_gateway == 'true' }}
-          INTEGRATION_REQUIRED: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.gateway == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.integration == 'true' || needs.changes.outputs.tooling == 'true' || needs.changes.outputs.build_worker == 'true' || needs.changes.outputs.build_gateway == 'true' }}
-          COVERAGE_REQUIRED: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.gateway == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.integration == 'true' || needs.changes.outputs.tooling == 'true' }}
+          INTEGRATION_REQUIRED: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.api == 'true' || needs.changes.outputs.scheduler == 'true' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.gateway == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.integration == 'true' || needs.changes.outputs.tooling == 'true' || needs.changes.outputs.build_worker == 'true' || needs.changes.outputs.build_gateway == 'true' || needs.changes.outputs.build_api == 'true' || needs.changes.outputs.build_scheduler == 'true' }}
+          COVERAGE_REQUIRED: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.api == 'true' || needs.changes.outputs.scheduler == 'true' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.gateway == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.integration == 'true' || needs.changes.outputs.tooling == 'true' || needs.changes.outputs.build_api == 'true' || needs.changes.outputs.build_scheduler == 'true' || needs.changes.outputs.build_worker == 'true' || needs.changes.outputs.build_gateway == 'true' }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
           QUALITY_RESULT: ${{ needs.quality.result }}
           UNIT_RESULT: ${{ needs.unit.result }}
           INTEGRATION_RESULT: ${{ needs.integration.result }}
@@ -470,6 +450,7 @@ jobs:
               failed=1
             fi
           }
+          check_required true "$CHANGES_RESULT" changes
           check_required "$QUALITY_REQUIRED" "$QUALITY_RESULT" quality
           check_required "$UNIT_REQUIRED" "$UNIT_RESULT" unit
           check_required "$INTEGRATION_REQUIRED" "$INTEGRATION_RESULT" integration

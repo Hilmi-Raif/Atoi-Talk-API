@@ -98,6 +98,15 @@ func (r *RedisAdapter) GetDel(ctx context.Context, key string) (string, error) {
 	return r.client.GetDel(ctx, key).Result()
 }
 
+func (r *RedisAdapter) ConsumeIfMatch(ctx context.Context, key, expected string) (bool, error) {
+	const script = `if redis.call('GET', KEYS[1]) == ARGV[1] then
+		return redis.call('DEL', KEYS[1])
+	end
+	return 0`
+	consumed, err := r.client.Eval(ctx, script, []string{key}, expected).Int64()
+	return consumed == 1, err
+}
+
 func (r *RedisAdapter) Client() *redis.Client {
 	return r.client
 }

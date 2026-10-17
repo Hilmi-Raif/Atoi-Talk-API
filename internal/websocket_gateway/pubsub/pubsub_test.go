@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	messagingpubsub "AtoiTalkAPI/internal/messaging/pubsub"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -18,7 +19,7 @@ func TestPubSubListenerDeliversLegacyEventsToLocalGateway(t *testing.T) {
 	defer client.Close()
 
 	delivery := &testDelivery{data: make(chan []byte, 1)}
-	listener := NewPubSubListener(client, "events:broadcast", delivery)
+	listener := NewPubSubListener(client, messagingpubsub.BroadcastChannel, delivery)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -30,12 +31,12 @@ func TestPubSubListenerDeliversLegacyEventsToLocalGateway(t *testing.T) {
 		t.Fatal("Pub/Sub listener did not subscribe")
 	}
 
-	payload, err := json.Marshal(pubSubPayload{
+	payload, err := json.Marshal(Payload{
 		TargetUserID: uuid.New().String(),
 		EventData:    []byte(`{"type":"typing"}`),
 	})
 	require.NoError(t, err)
-	require.NoError(t, client.Publish(ctx, "events:broadcast", payload).Err())
+	require.NoError(t, client.Publish(ctx, messagingpubsub.BroadcastChannel, payload).Err())
 
 	select {
 	case got := <-delivery.data:
@@ -61,5 +62,3 @@ func (d *testDelivery) DeliverString(_ context.Context, _ string, data []byte) e
 	d.data <- data
 	return nil
 }
-
-type pubSubPayload = Payload
