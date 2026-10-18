@@ -1,6 +1,6 @@
 # API
 
-[Project overview](../../README.md) Â| [Configuration reference](../../docs/configuration.md)
+[Project overview](../../README.md) | [Configuration reference](../../docs/configuration.md)
 
 HTTP endpoints, authentication, media upload, chat operations and transactional message/outbox writes.
 

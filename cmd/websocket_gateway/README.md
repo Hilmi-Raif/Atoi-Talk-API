@@ -1,6 +1,6 @@
 # WebSocket gateway
 
-[Project overview](../../README.md) Â| [Configuration reference](../../docs/configuration.md)
+[Project overview](../../README.md) | [Configuration reference](../../docs/configuration.md)
 
 Authenticates socket connections and delivers realtime events, presence and typing updates.
 

@@ -19,7 +19,11 @@ required and optional configuration, native/Docker commands, and health checks.
 
 See [Configuration](docs/configuration.md) for shared environment-loading, networking, credentials, and telemetry settings.
 
-[Getting started](#getting-started) | [Configuration](docs/configuration.md) | [API documentation](#api-docs) | [Notifications](#push-notifications) | [Contributing](#contributing)
+- [Getting started](#getting-started)
+- [Configuration](docs/configuration.md)
+- [API documentation](#api-docs)
+- [Notifications](cmd/api/README.md#notification-clients)
+- [Contributing](#contributing)
 
 ## Architecture
 
@@ -120,12 +124,6 @@ Durable message events use the transactional outbox pattern. The API stores the 
 Redis Streams provide buffering, consumer groups, pending-entry recovery, and at-least-once delivery for message events. Consumers use stable event identifiers and bounded deduplication because a worker or gateway can crash after publishing or before acknowledging an event. PostgreSQL remains the durable source of truth and the outbox is retried when Redis is unavailable.
 
 Ephemeral events such as typing, presence, and non-durable chat or user updates use the `events:broadcast` Redis Pub/Sub channel. These events are intentionally best-effort and are not used as the durable message delivery path. Clients can recover missed durable messages from PostgreSQL-backed history after reconnecting.
-
-### Observability Flow
-
-The API, message worker, push worker, WebSocket Gateway, and scheduler export traces, metrics, and structured logs through OpenTelemetry Protocol. The local stack sends this telemetry to the OTel Collector, which stores trace and metric data in ClickHouse for SigNoz Query Service and the SigNoz UI.
-
-The telemetry covers HTTP latency and active requests, PostgreSQL query and pool behavior, Redis commands and Stream consumer state, S3 calls, outbox backlog, worker processing stages, WebSocket delivery, health checks, and scheduler jobs. SQL text, SQL parameters, Redis keys, message content, and file names are excluded from telemetry attributes.
 
 ## Data Model
 
@@ -323,7 +321,7 @@ go mod download
 Start the processes using their [service guides](#service-guides). Run native commands from the repository root in separate terminals.
 
 For optional FCM delivery, see [Push worker](cmd/push_worker/README.md) and the
-[notification API](#push-notifications).
+[notification API](cmd/api/README.md#notification-clients).
 
 ### Releases
 
@@ -373,7 +371,7 @@ The table reports the completed iterations, dropped iterations, latency percenti
 | `POST /api/media/upload` | 30,001 | 0 | 3.00 ms | 3.97 ms | 0.00% | 2 | Pass |
 | `GET /api/chats` | 30,001 | 0 | 7.99 ms | 14.99 ms | 0.00% | 5 | Pass |
 | `GET /api/chats/:id/messages` | 30,000 | 0 | 9.00 ms | 14.81 ms | 0.00% | 6 | Pass |
-| `GET /api/chats/:id/messages/around` | 30,000 | 0 | 9.99 ms | 15.00 ms | 0.00% | 9 | Pass |
+| `GET /api/chats/:id/messages?around_message_id=...` | 30,000 | 0 | 9.99 ms | 15.00 ms | 0.00% | 9 | Pass |
 | `POST /api/messages` | 30,001 | 0 | 16.99 ms | 29.00 ms | 0.00% | 15 | Pass |
 
 These results describe the reference environment and isolated workloads above; they are not a production capacity guarantee.
@@ -394,12 +392,12 @@ These values are a synchronized resource reference from the same general workloa
 Run an isolated endpoint benchmark:
 
 ```bash
-make loadtest-api-endpoint ENDPOINT=chats TARGET_RPS=500 DURATION=60s MAX_VUS=900
-make loadtest-api-endpoint ENDPOINT=messages TARGET_RPS=500 DURATION=60s MAX_VUS=900
-make loadtest-api-endpoint ENDPOINT=around TARGET_RPS=500 DURATION=60s MAX_VUS=900 CHAT_IDS=00000000-0000-0000-0000-000000000001 AROUND_MESSAGE_ID=00000000-0000-0000-0020-000000000001
-make loadtest-api-endpoint ENDPOINT=send TARGET_RPS=500 DURATION=60s MAX_VUS=900 CHAT_IDS=00000000-0000-0000-0000-000000000001
-make loadtest-api-endpoint ENDPOINT=users TARGET_RPS=500 DURATION=60s MAX_VUS=900
-make loadtest-api-endpoint ENDPOINT=media TARGET_RPS=500 DURATION=60s MAX_VUS=900
+make loadtest-api-endpoint LOADTEST_RUNNER=native K6_ARGS="-e PREALLOCATED_VUS=100" ENDPOINT=chats TARGET_RPS=500 DURATION=60s MAX_VUS=900
+make loadtest-api-endpoint LOADTEST_RUNNER=native K6_ARGS="-e PREALLOCATED_VUS=100" ENDPOINT=messages TARGET_RPS=500 DURATION=60s MAX_VUS=900
+make loadtest-api-endpoint LOADTEST_RUNNER=native K6_ARGS="-e PREALLOCATED_VUS=100" ENDPOINT=around TARGET_RPS=500 DURATION=60s MAX_VUS=900 CHAT_IDS=00000000-0000-0000-0000-000000000001 AROUND_MESSAGE_ID=00000000-0000-0000-0020-000000000001
+make loadtest-api-endpoint LOADTEST_RUNNER=native K6_ARGS="-e PREALLOCATED_VUS=100" ENDPOINT=send TARGET_RPS=500 DURATION=60s MAX_VUS=900 CHAT_IDS=00000000-0000-0000-0000-000000000001
+make loadtest-api-endpoint LOADTEST_RUNNER=native K6_ARGS="-e PREALLOCATED_VUS=100" ENDPOINT=users TARGET_RPS=500 DURATION=60s MAX_VUS=900
+make loadtest-api-endpoint LOADTEST_RUNNER=native K6_ARGS="-e PREALLOCATED_VUS=100" ENDPOINT=media TARGET_RPS=500 DURATION=60s MAX_VUS=900
 make loadtest-ws
 ```
 
@@ -422,18 +420,17 @@ make lint
 make security
 
 # Code and mock generation
-make generate
 make mock-verify
 
 # Run unit tests
 make test
 make test-race
 make coverage-unit
-make coverage-check
+make coverage-check-unit
 
 # Run integration tests with local backing services
-make test-env-up
 cp deployments/integration/.env.example deployments/integration/.env.test
+make test-env-up
 make test-integration
 make test-env-down
 
@@ -453,9 +450,3 @@ When changing infrastructure contracts, regenerate mocks with Mockery `2.53.6` u
 ```sh
 go run github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc5 init -g cmd/api/main.go --parseDependency --parseInternal
 ```
-
-### Push notifications
-
-See the [API guide](cmd/api/README.md#notification-clients) for client lifecycle,
-the [push worker guide](cmd/push_worker/README.md) for delivery and deployment,
-and [Swagger](docs/swagger.yaml) for endpoint contracts.

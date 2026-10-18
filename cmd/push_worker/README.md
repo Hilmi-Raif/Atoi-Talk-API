@@ -1,6 +1,6 @@
 # Push worker
 
-[Project overview](../../README.md) Â| [Configuration reference](../../docs/configuration.md)
+[Project overview](../../README.md) | [Configuration reference](../../docs/configuration.md)
 
 Claims durable per-device PostgreSQL deliveries, rechecks eligibility/session/preferences, and sends notifications through FCM HTTP v1 independently of realtime delivery.
 

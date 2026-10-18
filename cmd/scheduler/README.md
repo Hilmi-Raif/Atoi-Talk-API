@@ -1,6 +1,6 @@
 # Scheduler
 
-[Project overview](../../README.md) Â| [Configuration reference](../../docs/configuration.md)
+[Project overview](../../README.md) | [Configuration reference](../../docs/configuration.md)
 
 Runs entity/outbox retention, private-chat cleanup and orphan-media cleanup jobs.
 
