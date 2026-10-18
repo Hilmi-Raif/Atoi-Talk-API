@@ -232,6 +232,20 @@ func (_u *UserUpdate) SetNillableIsBanned(v *bool) *UserUpdate {
 	return _u
 }
 
+// SetMessageNotificationsEnabled sets the "message_notifications_enabled" field.
+func (_u *UserUpdate) SetMessageNotificationsEnabled(v bool) *UserUpdate {
+	_u.mutation.SetMessageNotificationsEnabled(v)
+	return _u
+}
+
+// SetNillableMessageNotificationsEnabled sets the "message_notifications_enabled" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableMessageNotificationsEnabled(v *bool) *UserUpdate {
+	if v != nil {
+		_u.SetMessageNotificationsEnabled(*v)
+	}
+	return _u
+}
+
 // SetBannedUntil sets the "banned_until" field.
 func (_u *UserUpdate) SetBannedUntil(v time.Time) *UserUpdate {
 	_u.mutation.SetBannedUntil(v)
@@ -823,6 +837,9 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.IsBanned(); ok {
 		_spec.SetField(user.FieldIsBanned, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.MessageNotificationsEnabled(); ok {
+		_spec.SetField(user.FieldMessageNotificationsEnabled, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.BannedUntil(); ok {
 		_spec.SetField(user.FieldBannedUntil, field.TypeTime, value)
@@ -1576,6 +1593,20 @@ func (_u *UserUpdateOne) SetNillableIsBanned(v *bool) *UserUpdateOne {
 	return _u
 }
 
+// SetMessageNotificationsEnabled sets the "message_notifications_enabled" field.
+func (_u *UserUpdateOne) SetMessageNotificationsEnabled(v bool) *UserUpdateOne {
+	_u.mutation.SetMessageNotificationsEnabled(v)
+	return _u
+}
+
+// SetNillableMessageNotificationsEnabled sets the "message_notifications_enabled" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableMessageNotificationsEnabled(v *bool) *UserUpdateOne {
+	if v != nil {
+		_u.SetMessageNotificationsEnabled(*v)
+	}
+	return _u
+}
+
 // SetBannedUntil sets the "banned_until" field.
 func (_u *UserUpdateOne) SetBannedUntil(v time.Time) *UserUpdateOne {
 	_u.mutation.SetBannedUntil(v)
@@ -2197,6 +2228,9 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if value, ok := _u.mutation.IsBanned(); ok {
 		_spec.SetField(user.FieldIsBanned, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.MessageNotificationsEnabled(); ok {
+		_spec.SetField(user.FieldMessageNotificationsEnabled, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.BannedUntil(); ok {
 		_spec.SetField(user.FieldBannedUntil, field.TypeTime, value)

@@ -19,7 +19,7 @@ func RunMediaCleanup(ctx context.Context, client *ent.Client, storage *objectsto
 	duration := time.Duration(retentionDays * 24 * float64(time.Hour))
 	cutoff := time.Now().UTC().Add(-duration)
 
-	slog.Info("Running Media Cleanup", "retentionDays", retentionDays, "cutoff", cutoff, "now_utc", time.Now().UTC())
+	slog.InfoContext(ctx, "Running Media Cleanup", "retentionDays", retentionDays, "cutoff", cutoff, "now_utc", time.Now().UTC())
 
 	now := time.Now().UTC()
 	for {
@@ -46,7 +46,7 @@ func RunMediaCleanup(ctx context.Context, client *ent.Client, storage *objectsto
 			Limit(cleanupBatchSize).
 			All(ctx)
 		if err != nil {
-			slog.Error("Failed to query orphan media", "error", err)
+			slog.ErrorContext(ctx, "Failed to query orphan media", "error", err)
 			return err
 		}
 		if len(orphans) == 0 {
@@ -58,20 +58,20 @@ func RunMediaCleanup(ctx context.Context, client *ent.Client, storage *objectsto
 			isPublic := m.Category == media.CategoryUserAvatar || m.Category == media.CategoryGroupAvatar
 			if err := storage.DeleteContext(ctx, m.FileName, isPublic); err != nil {
 				if fallbackErr := storage.DeleteContext(ctx, m.FileName, !isPublic); fallbackErr != nil {
-					slog.Error("Failed to delete S3 file", "mediaID", m.ID, "key", m.FileName, "error", err, "fallback_error", fallbackErr)
+					slog.ErrorContext(ctx, "Failed to delete S3 file", "mediaID", m.ID, "key", m.FileName, "error", err, "fallback_error", fallbackErr)
 					continue
 				}
-				slog.Warn("Deleted S3 file using fallback bucket", "mediaID", m.ID, "key", m.FileName)
+				slog.WarnContext(ctx, "Deleted S3 file using fallback bucket", "mediaID", m.ID, "key", m.FileName)
 			}
 
 			if err := client.Media.DeleteOneID(m.ID).Exec(ctx); err != nil {
-				slog.Error("Failed to delete media row", "mediaID", m.ID, "error", err)
+				slog.ErrorContext(ctx, "Failed to delete media row", "mediaID", m.ID, "error", err)
 				continue
 			}
 			deleted++
 		}
 		if deleted == 0 {
-			slog.Warn("Stopping media cleanup because the current batch made no progress")
+			slog.WarnContext(ctx, "Stopping media cleanup because the current batch made no progress")
 			break
 		}
 	}

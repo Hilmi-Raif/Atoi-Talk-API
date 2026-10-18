@@ -27,12 +27,12 @@ func NewPrivateChatController(privateChatService service.PrivateChatServicePort)
 // @Accept       json
 // @Produce      json
 // @Param        request body model.CreatePrivateChatRequest true "Create Private Chat Request"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.ChatResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.ChatResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/private [post]
 func (c *PrivateChatController) CreatePrivateChat(w http.ResponseWriter, r *http.Request) {

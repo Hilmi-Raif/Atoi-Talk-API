@@ -3,6 +3,7 @@ SET last_message_id = NULL,
     last_message_at = NULL;
 
 DELETE FROM message_outboxes;
+DELETE FROM push_deliveries;
 ALTER TABLE messages DISABLE TRIGGER ALL;
 DELETE FROM messages;
 ALTER TABLE messages ENABLE TRIGGER ALL;

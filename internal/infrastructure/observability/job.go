@@ -2,6 +2,7 @@ package observability
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"log/slog"
 	"time"
 
@@ -42,6 +43,7 @@ func (m *JobMetrics) Run(ctx context.Context, name string, fn func(context.Conte
 	)
 	defer span.End()
 
+	logger := slog.Default().With("job", name, "run_id", uuid.NewString())
 	attrs := metric.WithAttributes(attribute.String("scheduler.job.name", name))
 	started := time.Now()
 	m.runs.Add(ctx, 1, attrs)
@@ -51,13 +53,13 @@ func (m *JobMetrics) Run(ctx context.Context, name string, fn func(context.Conte
 		m.errors.Add(ctx, 1, attrs)
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "job failed")
-		slog.ErrorContext(ctx, "Scheduler job failed", "job", name, "error", err)
+		logger.ErrorContext(ctx, "Scheduler job failed", "outcome", "failed", "duration_ms", time.Since(started).Milliseconds())
 		return err
 	}
 
 	m.completed.Add(ctx, 1, attrs)
 	span.SetStatus(codes.Ok, "job completed")
-	slog.InfoContext(ctx, "Scheduler job completed", "job", name)
+	logger.InfoContext(ctx, "Scheduler job completed", "outcome", "completed", "duration_ms", time.Since(started).Milliseconds())
 	return nil
 }
 

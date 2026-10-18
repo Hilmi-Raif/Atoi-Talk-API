@@ -45,6 +45,29 @@ var (
 			},
 		},
 	}
+	// ChatNotificationPreferencesColumns holds the columns for the "chat_notification_preferences" table.
+	ChatNotificationPreferencesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime, Default: "CURRENT_TIMESTAMP"},
+		{Name: "updated_at", Type: field.TypeTime, Default: "CURRENT_TIMESTAMP"},
+		{Name: "user_id", Type: field.TypeUUID},
+		{Name: "chat_id", Type: field.TypeUUID},
+		{Name: "muted_forever", Type: field.TypeBool, Default: false},
+		{Name: "muted_until", Type: field.TypeTime, Nullable: true},
+	}
+	// ChatNotificationPreferencesTable holds the schema information for the "chat_notification_preferences" table.
+	ChatNotificationPreferencesTable = &schema.Table{
+		Name:       "chat_notification_preferences",
+		Columns:    ChatNotificationPreferencesColumns,
+		PrimaryKey: []*schema.Column{ChatNotificationPreferencesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "chatnotificationpreference_user_id_chat_id",
+				Unique:  true,
+				Columns: []*schema.Column{ChatNotificationPreferencesColumns[3], ChatNotificationPreferencesColumns[4]},
+			},
+		},
+	}
 	// GroupChatsColumns holds the columns for the "group_chats" table.
 	GroupChatsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -308,6 +331,74 @@ var (
 			},
 		},
 	}
+	// PushDeliveriesColumns holds the columns for the "push_deliveries" table.
+	PushDeliveriesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime, Default: "CURRENT_TIMESTAMP"},
+		{Name: "updated_at", Type: field.TypeTime, Default: "CURRENT_TIMESTAMP"},
+		{Name: "event_id", Type: field.TypeUUID},
+		{Name: "device_id", Type: field.TypeUUID},
+		{Name: "binding_id", Type: field.TypeUUID},
+		{Name: "user_id", Type: field.TypeUUID},
+		{Name: "message_id", Type: field.TypeUUID},
+		{Name: "chat_id", Type: field.TypeUUID},
+		{Name: "available_at", Type: field.TypeTime},
+		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "attempt_count", Type: field.TypeInt, Default: 0},
+		{Name: "locked_at", Type: field.TypeTime, Nullable: true},
+		{Name: "lock_token", Type: field.TypeUUID, Nullable: true},
+		{Name: "sent_at", Type: field.TypeTime, Nullable: true},
+		{Name: "finished_at", Type: field.TypeTime, Nullable: true},
+		{Name: "outcome", Type: field.TypeString, Default: "pending"},
+		{Name: "last_error", Type: field.TypeString, Nullable: true, Size: 2147483647},
+	}
+	// PushDeliveriesTable holds the schema information for the "push_deliveries" table.
+	PushDeliveriesTable = &schema.Table{
+		Name:       "push_deliveries",
+		Columns:    PushDeliveriesColumns,
+		PrimaryKey: []*schema.Column{PushDeliveriesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "pushdelivery_event_id_device_id",
+				Unique:  true,
+				Columns: []*schema.Column{PushDeliveriesColumns[3], PushDeliveriesColumns[4]},
+			},
+			{
+				Name:    "pushdelivery_finished_at_available_at_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{PushDeliveriesColumns[15], PushDeliveriesColumns[9], PushDeliveriesColumns[1]},
+			},
+		},
+	}
+	// PushDevicesColumns holds the columns for the "push_devices" table.
+	PushDevicesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime, Default: "CURRENT_TIMESTAMP"},
+		{Name: "updated_at", Type: field.TypeTime, Default: "CURRENT_TIMESTAMP"},
+		{Name: "installation_id", Type: field.TypeUUID, Unique: true},
+		{Name: "user_id", Type: field.TypeUUID},
+		{Name: "token", Type: field.TypeString, Unique: true, Size: 4096},
+		{Name: "platform", Type: field.TypeEnum, Enums: []string{"android", "ios", "web"}},
+		{Name: "session_hash", Type: field.TypeString},
+		{Name: "secret_hash", Type: field.TypeString},
+		{Name: "issued_at", Type: field.TypeInt64},
+		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "binding_id", Type: field.TypeUUID},
+		{Name: "disabled_at", Type: field.TypeTime, Nullable: true},
+	}
+	// PushDevicesTable holds the schema information for the "push_devices" table.
+	PushDevicesTable = &schema.Table{
+		Name:       "push_devices",
+		Columns:    PushDevicesColumns,
+		PrimaryKey: []*schema.Column{PushDevicesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "pushdevice_user_id_disabled_at",
+				Unique:  false,
+				Columns: []*schema.Column{PushDevicesColumns[4], PushDevicesColumns[12]},
+			},
+		},
+	}
 	// ReportsColumns holds the columns for the "reports" table.
 	ReportsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -402,6 +493,7 @@ var (
 		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
 		{Name: "role", Type: field.TypeEnum, Enums: []string{"user", "admin"}, Default: "user"},
 		{Name: "is_banned", Type: field.TypeBool, Default: false},
+		{Name: "message_notifications_enabled", Type: field.TypeBool, Default: true},
 		{Name: "banned_until", Type: field.TypeTime, Nullable: true},
 		{Name: "ban_reason", Type: field.TypeString, Nullable: true},
 		{Name: "avatar_id", Type: field.TypeUUID, Unique: true, Nullable: true},
@@ -414,7 +506,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "users_media_user_avatar",
-				Columns:    []*schema.Column{UsersColumns[14]},
+				Columns:    []*schema.Column{UsersColumns[15]},
 				RefColumns: []*schema.Column{MediaColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -526,12 +618,15 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		ChatsTable,
+		ChatNotificationPreferencesTable,
 		GroupChatsTable,
 		GroupMembersTable,
 		MediaTable,
 		MessagesTable,
 		MessageOutboxesTable,
 		PrivateChatsTable,
+		PushDeliveriesTable,
+		PushDevicesTable,
 		ReportsTable,
 		UsersTable,
 		UserBlocksTable,

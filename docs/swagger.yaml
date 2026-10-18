@@ -1,5 +1,28 @@
 definitions:
-  helper.PaginationMeta:
+  AtoiTalkAPI_internal_api_application_push.ChatPreference:
+    properties:
+      chat_id:
+        type: string
+      muted_forever:
+        type: boolean
+      muted_until:
+        type: string
+      name:
+        type: string
+    type: object
+  AtoiTalkAPI_internal_api_application_push.MuteRequest:
+    properties:
+      muted_forever:
+        type: boolean
+      muted_until:
+        type: string
+    type: object
+  AtoiTalkAPI_internal_api_application_push.Preferences:
+    properties:
+      message_notifications_enabled:
+        type: boolean
+    type: object
+  AtoiTalkAPI_internal_api_http_response.PaginationMeta:
     properties:
       has_next:
         type: boolean
@@ -10,32 +33,33 @@ definitions:
       prev_cursor:
         type: string
     type: object
-  helper.ResponseError:
+  AtoiTalkAPI_internal_api_http_response.ResponseError:
     properties:
       error:
         type: string
     type: object
-  helper.ResponseSuccess:
+  AtoiTalkAPI_internal_api_http_response.ResponseSuccess:
     properties:
       data: {}
     type: object
-  helper.ResponseWithPagination:
+  AtoiTalkAPI_internal_api_http_response.ResponseWithPagination:
     properties:
       data: {}
       meta:
-        $ref: '#/definitions/helper.PaginationMeta'
+        $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.PaginationMeta'
     type: object
-  model.AddGroupMemberRequest:
+  AtoiTalkAPI_internal_domain_model.AddGroupMemberRequest:
     properties:
       user_ids:
         items:
           type: string
+        maxItems: 100
         minItems: 1
         type: array
     required:
     - user_ids
     type: object
-  model.AdminUserDetailResponse:
+  AtoiTalkAPI_internal_domain_model.AdminUserDetailResponse:
     properties:
       avatar:
         type: string
@@ -66,7 +90,7 @@ definitions:
       username:
         type: string
     type: object
-  model.AdminUserListResponse:
+  AtoiTalkAPI_internal_domain_model.AdminUserListResponse:
     properties:
       created_at:
         type: string
@@ -83,14 +107,14 @@ definitions:
       username:
         type: string
     type: object
-  model.AuthResponse:
+  AtoiTalkAPI_internal_domain_model.AuthResponse:
     properties:
       token:
         type: string
       user:
-        $ref: '#/definitions/model.UserDTO'
+        $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.UserDTO'
     type: object
-  model.BanUserRequest:
+  AtoiTalkAPI_internal_domain_model.BanUserRequest:
     properties:
       duration_hours:
         minimum: 0
@@ -103,7 +127,7 @@ definitions:
     - reason
     - target_user_id
     type: object
-  model.ChangeEmailRequest:
+  AtoiTalkAPI_internal_domain_model.ChangeEmailRequest:
     properties:
       code:
         type: string
@@ -113,7 +137,7 @@ definitions:
     - code
     - email
     type: object
-  model.ChangePasswordRequest:
+  AtoiTalkAPI_internal_domain_model.ChangePasswordRequest:
     properties:
       confirm_password:
         type: string
@@ -127,72 +151,56 @@ definitions:
     - confirm_password
     - new_password
     type: object
-  model.ChatListResponse:
+  AtoiTalkAPI_internal_domain_model.ChatListResponse:
     properties:
       avatar:
-        description: Avatar URL of the group or the other user
         type: string
       description:
-        description: Description of the group
         type: string
       hidden_at:
-        description: Timestamp when the current user hid the chat
         type: string
       id:
         type: string
       invite_code:
-        description: Invite code for the group, available if public or for admins
         type: string
       invite_expires_at:
-        description: Expiration timestamp for the invite code
         type: string
       is_blocked_by_me:
-        description: Indicates if the current user has blocked the other user
         type: boolean
       is_blocked_by_other:
-        description: Indicates if the other user has blocked the current user
         type: boolean
       is_online:
-        description: Indicates if the other user is currently online
         type: boolean
       is_public:
-        description: Indicates if the group is public
         type: boolean
       last_message:
-        allOf:
-        - $ref: '#/definitions/model.MessageResponse'
-        description: Preview of the last message in the chat
+        $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse'
       last_read_at:
-        description: Timestamp when the current user last read the chat
         type: string
       member_count:
-        description: Total number of members in the group
         type: integer
+      muted_forever:
+        type: boolean
+      muted_until:
+        type: string
       my_role:
-        description: Role of the current user in the group (owner, admin, member)
         type: string
       name:
-        description: Name of the group or the other user in a private chat
         type: string
       other_last_read_at:
-        description: Timestamp when the other user last read the chat
         type: string
       other_user_id:
-        description: ID of the other user in a private chat
         type: string
       other_user_is_banned:
-        description: Indicates if the other user is currently banned
         type: boolean
       other_user_is_deleted:
-        description: Indicates if the other user's account has been deleted
         type: boolean
       type:
         type: string
       unread_count:
-        description: Number of unread messages for the current user
         type: integer
     type: object
-  model.ChatResponse:
+  AtoiTalkAPI_internal_domain_model.ChatResponse:
     properties:
       created_at:
         type: string
@@ -201,7 +209,7 @@ definitions:
       type:
         type: string
     type: object
-  model.CreateGroupChatRequest:
+  AtoiTalkAPI_internal_domain_model.CreateGroupChatRequest:
     properties:
       avatar_media_id:
         type: string
@@ -213,6 +221,7 @@ definitions:
       member_ids:
         items:
           type: string
+        maxItems: 100
         minItems: 1
         type: array
       name:
@@ -223,14 +232,14 @@ definitions:
     - member_ids
     - name
     type: object
-  model.CreatePrivateChatRequest:
+  AtoiTalkAPI_internal_domain_model.CreatePrivateChatRequest:
     properties:
       target_user_id:
         type: string
     required:
     - target_user_id
     type: object
-  model.CreateReportRequest:
+  AtoiTalkAPI_internal_domain_model.CreateReportRequest:
     properties:
       chat_id:
         description: |-
@@ -255,7 +264,7 @@ definitions:
     - reason
     - target_type
     type: object
-  model.DashboardStatsResponse:
+  AtoiTalkAPI_internal_domain_model.DashboardStatsResponse:
     properties:
       active_reports:
         type: integer
@@ -266,22 +275,23 @@ definitions:
       total_users:
         type: integer
     type: object
-  model.DeleteAccountRequest:
+  AtoiTalkAPI_internal_domain_model.DeleteAccountRequest:
     properties:
       password:
         type: string
     type: object
-  model.EditMessageRequest:
+  AtoiTalkAPI_internal_domain_model.EditMessageRequest:
     properties:
       attachment_ids:
         items:
           type: string
+        maxItems: 20
         type: array
       content:
         maxLength: 4000
         type: string
     type: object
-  model.GoogleAuthInitResponse:
+  AtoiTalkAPI_internal_domain_model.GoogleAuthInitResponse:
     properties:
       auth_url:
         type: string
@@ -290,7 +300,7 @@ definitions:
       state:
         type: string
     type: object
-  model.GoogleLoginRequest:
+  AtoiTalkAPI_internal_domain_model.GoogleLoginRequest:
     properties:
       code:
         type: string
@@ -302,14 +312,14 @@ definitions:
     - code
     - state
     type: object
-  model.GroupInviteResponse:
+  AtoiTalkAPI_internal_domain_model.GroupInviteResponse:
     properties:
       expires_at:
         type: string
       invite_code:
         type: string
     type: object
-  model.GroupMemberDTO:
+  AtoiTalkAPI_internal_domain_model.GroupMemberDTO:
     properties:
       avatar:
         type: string
@@ -328,7 +338,7 @@ definitions:
       username:
         type: string
     type: object
-  model.GroupPreviewDTO:
+  AtoiTalkAPI_internal_domain_model.GroupPreviewDTO:
     properties:
       avatar:
         type: string
@@ -343,14 +353,14 @@ definitions:
       name:
         type: string
     type: object
-  model.JoinGroupByInviteRequest:
+  AtoiTalkAPI_internal_domain_model.JoinGroupByInviteRequest:
     properties:
       invite_code:
         type: string
     required:
     - invite_code
     type: object
-  model.LoginRequest:
+  AtoiTalkAPI_internal_domain_model.LoginRequest:
     properties:
       captcha_token:
         type: string
@@ -365,7 +375,7 @@ definitions:
     - email
     - password
     type: object
-  model.MediaDTO:
+  AtoiTalkAPI_internal_domain_model.MediaDTO:
     properties:
       category:
         type: string
@@ -384,12 +394,12 @@ definitions:
       url:
         type: string
     type: object
-  model.MediaURLResponse:
+  AtoiTalkAPI_internal_domain_model.MediaURLResponse:
     properties:
       url:
         type: string
     type: object
-  model.MessageResponse:
+  AtoiTalkAPI_internal_domain_model.MessageResponse:
     properties:
       action_data:
         additionalProperties: true
@@ -412,7 +422,7 @@ definitions:
         type: object
       attachments:
         items:
-          $ref: '#/definitions/model.MediaDTO'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.MediaDTO'
         type: array
       chat_id:
         type: string
@@ -431,7 +441,7 @@ definitions:
         type: integer
       reply_to:
         allOf:
-        - $ref: '#/definitions/model.ReplyPreviewDTO'
+        - $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ReplyPreviewDTO'
         description: Preview of the message this message is replying to
       sender_avatar:
         description: Avatar URL of the sender
@@ -452,7 +462,7 @@ definitions:
       type:
         type: string
     type: object
-  model.PublicGroupDTO:
+  AtoiTalkAPI_internal_domain_model.PublicGroupDTO:
     properties:
       avatar:
         type: string
@@ -469,7 +479,16 @@ definitions:
       name:
         type: string
     type: object
-  model.RegisterUserRequest:
+  AtoiTalkAPI_internal_domain_model.PushDeviceRequest:
+    properties:
+      device_secret:
+        type: string
+      platform:
+        type: string
+      token:
+        type: string
+    type: object
+  AtoiTalkAPI_internal_domain_model.RegisterUserRequest:
     properties:
       captcha_token:
         type: string
@@ -497,7 +516,7 @@ definitions:
     - password
     - username
     type: object
-  model.ReplyPreviewDTO:
+  AtoiTalkAPI_internal_domain_model.ReplyPreviewDTO:
     properties:
       action_data:
         additionalProperties: true
@@ -519,7 +538,7 @@ definitions:
       type:
         type: string
     type: object
-  model.ReportDetailResponse:
+  AtoiTalkAPI_internal_domain_model.ReportDetailResponse:
     properties:
       admin_notes:
         type: string
@@ -589,7 +608,7 @@ definitions:
       updated_at:
         type: string
     type: object
-  model.ReportListResponse:
+  AtoiTalkAPI_internal_domain_model.ReportListResponse:
     properties:
       created_at:
         type: string
@@ -604,7 +623,7 @@ definitions:
       target_type:
         type: string
     type: object
-  model.ResetGroupInfoRequest:
+  AtoiTalkAPI_internal_domain_model.ResetGroupInfoRequest:
     properties:
       reset_avatar:
         type: boolean
@@ -613,7 +632,7 @@ definitions:
       reset_name:
         type: boolean
     type: object
-  model.ResetPasswordRequest:
+  AtoiTalkAPI_internal_domain_model.ResetPasswordRequest:
     properties:
       captcha_token:
         type: string
@@ -634,7 +653,7 @@ definitions:
     - email
     - password
     type: object
-  model.ResetUserInfoRequest:
+  AtoiTalkAPI_internal_domain_model.ResetUserInfoRequest:
     properties:
       reset_avatar:
         type: boolean
@@ -647,7 +666,7 @@ definitions:
     required:
     - target_user_id
     type: object
-  model.ResolveReportRequest:
+  AtoiTalkAPI_internal_domain_model.ResolveReportRequest:
     properties:
       notes:
         type: string
@@ -659,11 +678,12 @@ definitions:
     required:
     - status
     type: object
-  model.SendMessageRequest:
+  AtoiTalkAPI_internal_domain_model.SendMessageRequest:
     properties:
       attachment_ids:
         items:
           type: string
+        maxItems: 20
         type: array
       chat_id:
         type: string
@@ -675,7 +695,7 @@ definitions:
     required:
     - chat_id
     type: object
-  model.SendOTPRequest:
+  AtoiTalkAPI_internal_domain_model.SendOTPRequest:
     properties:
       captcha_token:
         type: string
@@ -692,14 +712,14 @@ definitions:
     - email
     - mode
     type: object
-  model.TransferGroupOwnershipRequest:
+  AtoiTalkAPI_internal_domain_model.TransferGroupOwnershipRequest:
     properties:
       new_owner_id:
         type: string
     required:
     - new_owner_id
     type: object
-  model.UpdateGroupChatRequest:
+  AtoiTalkAPI_internal_domain_model.UpdateGroupChatRequest:
     properties:
       avatar_media_id:
         type: string
@@ -715,7 +735,7 @@ definitions:
         minLength: 3
         type: string
     type: object
-  model.UpdateGroupMemberRoleRequest:
+  AtoiTalkAPI_internal_domain_model.UpdateGroupMemberRoleRequest:
     properties:
       role:
         enum:
@@ -725,7 +745,7 @@ definitions:
     required:
     - role
     type: object
-  model.UpdateProfileRequest:
+  AtoiTalkAPI_internal_domain_model.UpdateProfileRequest:
     properties:
       avatar_media_id:
         type: string
@@ -745,7 +765,7 @@ definitions:
     required:
     - full_name
     type: object
-  model.UploadMediaRequest:
+  AtoiTalkAPI_internal_domain_model.UploadMediaRequest:
     properties:
       captcha_token:
         type: string
@@ -770,12 +790,12 @@ definitions:
     - original_name
     - usage
     type: object
-  model.UploadMediaResponse:
+  AtoiTalkAPI_internal_domain_model.UploadMediaResponse:
     properties:
       expires_at:
         type: string
       media:
-        $ref: '#/definitions/model.MediaDTO'
+        $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.MediaDTO'
       upload_headers:
         additionalProperties:
           type: string
@@ -785,7 +805,7 @@ definitions:
       upload_url:
         type: string
     type: object
-  model.UserDTO:
+  AtoiTalkAPI_internal_domain_model.UserDTO:
     properties:
       avatar:
         type: string
@@ -818,6 +838,8 @@ definitions:
     type: object
 info:
   contact: {}
+  title: AtoiTalk API
+  version: "1.0"
 paths:
   /api/account:
     delete:
@@ -831,34 +853,34 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.DeleteAccountRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.DeleteAccountRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Delete Account
@@ -875,34 +897,34 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.ChangeEmailRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ChangeEmailRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Change Email
@@ -919,34 +941,34 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.ChangePasswordRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ChangePasswordRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Change Password
@@ -965,23 +987,23 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.DashboardStatsResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.DashboardStatsResponse'
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Get Dashboard Stats
@@ -1009,11 +1031,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseWithPagination'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: List Groups
@@ -1034,11 +1056,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Dissolve Group
@@ -1058,11 +1080,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Get Group Detail
@@ -1098,25 +1120,25 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseWithPagination'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.GroupMemberDTO'
+                    $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.GroupMemberDTO'
                   type: array
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Get Group Members
@@ -1138,18 +1160,18 @@ paths:
         name: req
         required: true
         schema:
-          $ref: '#/definitions/model.ResetGroupInfoRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ResetGroupInfoRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Reset Group Info
@@ -1184,29 +1206,29 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseWithPagination'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.ReportListResponse'
+                    $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ReportListResponse'
                   type: array
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Get Reports
@@ -1229,23 +1251,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Delete Report
@@ -1269,31 +1291,31 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.ReportDetailResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ReportDetailResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Get Report Detail
@@ -1316,34 +1338,34 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.ResolveReportRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ResolveReportRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Resolve Report
@@ -1374,21 +1396,21 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseWithPagination'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.AdminUserListResponse'
+                    $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.AdminUserListResponse'
                   type: array
               type: object
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Get Users List
@@ -1412,19 +1434,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.AdminUserDetailResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.AdminUserDetailResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Get User Detail
@@ -1446,22 +1468,22 @@ paths:
         name: req
         required: true
         schema:
-          $ref: '#/definitions/model.ResetUserInfoRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ResetUserInfoRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Reset User Info
@@ -1484,27 +1506,27 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Unban User
@@ -1521,34 +1543,34 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.BanUserRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.BanUserRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Ban User
@@ -1566,7 +1588,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.GoogleLoginRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.GoogleLoginRequest'
       produces:
       - application/json
       responses:
@@ -1574,23 +1596,23 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.AuthResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.AuthResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       summary: Google Exchange
       tags:
       - auth
@@ -1606,19 +1628,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.GoogleAuthInitResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.GoogleAuthInitResponse'
               type: object
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       summary: Google OAuth Init
       tags:
       - auth
@@ -1633,7 +1655,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.LoginRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.LoginRequest'
       produces:
       - application/json
       responses:
@@ -1641,27 +1663,27 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.AuthResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.AuthResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       summary: Login
       tags:
       - auth
@@ -1676,19 +1698,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Logout
@@ -1705,7 +1727,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.RegisterUserRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.RegisterUserRequest'
       produces:
       - application/json
       responses:
@@ -1713,27 +1735,27 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.AuthResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.AuthResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       summary: Register User
       tags:
       - auth
@@ -1748,30 +1770,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.ResetPasswordRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ResetPasswordRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       summary: Reset Password
       tags:
       - auth
@@ -1801,29 +1823,29 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseWithPagination'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.ChatListResponse'
+                    $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ChatListResponse'
                   type: array
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Get Chat List
@@ -1864,38 +1886,88 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseWithPagination'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.MessageResponse'
+                    $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse'
                   type: array
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Get Messages
       tags:
       - message
+  /api/chats/{chatID}/notifications:
+    put:
+      consumes:
+      - application/json
+      description: Set muted_forever or a future muted_until within 365 days; an empty
+        object unmutes. Requires current membership.
+      parameters:
+      - description: Chat UUID
+        in: path
+        name: chatID
+        required: true
+        type: string
+      - description: Mute preference
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/AtoiTalkAPI_internal_api_application_push.MuteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+      security:
+      - BearerAuth: []
+      summary: Mute or unmute a conversation
+      tags:
+      - notifications
   /api/chats/{id}:
     get:
       consumes:
@@ -1914,31 +1986,31 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.ChatListResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ChatListResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Get Chat by ID
@@ -1962,27 +2034,27 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Hide Chat
@@ -2005,27 +2077,27 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Mark Chat as Read
@@ -2042,7 +2114,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.CreateGroupChatRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.CreateGroupChatRequest'
       produces:
       - application/json
       responses:
@@ -2050,31 +2122,31 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.ChatListResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ChatListResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Create Group Chat
@@ -2097,31 +2169,31 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Delete Group
@@ -2143,7 +2215,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.UpdateGroupChatRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.UpdateGroupChatRequest'
       produces:
       - application/json
       responses:
@@ -2151,35 +2223,35 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.ChatListResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ChatListResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Update Group Chat Info
@@ -2204,35 +2276,35 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.GroupInviteResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.GroupInviteResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Reset Group Invite Code
@@ -2256,39 +2328,39 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.ChatListResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ChatListResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Join Public Group
@@ -2313,31 +2385,31 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.MessageResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Leave Group
@@ -2373,37 +2445,37 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseWithPagination'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.GroupMemberDTO'
+                    $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.GroupMemberDTO'
                   type: array
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Search Group Members
@@ -2425,7 +2497,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.AddGroupMemberRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.AddGroupMemberRequest'
       produces:
       - application/json
       responses:
@@ -2433,41 +2505,41 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.MessageResponse'
+                    $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse'
                   type: array
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Add Member to Group
@@ -2497,35 +2569,35 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.MessageResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Kick Member from Group
@@ -2552,7 +2624,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.UpdateGroupMemberRoleRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.UpdateGroupMemberRoleRequest'
       produces:
       - application/json
       responses:
@@ -2560,35 +2632,35 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.MessageResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Update Member Role
@@ -2611,7 +2683,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.TransferGroupOwnershipRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.TransferGroupOwnershipRequest'
       produces:
       - application/json
       responses:
@@ -2619,35 +2691,35 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.MessageResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Transfer Ownership
@@ -2672,27 +2744,27 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.GroupPreviewDTO'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.GroupPreviewDTO'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       summary: Get Group Preview by Invite Code
       tags:
       - chat
@@ -2707,7 +2779,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.JoinGroupByInviteRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.JoinGroupByInviteRequest'
       produces:
       - application/json
       responses:
@@ -2715,31 +2787,31 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.ChatListResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ChatListResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Join Group by Invite Code
@@ -2776,29 +2848,29 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseWithPagination'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.PublicGroupDTO'
+                    $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.PublicGroupDTO'
                   type: array
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Search Public Groups
@@ -2816,7 +2888,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.CreatePrivateChatRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.CreatePrivateChatRequest'
       produces:
       - application/json
       responses:
@@ -2824,31 +2896,31 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.ChatResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ChatResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Create Private Chat
@@ -2872,31 +2944,31 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.MediaDTO'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.MediaDTO'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Complete Media Upload
@@ -2921,31 +2993,31 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.MediaURLResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.MediaURLResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Refresh Media URL
@@ -2962,7 +3034,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.UploadMediaRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.UploadMediaRequest'
       produces:
       - application/json
       responses:
@@ -2970,27 +3042,27 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.UploadMediaResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.UploadMediaResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Create Media Upload URL
@@ -3008,7 +3080,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.SendMessageRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.SendMessageRequest'
       produces:
       - application/json
       responses:
@@ -3016,31 +3088,31 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.MessageResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Send Message
@@ -3063,31 +3135,31 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Delete Message
@@ -3108,7 +3180,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.EditMessageRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.EditMessageRequest'
       produces:
       - application/json
       responses:
@@ -3116,40 +3188,163 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.MessageResponse'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Edit Message
       tags:
       - message
+  /api/notifications:
+    get:
+      consumes:
+      - application/json
+      description: GET returns message_notifications_enabled. PUT requires that boolean
+        field and preserves chat mutes.
+      parameters:
+      - description: Required for PUT only
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/AtoiTalkAPI_internal_api_application_push.Preferences'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
+            - properties:
+                data:
+                  $ref: '#/definitions/AtoiTalkAPI_internal_api_application_push.Preferences'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+      security:
+      - BearerAuth: []
+      summary: Read or update account notification preferences
+      tags:
+      - notifications
+    put:
+      consumes:
+      - application/json
+      description: GET returns message_notifications_enabled. PUT requires that boolean
+        field and preserves chat mutes.
+      parameters:
+      - description: Required for PUT only
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/AtoiTalkAPI_internal_api_application_push.Preferences'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
+            - properties:
+                data:
+                  $ref: '#/definitions/AtoiTalkAPI_internal_api_application_push.Preferences'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+      security:
+      - BearerAuth: []
+      summary: Read or update account notification preferences
+      tags:
+      - notifications
+  /api/notifications/muted-chats:
+    get:
+      parameters:
+      - description: Pagination cursor
+        in: query
+        name: cursor
+        type: string
+      - description: Page size (default 20, maximum 50)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/AtoiTalkAPI_internal_api_application_push.ChatPreference'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+      security:
+      - BearerAuth: []
+      summary: List active muted conversations
+      tags:
+      - notifications
   /api/otp/send:
     post:
       consumes:
@@ -3162,37 +3357,142 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.SendOTPRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.SendOTPRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       summary: Send OTP
       tags:
       - otp
+  /api/push/devices/{installationID}:
+    delete:
+      consumes:
+      - application/json
+      description: PUT registers a device with an installation secret; DELETE disables
+        the current session binding.
+      parameters:
+      - description: Installation UUID
+        in: path
+        name: installationID
+        required: true
+        type: string
+      - description: Required for PUT only
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.PushDeviceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+      security:
+      - BearerAuth: []
+      summary: Register or disable a push device
+      tags:
+      - notifications
+    put:
+      consumes:
+      - application/json
+      description: PUT registers a device with an installation secret; DELETE disables
+        the current session binding.
+      parameters:
+      - description: Installation UUID
+        in: path
+        name: installationID
+        required: true
+        type: string
+      - description: Required for PUT only
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.PushDeviceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+      security:
+      - BearerAuth: []
+      summary: Register or disable a push device
+      tags:
+      - notifications
   /api/reports:
     post:
       consumes:
@@ -3205,34 +3505,34 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.CreateReportRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.CreateReportRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Create Report
@@ -3250,23 +3550,23 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.UserDTO'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.UserDTO'
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Get Current User
@@ -3283,7 +3583,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.UpdateProfileRequest'
+          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.UpdateProfileRequest'
       produces:
       - application/json
       responses:
@@ -3291,31 +3591,31 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.UserDTO'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.UserDTO'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Update User Profile
@@ -3354,29 +3654,29 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseWithPagination'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.UserDTO'
+                    $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.UserDTO'
                   type: array
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Search Users
@@ -3400,31 +3700,31 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseSuccess'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
             - properties:
                 data:
-                  $ref: '#/definitions/model.UserDTO'
+                  $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.UserDTO'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Get User Profile
@@ -3447,27 +3747,27 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Block a User
@@ -3490,23 +3790,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/helper.ResponseSuccess'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Unblock a User
@@ -3537,32 +3837,37 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/helper.ResponseWithPagination'
+            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.UserDTO'
+                    $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.UserDTO'
                   type: array
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/helper.ResponseError'
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
       summary: Get Blocked Users
       tags:
       - user
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

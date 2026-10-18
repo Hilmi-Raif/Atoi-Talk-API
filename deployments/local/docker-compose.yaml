@@ -21,7 +21,7 @@ services:
     image: redis:7-alpine
     container_name: atoitalk-local-redis
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_HOST_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -36,14 +36,14 @@ services:
     environment:
       COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: ${S3_BUCKET_PUBLIC:-public-bucket},${S3_BUCKET_PRIVATE:-private-bucket}
     ports:
-      - "9090:9090"
+      - "${S3_HOST_PORT:-9090}:9090"
 
   mailpit:
     image: axllent/mailpit:latest
     container_name: atoitalk-local-mailpit
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "${SMTP_HOST_PORT:-1025}:1025"
+      - "${MAILPIT_UI_HOST_PORT:-8025}:8025"
 
   api:
     build:
@@ -58,8 +58,10 @@ services:
     ports:
       - "${APP_PORT:-8080}:8080"
     environment:
+      PUSH_ENABLED: ${PUSH_ENABLED:-false}
       APP_ENV: ${APP_ENV:-development}
       APP_PORT: ${APP_PORT:-8080}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:4173}
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-false}
       CAPTCHA_ENABLED: ${CAPTCHA_ENABLED:-false}
       CAPTCHA_MAX_RETRIES: ${CAPTCHA_MAX_RETRIES:-2}
@@ -131,6 +133,7 @@ services:
       redis:
         condition: service_healthy
     environment:
+      PUSH_ENABLED: ${PUSH_ENABLED:-false}
       APP_ENV: ${APP_ENV:-development}
       DB_HOST: postgres
       DB_PORT: 5432
@@ -180,6 +183,7 @@ services:
       redis:
         condition: service_healthy
     environment:
+      PUSH_ENABLED: ${PUSH_ENABLED:-false}
       APP_ENV: ${APP_ENV:-development}
       DB_HOST: postgres
       DB_PORT: 5432
@@ -221,6 +225,39 @@ services:
       OTEL_EXPORTER_OTLP_INSECURE: ${OTEL_EXPORTER_OTLP_INSECURE:-true}
       OTEL_METRIC_EXPORT_INTERVAL: ${OTEL_METRIC_EXPORT_INTERVAL:-5000}
 
+  push-worker:
+    build:
+      context: ../..
+      dockerfile: build/package/push_worker/Dockerfile
+    container_name: atoitalk-local-push-worker
+    depends_on:
+      api:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles: [push]
+    environment:
+      PUSH_ENABLED: "true"
+      FCM_PROJECT_ID: ${FCM_PROJECT_ID:-}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/fcm.json
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-atoitalk_dev}
+      DB_SSLMODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_key_at_least_32_chars_long}
+      OTP_SECRET: ${OTP_SECRET:-dev_otp_secret_key}
+      S3_BUCKET_PUBLIC: ${S3_BUCKET_PUBLIC:-public-bucket}
+      S3_BUCKET_PRIVATE: ${S3_BUCKET_PRIVATE:-private-bucket}
+      OTEL_ENABLED: "false"
+    volumes:
+      - ${FCM_CREDENTIALS_FILE:-./fcm.json}:/run/secrets/fcm.json:ro
+
   websocket-gateway:
     build:
       context: ../..
@@ -234,6 +271,7 @@ services:
     ports:
       - "${REALTIME_PORT:-8081}:8081"
     environment:
+      PUSH_ENABLED: ${PUSH_ENABLED:-false}
       APP_ENV: ${APP_ENV:-development}
       REALTIME_PORT: 8081
       REALTIME_INSTANCE_ID: ${REALTIME_INSTANCE_ID:-}
@@ -276,4 +314,4 @@ volumes:
 
 networks:
   default:
-    name: atoitalk-network
+    name: ${LOCAL_NETWORK_NAME:-atoitalk-network}

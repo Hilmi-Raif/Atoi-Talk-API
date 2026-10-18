@@ -53,7 +53,7 @@ func NewMediaService(client *ent.Client, cfg *config.AppConfig, validator *valid
 
 func (s *MediaService) UploadMedia(ctx context.Context, userID uuid.UUID, req model.UploadMediaRequest) (*model.UploadMediaResponse, error) {
 	if err := s.validator.Struct(req); err != nil {
-		slog.Warn("Validation failed", "error", err)
+		slog.WarnContext(ctx, "Validation failed", "error", err)
 		return nil, helper.NewBadRequestError("")
 	}
 	req.OriginalName = strings.TrimSpace(req.OriginalName)
@@ -63,7 +63,7 @@ func (s *MediaService) UploadMedia(ctx context.Context, userID uuid.UUID, req mo
 	}
 
 	if err := s.captchaAdapter.Verify(req.CaptchaToken, ""); err != nil {
-		slog.Warn("Captcha verification failed", "error", err)
+		slog.WarnContext(ctx, "Captcha verification failed", "error", err)
 		return nil, helper.NewBadRequestError("")
 	}
 
@@ -95,13 +95,13 @@ func (s *MediaService) UploadMedia(ctx context.Context, userID uuid.UUID, req mo
 		Save(ctx)
 
 	if err != nil {
-		slog.Error("Failed to create media record", "error", err)
+		slog.ErrorContext(ctx, "Failed to create media record", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	uploadURL, uploadHeaders, err := s.storageAdapter.GetPresignedPutURL(finalFileName, req.MimeType, req.FileSize, isPublic, presignedUploadExpiry)
 	if err != nil {
-		slog.Error("Failed to generate presigned PUT URL", "error", err)
+		slog.ErrorContext(ctx, "Failed to generate presigned PUT URL", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -136,7 +136,7 @@ func (s *MediaService) CompleteUpload(ctx context.Context, userID, mediaID uuid.
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("Media not found")
 		}
-		slog.Error("Failed to query media for completion", "error", err, "mediaID", mediaID)
+		slog.ErrorContext(ctx, "Failed to query media for completion", "error", err, "mediaID", mediaID)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -153,7 +153,7 @@ func (s *MediaService) CompleteUpload(ctx context.Context, userID, mediaID uuid.
 	isPublic := m.Category == media.CategoryUserAvatar || m.Category == media.CategoryGroupAvatar
 	objectInfo, err := s.storageAdapter.Head(m.FileName, isPublic)
 	if err != nil {
-		slog.Warn("Uploaded object not found or unreadable", "error", err, "mediaID", mediaID, "fileName", m.FileName)
+		slog.WarnContext(ctx, "Uploaded object not found or unreadable", "error", err, "mediaID", mediaID, "fileName", m.FileName)
 		return nil, helper.NewBadRequestError("Uploaded object not found")
 	}
 	if objectInfo.Size != m.FileSize {
@@ -174,7 +174,7 @@ func (s *MediaService) CompleteUpload(ctx context.Context, userID, mediaID uuid.
 		ClearUploadExpiresAt().
 		Save(ctx)
 	if err != nil {
-		slog.Error("Failed to mark media upload completed", "error", err, "mediaID", mediaID)
+		slog.ErrorContext(ctx, "Failed to mark media upload completed", "error", err, "mediaID", mediaID)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -184,7 +184,7 @@ func (s *MediaService) CompleteUpload(ctx context.Context, userID, mediaID uuid.
 	} else {
 		url, err = s.storageAdapter.GetPresignedURL(updated.FileName, 15*time.Minute)
 		if err != nil {
-			slog.Error("Failed to generate presigned read URL after completion", "error", err, "mediaID", mediaID)
+			slog.ErrorContext(ctx, "Failed to generate presigned read URL after completion", "error", err, "mediaID", mediaID)
 			url = ""
 		}
 	}
@@ -223,7 +223,7 @@ func (s *MediaService) GetMediaURL(ctx context.Context, userID, mediaID uuid.UUI
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("Media not found")
 		}
-		slog.Error("Failed to query media", "error", err)
+		slog.ErrorContext(ctx, "Failed to query media", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -262,7 +262,7 @@ func (s *MediaService) GetMediaURL(ctx context.Context, userID, mediaID uuid.UUI
 				groupmember.UserID(userID),
 			).Exist(ctx)
 		if err != nil {
-			slog.Error("Failed to check group membership for media access", "error", err, "mediaID", mediaID, "groupID", c.Edges.GroupChat.ID, "userID", userID)
+			slog.ErrorContext(ctx, "Failed to check group membership for media access", "error", err, "mediaID", mediaID, "groupID", c.Edges.GroupChat.ID, "userID", userID)
 			return nil, helper.NewInternalServerError("")
 		}
 		if exists {
@@ -276,7 +276,7 @@ func (s *MediaService) GetMediaURL(ctx context.Context, userID, mediaID uuid.UUI
 
 	url, err := s.storageAdapter.GetPresignedURL(m.FileName, 15*time.Minute)
 	if err != nil {
-		slog.Error("Failed to generate presigned URL for refresh", "error", err)
+		slog.ErrorContext(ctx, "Failed to generate presigned URL for refresh", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 

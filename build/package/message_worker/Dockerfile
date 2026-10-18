@@ -19,7 +19,7 @@ COPY . .
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
-    go build -ldflags="-s -w" -o message-worker ./cmd/message_worker
+    go build -trimpath -ldflags="-s -w" -o message-worker ./cmd/message_worker
 
 FROM alpine:latest
 

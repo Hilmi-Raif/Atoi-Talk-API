@@ -33,7 +33,7 @@ func (s *GroupChatService) SearchGroupMembers(ctx context.Context, userID uuid.U
 		if ent.IsNotFound(err) {
 			return nil, "", false, helper.NewNotFoundError("Group chat not found")
 		}
-		slog.Error("Failed to query group chat", "error", err)
+		slog.ErrorContext(ctx, "Failed to query group chat", "error", err)
 		return nil, "", false, helper.NewInternalServerError("")
 	}
 
@@ -45,7 +45,7 @@ func (s *GroupChatService) SearchGroupMembers(ctx context.Context, userID uuid.U
 			).
 			Exist(ctx)
 		if err != nil {
-			slog.Error("Failed to check group membership", "error", err)
+			slog.ErrorContext(ctx, "Failed to check group membership", "error", err)
 			return nil, "", false, helper.NewInternalServerError("")
 		}
 		if !isMember {
@@ -55,7 +55,7 @@ func (s *GroupChatService) SearchGroupMembers(ctx context.Context, userID uuid.U
 
 	members, nextCursor, hasNext, err := s.groupMemberRepo.SearchGroupMembers(ctx, gc.ID, req.Query, req.Cursor, req.Limit)
 	if err != nil {
-		slog.Error("Failed to search group members", "error", err)
+		slog.ErrorContext(ctx, "Failed to search group members", "error", err)
 		return nil, "", false, helper.NewInternalServerError("")
 	}
 

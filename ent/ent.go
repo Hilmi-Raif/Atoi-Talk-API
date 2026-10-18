@@ -4,12 +4,15 @@ package ent
 
 import (
 	"AtoiTalkAPI/ent/chat"
+	"AtoiTalkAPI/ent/chatnotificationpreference"
 	"AtoiTalkAPI/ent/groupchat"
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/media"
 	"AtoiTalkAPI/ent/message"
 	"AtoiTalkAPI/ent/messageoutbox"
 	"AtoiTalkAPI/ent/privatechat"
+	"AtoiTalkAPI/ent/pushdelivery"
+	"AtoiTalkAPI/ent/pushdevice"
 	"AtoiTalkAPI/ent/report"
 	"AtoiTalkAPI/ent/user"
 	"AtoiTalkAPI/ent/userblock"
@@ -83,17 +86,20 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			chat.Table:          chat.ValidColumn,
-			groupchat.Table:     groupchat.ValidColumn,
-			groupmember.Table:   groupmember.ValidColumn,
-			media.Table:         media.ValidColumn,
-			message.Table:       message.ValidColumn,
-			messageoutbox.Table: messageoutbox.ValidColumn,
-			privatechat.Table:   privatechat.ValidColumn,
-			report.Table:        report.ValidColumn,
-			user.Table:          user.ValidColumn,
-			userblock.Table:     userblock.ValidColumn,
-			useridentity.Table:  useridentity.ValidColumn,
+			chat.Table:                       chat.ValidColumn,
+			chatnotificationpreference.Table: chatnotificationpreference.ValidColumn,
+			groupchat.Table:                  groupchat.ValidColumn,
+			groupmember.Table:                groupmember.ValidColumn,
+			media.Table:                      media.ValidColumn,
+			message.Table:                    message.ValidColumn,
+			messageoutbox.Table:              messageoutbox.ValidColumn,
+			privatechat.Table:                privatechat.ValidColumn,
+			pushdelivery.Table:               pushdelivery.ValidColumn,
+			pushdevice.Table:                 pushdevice.ValidColumn,
+			report.Table:                     report.ValidColumn,
+			user.Table:                       user.ValidColumn,
+			userblock.Table:                  userblock.ValidColumn,
+			useridentity.Table:               useridentity.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

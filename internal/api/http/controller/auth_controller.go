@@ -28,16 +28,16 @@ func NewAuthController(authService service.AuthServicePort) *AuthController {
 // @Accept       json
 // @Produce      json
 // @Param        request body model.LoginRequest true "Login Request"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.AuthResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.AuthResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Router       /api/auth/login [post]
 func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	var req model.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("Invalid request body", "error", err)
+		slog.WarnContext(r.Context(), "Invalid request body", "error", err)
 		response.WriteError(w, helper.NewBadRequestError(""))
 		return
 	}
@@ -57,10 +57,10 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 // @Tags         auth
 // @Accept       json
 // @Produce      json
-// @Success      200  {object}  helper.ResponseSuccess
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess
+// @Failure      401  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/auth/logout [post]
 func (c *AuthController) Logout(w http.ResponseWriter, r *http.Request) {
@@ -91,9 +91,9 @@ func (c *AuthController) Logout(w http.ResponseWriter, r *http.Request) {
 // @Tags         auth
 // @Accept       json
 // @Produce      json
-// @Success      200  {object}  helper.ResponseSuccess{data=model.GoogleAuthInitResponse}
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.GoogleAuthInitResponse}
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Router       /api/auth/google/init [get]
 func (c *AuthController) GoogleAuthInit(w http.ResponseWriter, r *http.Request) {
 	resp, err := c.authService.BeginGoogleAuth(r.Context())
@@ -112,15 +112,15 @@ func (c *AuthController) GoogleAuthInit(w http.ResponseWriter, r *http.Request) 
 // @Accept       json
 // @Produce      json
 // @Param        request body model.GoogleLoginRequest true "Google Login Request"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.AuthResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.AuthResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Router       /api/auth/google [post]
 func (c *AuthController) GoogleExchange(w http.ResponseWriter, r *http.Request) {
 	var req model.GoogleLoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("Invalid request body", "error", err)
+		slog.WarnContext(r.Context(), "Invalid request body", "error", err)
 		response.WriteError(w, helper.NewBadRequestError(""))
 		return
 	}
@@ -141,16 +141,16 @@ func (c *AuthController) GoogleExchange(w http.ResponseWriter, r *http.Request) 
 // @Accept       json
 // @Produce      json
 // @Param        request body model.RegisterUserRequest true "Register User Request"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.AuthResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      409  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.AuthResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      409  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Router       /api/auth/register [post]
 func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 	var req model.RegisterUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("Invalid request body", "error", err)
+		slog.WarnContext(r.Context(), "Invalid request body", "error", err)
 		response.WriteError(w, helper.NewBadRequestError(""))
 		return
 	}
@@ -171,16 +171,16 @@ func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Param        request body model.ResetPasswordRequest true "Reset Password Request"
-// @Success      200  {object}  helper.ResponseSuccess
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess
+// @Failure      400  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Router       /api/auth/reset-password [post]
 func (c *AuthController) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	var req model.ResetPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("Invalid request body", "error", err)
+		slog.WarnContext(r.Context(), "Invalid request body", "error", err)
 		response.WriteError(w, helper.NewBadRequestError(""))
 		return
 	}

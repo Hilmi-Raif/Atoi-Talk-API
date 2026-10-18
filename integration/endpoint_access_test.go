@@ -23,6 +23,7 @@ func TestProtectedEndpointAccessBoundaries(t *testing.T) {
 	id := u.ID.String()
 	endpoints := []string{
 		"POST /auth/logout",
+		"PUT /push/devices/" + id, "DELETE /push/devices/" + id,
 		"POST /media/upload", "POST /media/" + id + "/complete", "GET /media/" + id + "/url",
 		"GET /user/current", "PUT /user/profile", "GET /users", "GET /users/blocked", "GET /users/" + id,
 		"POST /users/" + id + "/block", "POST /users/" + id + "/unblock",

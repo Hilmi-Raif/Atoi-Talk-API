@@ -37,10 +37,10 @@ func (s *GroupChatService) SearchPublicGroups(ctx context.Context, userID uuid.U
 	groups, nextCursor, hasNext, err := s.groupChatRepo.SearchPublicGroups(ctx, req.Query, req.Cursor, req.Limit, req.SortBy)
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid cursor format") {
-			slog.Warn("Invalid cursor format in SearchPublicGroups", "error", err)
+			slog.WarnContext(ctx, "Invalid cursor format in SearchPublicGroups", "error", err)
 			return nil, "", false, helper.NewBadRequestError("")
 		}
-		slog.Error("Failed to search public groups", "error", err)
+		slog.ErrorContext(ctx, "Failed to search public groups", "error", err)
 		return nil, "", false, helper.NewInternalServerError("")
 	}
 
@@ -64,7 +64,7 @@ func (s *GroupChatService) SearchPublicGroups(ctx context.Context, userID uuid.U
 				joinedGroups[m.GroupChatID] = true
 			}
 		} else {
-			slog.Error("Failed to batch check group memberships", "error", err)
+			slog.ErrorContext(ctx, "Failed to batch check group memberships", "error", err)
 		}
 	}
 
@@ -73,7 +73,7 @@ func (s *GroupChatService) SearchPublicGroups(ctx context.Context, userID uuid.U
 		var err error
 		memberCounts, err = s.groupMemberRepo.CountActiveMembersByGroupIDs(ctx, groupIDs...)
 		if err != nil {
-			slog.Error("Failed to batch count group members", "error", err)
+			slog.ErrorContext(ctx, "Failed to batch count group members", "error", err)
 		}
 	}
 
@@ -106,7 +106,7 @@ func (s *GroupChatService) SearchPublicGroups(ctx context.Context, userID uuid.U
 func (s *GroupChatService) JoinPublicGroup(ctx context.Context, userID uuid.UUID, groupID uuid.UUID) (*model.ChatListResponse, error) {
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	defer func() { _ = tx.Rollback() }()
@@ -124,7 +124,7 @@ func (s *GroupChatService) JoinPublicGroup(ctx context.Context, userID uuid.UUID
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("Group chat not found")
 		}
-		slog.Error("Failed to query group chat", "error", err)
+		slog.ErrorContext(ctx, "Failed to query group chat", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -142,7 +142,7 @@ func (s *GroupChatService) JoinPublicGroup(ctx context.Context, userID uuid.UUID
 		).
 		Exist(ctx)
 	if err != nil {
-		slog.Error("Failed to check membership", "error", err)
+		slog.ErrorContext(ctx, "Failed to check membership", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	if isMember {
@@ -158,7 +158,7 @@ func (s *GroupChatService) JoinPublicGroup(ctx context.Context, userID uuid.UUID
 		SetRole(groupmember.RoleMember).
 		Save(ctx)
 	if err != nil {
-		slog.Error("Failed to add member", "error", err)
+		slog.ErrorContext(ctx, "Failed to add member", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -168,12 +168,12 @@ func (s *GroupChatService) JoinPublicGroup(ctx context.Context, userID uuid.UUID
 		SetType(message.TypeSystemJoin).
 		Save(ctx)
 	if err != nil {
-		slog.Error("Failed to create system message for join", "error", err)
+		slog.ErrorContext(ctx, "Failed to create system message for join", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	if err := outbox.PersistMessageOutbox(ctx, tx, systemMsg, events.EventMessageNew, userID); err != nil {
-		slog.Error("Failed to persist system message outbox event", "error", err)
+		slog.ErrorContext(ctx, "Failed to persist system message outbox event", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -182,12 +182,12 @@ func (s *GroupChatService) JoinPublicGroup(ctx context.Context, userID uuid.UUID
 		SetLastMessageAt(systemMsg.CreatedAt).
 		Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to update chat with last message", "error", err)
+		slog.ErrorContext(ctx, "Failed to update chat with last message", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -210,7 +210,7 @@ func (s *GroupChatService) JoinPublicGroup(ctx context.Context, userID uuid.UUID
 		).
 		Count(ctx)
 	if err != nil {
-		slog.Error("Failed to count group members after public join", "error", err)
+		slog.ErrorContext(ctx, "Failed to count group members after public join", "error", err)
 	}
 
 	if msgResponse != nil {

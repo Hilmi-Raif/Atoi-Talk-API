@@ -3,6 +3,7 @@ package chat
 import (
 	"AtoiTalkAPI/ent"
 	"AtoiTalkAPI/ent/chat"
+	"AtoiTalkAPI/ent/chatnotificationpreference"
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/user"
 	"AtoiTalkAPI/ent/userblock"
@@ -55,7 +56,7 @@ func (s *ChatService) GetChatByID(ctx context.Context, userID, chatID uuid.UUID)
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("")
 		}
-		slog.Error("Failed to get chat by ID", "error", err, "chatID", chatID)
+		slog.ErrorContext(ctx, "Failed to get chat by ID", "error", err, "chatID", chatID)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -112,7 +113,7 @@ func (s *ChatService) GetChatByID(ctx context.Context, userID, chatID uuid.UUID)
 		if err == nil {
 			resp.MemberCount = memberCount
 		} else {
-			slog.Error("Failed to count group members", "error", err, "groupID", c.Edges.GroupChat.ID)
+			slog.ErrorContext(ctx, "Failed to count group members", "error", err, "groupID", c.Edges.GroupChat.ID)
 		}
 	}
 
@@ -177,6 +178,11 @@ func (s *ChatService) GetChatByID(ctx context.Context, userID, chatID uuid.UUID)
 
 	}
 
+	if resp != nil {
+		if err := s.applyNotificationPreferences(ctx, userID, []*model.ChatListResponse{resp}); err != nil {
+			return nil, err
+		}
+	}
 	return resp, nil
 }
 
@@ -201,7 +207,7 @@ func (s *ChatService) GetChats(ctx context.Context, userID uuid.UUID, req model.
 		observability.RecordError(repositorySpan, err)
 		observability.RecordError(span, err)
 		repositorySpan.End()
-		slog.Error("Failed to get chats", "error", err)
+		slog.ErrorContext(ctx, "Failed to get chats", "error", err)
 		return nil, "", false, helper.NewInternalServerError("")
 	}
 	repositorySpan.End()
@@ -329,7 +335,7 @@ func (s *ChatService) GetChats(ctx context.Context, userID uuid.UUID, req model.
 		if err != nil {
 			observability.RecordError(memberSpan, err)
 			observability.RecordError(span, err)
-			slog.Error("Failed to batch count group members", "error", err)
+			slog.ErrorContext(ctx, "Failed to batch count group members", "error", err)
 		}
 		memberSpan.End()
 	}
@@ -372,13 +378,20 @@ func (s *ChatService) GetChats(ctx context.Context, userID uuid.UUID, req model.
 		}
 	}
 
+	refs := make([]*model.ChatListResponse, len(response))
+	for i := range response {
+		refs[i] = &response[i]
+	}
+	if err := s.applyNotificationPreferences(ctx, userID, refs); err != nil {
+		return nil, "", false, err
+	}
 	return response, nextCursor, hasNext, nil
 }
 
 func (s *ChatService) MarkAsRead(ctx context.Context, userID uuid.UUID, chatID uuid.UUID) error {
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return helper.NewInternalServerError("")
 	}
 	defer func() { _ = tx.Rollback() }()
@@ -395,7 +408,7 @@ func (s *ChatService) MarkAsRead(ctx context.Context, userID uuid.UUID, chatID u
 		if ent.IsNotFound(err) {
 			return helper.NewNotFoundError("")
 		}
-		slog.Error("Failed to query chat for update", "error", err)
+		slog.ErrorContext(ctx, "Failed to query chat for update", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -430,7 +443,7 @@ func (s *ChatService) MarkAsRead(ctx context.Context, userID uuid.UUID, chatID u
 			Exist(ctx)
 
 		if err != nil {
-			slog.Error("Failed to check block status in MarkAsRead", "error", err)
+			slog.ErrorContext(ctx, "Failed to check block status in MarkAsRead", "error", err)
 			return helper.NewServiceUnavailableError("Unable to verify block status")
 		}
 		isBlocked = blockExists
@@ -442,7 +455,7 @@ func (s *ChatService) MarkAsRead(ctx context.Context, userID uuid.UUID, chatID u
 		}
 
 		if err := update.Exec(ctx); err != nil {
-			slog.Error("Failed to mark private chat as read", "error", err)
+			slog.ErrorContext(ctx, "Failed to mark private chat as read", "error", err)
 			return helper.NewInternalServerError("")
 		}
 
@@ -457,7 +470,7 @@ func (s *ChatService) MarkAsRead(ctx context.Context, userID uuid.UUID, chatID u
 			if ent.IsNotFound(err) {
 				return helper.NewForbiddenError("Not a member of this group")
 			}
-			slog.Error("Failed to query group member", "error", err)
+			slog.ErrorContext(ctx, "Failed to query group member", "error", err)
 			return helper.NewInternalServerError("")
 		}
 
@@ -466,13 +479,13 @@ func (s *ChatService) MarkAsRead(ctx context.Context, userID uuid.UUID, chatID u
 			SetLastReadAt(time.Now().UTC()).
 			Exec(ctx)
 		if err != nil {
-			slog.Error("Failed to mark group chat as read", "error", err)
+			slog.ErrorContext(ctx, "Failed to mark group chat as read", "error", err)
 			return helper.NewInternalServerError("")
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -507,7 +520,7 @@ func (s *ChatService) HideChat(ctx context.Context, userID uuid.UUID, chatID uui
 		if ent.IsNotFound(err) {
 			return helper.NewNotFoundError("")
 		}
-		slog.Error("Failed to query chat", "error", err, "chatID", chatID)
+		slog.ErrorContext(ctx, "Failed to query chat", "error", err, "chatID", chatID)
 		return helper.NewInternalServerError("")
 	}
 
@@ -531,7 +544,7 @@ func (s *ChatService) HideChat(ctx context.Context, userID uuid.UUID, chatID uui
 	}
 
 	if err := update.Exec(ctx); err != nil {
-		slog.Error("Failed to hide chat", "error", err, "chatID", chatID)
+		slog.ErrorContext(ctx, "Failed to hide chat", "error", err, "chatID", chatID)
 		return helper.NewInternalServerError("")
 	}
 
@@ -549,5 +562,28 @@ func (s *ChatService) HideChat(ctx context.Context, userID uuid.UUID, chatID uui
 		})
 	}
 
+	return nil
+}
+
+func (s *ChatService) applyNotificationPreferences(ctx context.Context, userID uuid.UUID, chats []*model.ChatListResponse) error {
+	if len(chats) == 0 {
+		return nil
+	}
+	ids := make([]uuid.UUID, len(chats))
+	byID := make(map[uuid.UUID]*model.ChatListResponse, len(chats))
+	for i, c := range chats {
+		ids[i] = c.ID
+		byID[c.ID] = c
+	}
+	rows, err := s.client.ChatNotificationPreference.Query().Where(chatnotificationpreference.UserID(userID), chatnotificationpreference.ChatIDIn(ids...)).All(ctx)
+	if err != nil {
+		return helper.NewInternalServerError("")
+	}
+	for _, row := range rows {
+		if c := byID[row.ChatID]; c != nil {
+			c.MutedForever = row.MutedForever
+			c.MutedUntil = row.MutedUntil
+		}
+	}
 	return nil
 }

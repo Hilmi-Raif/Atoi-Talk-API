@@ -4,8 +4,10 @@ import (
 	"AtoiTalkAPI/ent"
 	"AtoiTalkAPI/ent/chat"
 	"AtoiTalkAPI/ent/enttest"
+	"AtoiTalkAPI/internal/infrastructure/observability"
 	"AtoiTalkAPI/internal/messaging/events"
 	"context"
+	"go.opentelemetry.io/otel/trace"
 	"testing"
 
 	"entgo.io/ent/dialect"
@@ -17,7 +19,7 @@ import (
 func TestPersistMessageOutboxesCreatesOneRecordPerMessage(t *testing.T) {
 	client := enttest.Open(t, dialect.SQLite, "file:message-outbox?mode=memory&cache=shared&_fk=1")
 	t.Cleanup(func() { _ = client.Close() })
-	ctx := context.Background()
+	ctx := trace.ContextWithSpanContext(context.Background(), trace.NewSpanContext(trace.SpanContextConfig{TraceID: trace.TraceID{1}, SpanID: trace.SpanID{2}}))
 	sender := client.User.Create().SetUsername("sender").SaveX(ctx)
 	chatEntity := client.Chat.Create().SetType(chat.TypePrivate).SaveX(ctx)
 	first := client.Message.Create().SetChatID(chatEntity.ID).SetSenderID(sender.ID).SetContent("first").SaveX(ctx)
@@ -29,6 +31,9 @@ func TestPersistMessageOutboxesCreatesOneRecordPerMessage(t *testing.T) {
 	require.NoError(t, tx.Commit())
 
 	require.Equal(t, 2, client.MessageOutbox.Query().CountX(ctx))
+	for _, row := range client.MessageOutbox.Query().AllX(ctx) {
+		require.Equal(t, observability.TraceParent(ctx), row.Payload[observability.TraceParentKey])
+	}
 }
 
 func TestPersistMessageOutboxesStopsOnInvalidMessage(t *testing.T) {

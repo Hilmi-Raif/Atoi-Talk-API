@@ -2,6 +2,7 @@ package outbox
 
 import (
 	"AtoiTalkAPI/ent"
+	"AtoiTalkAPI/internal/infrastructure/observability"
 	"AtoiTalkAPI/internal/messaging/events"
 	"context"
 
@@ -22,6 +23,14 @@ func PersistMessageOutbox(ctx context.Context, tx *ent.Tx, msg *ent.Message, eve
 }
 
 func PersistMessageOutboxWithPayload(ctx context.Context, tx *ent.Tx, msg *ent.Message, eventType events.EventType, senderID uuid.UUID, payload map[string]interface{}) error {
+	if parent := observability.TraceParent(ctx); parent != "" {
+		copyPayload := make(map[string]interface{}, len(payload)+1)
+		for key, value := range payload {
+			copyPayload[key] = value
+		}
+		copyPayload[observability.TraceParentKey] = parent
+		payload = copyPayload
+	}
 	create := tx.MessageOutbox.Create().
 		SetEventType(string(eventType)).
 		SetMessageID(msg.ID).

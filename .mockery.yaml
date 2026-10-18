@@ -81,3 +81,11 @@ packages:
       dir: "{{.InterfaceDir}}/mocks"
       outpkg: mocks
       mockname: "Mock{{.InterfaceName}}"
+  AtoiTalkAPI/internal/infrastructure/fcm:
+    interfaces:
+      Sender: {}
+    config:
+      filename: "fcm_{{.InterfaceName | snakecase}}.go"
+      dir: "{{.InterfaceDir}}/../mocks"
+      outpkg: mocks
+      mockname: "MockFCM{{.InterfaceName}}"

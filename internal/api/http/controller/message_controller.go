@@ -32,12 +32,12 @@ func NewMessageController(messageService service.MessageServicePort) *MessageCon
 // @Accept       json
 // @Produce      json
 // @Param        request body model.SendMessageRequest true "Send Message Request"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.MessageResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.MessageResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/messages [post]
 func (c *MessageController) SendMessage(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +49,7 @@ func (c *MessageController) SendMessage(w http.ResponseWriter, r *http.Request) 
 
 	var req model.SendMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("Invalid request body", "error", err)
+		slog.WarnContext(r.Context(), "Invalid request body", "error", err)
 		response.WriteError(w, helper.NewBadRequestError(""))
 		return
 	}
@@ -71,13 +71,13 @@ func (c *MessageController) SendMessage(w http.ResponseWriter, r *http.Request) 
 // @Produce      json
 // @Param        messageID path string true "Message ID (UUID)"
 // @Param        request body model.EditMessageRequest true "Edit Message Request"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.MessageResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.MessageResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/messages/{messageID} [put]
 func (c *MessageController) EditMessage(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +96,7 @@ func (c *MessageController) EditMessage(w http.ResponseWriter, r *http.Request) 
 
 	var req model.EditMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("Invalid request body", "error", err)
+		slog.WarnContext(r.Context(), "Invalid request body", "error", err)
 		response.WriteError(w, helper.NewBadRequestError(""))
 		return
 	}
@@ -121,12 +121,12 @@ func (c *MessageController) EditMessage(w http.ResponseWriter, r *http.Request) 
 // @Param        around_message_id query string false "Jump to message ID (UUID)"
 // @Param        limit query int false "Number of messages to fetch (default 20, max 50)"
 // @Param        direction query string false "Pagination direction: 'older' (default) or 'newer'"
-// @Success      200  {object}  helper.ResponseWithPagination{data=[]model.MessageResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseWithPagination{data=[]model.MessageResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/{chatID}/messages [get]
 func (c *MessageController) GetMessages(w http.ResponseWriter, r *http.Request) {
@@ -191,13 +191,13 @@ func (c *MessageController) GetMessages(w http.ResponseWriter, r *http.Request) 
 // @Accept       json
 // @Produce      json
 // @Param        messageID path string true "Message ID (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/messages/{messageID} [delete]
 func (c *MessageController) DeleteMessage(w http.ResponseWriter, r *http.Request) {

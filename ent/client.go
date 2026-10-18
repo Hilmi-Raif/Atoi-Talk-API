@@ -12,12 +12,15 @@ import (
 	"AtoiTalkAPI/ent/migrate"
 
 	"AtoiTalkAPI/ent/chat"
+	"AtoiTalkAPI/ent/chatnotificationpreference"
 	"AtoiTalkAPI/ent/groupchat"
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/media"
 	"AtoiTalkAPI/ent/message"
 	"AtoiTalkAPI/ent/messageoutbox"
 	"AtoiTalkAPI/ent/privatechat"
+	"AtoiTalkAPI/ent/pushdelivery"
+	"AtoiTalkAPI/ent/pushdevice"
 	"AtoiTalkAPI/ent/report"
 	"AtoiTalkAPI/ent/user"
 	"AtoiTalkAPI/ent/userblock"
@@ -37,6 +40,8 @@ type Client struct {
 	Schema *migrate.Schema
 	// Chat is the client for interacting with the Chat builders.
 	Chat *ChatClient
+	// ChatNotificationPreference is the client for interacting with the ChatNotificationPreference builders.
+	ChatNotificationPreference *ChatNotificationPreferenceClient
 	// GroupChat is the client for interacting with the GroupChat builders.
 	GroupChat *GroupChatClient
 	// GroupMember is the client for interacting with the GroupMember builders.
@@ -49,6 +54,10 @@ type Client struct {
 	MessageOutbox *MessageOutboxClient
 	// PrivateChat is the client for interacting with the PrivateChat builders.
 	PrivateChat *PrivateChatClient
+	// PushDelivery is the client for interacting with the PushDelivery builders.
+	PushDelivery *PushDeliveryClient
+	// PushDevice is the client for interacting with the PushDevice builders.
+	PushDevice *PushDeviceClient
 	// Report is the client for interacting with the Report builders.
 	Report *ReportClient
 	// User is the client for interacting with the User builders.
@@ -69,12 +78,15 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Chat = NewChatClient(c.config)
+	c.ChatNotificationPreference = NewChatNotificationPreferenceClient(c.config)
 	c.GroupChat = NewGroupChatClient(c.config)
 	c.GroupMember = NewGroupMemberClient(c.config)
 	c.Media = NewMediaClient(c.config)
 	c.Message = NewMessageClient(c.config)
 	c.MessageOutbox = NewMessageOutboxClient(c.config)
 	c.PrivateChat = NewPrivateChatClient(c.config)
+	c.PushDelivery = NewPushDeliveryClient(c.config)
+	c.PushDevice = NewPushDeviceClient(c.config)
 	c.Report = NewReportClient(c.config)
 	c.User = NewUserClient(c.config)
 	c.UserBlock = NewUserBlockClient(c.config)
@@ -169,19 +181,22 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:           ctx,
-		config:        cfg,
-		Chat:          NewChatClient(cfg),
-		GroupChat:     NewGroupChatClient(cfg),
-		GroupMember:   NewGroupMemberClient(cfg),
-		Media:         NewMediaClient(cfg),
-		Message:       NewMessageClient(cfg),
-		MessageOutbox: NewMessageOutboxClient(cfg),
-		PrivateChat:   NewPrivateChatClient(cfg),
-		Report:        NewReportClient(cfg),
-		User:          NewUserClient(cfg),
-		UserBlock:     NewUserBlockClient(cfg),
-		UserIdentity:  NewUserIdentityClient(cfg),
+		ctx:                        ctx,
+		config:                     cfg,
+		Chat:                       NewChatClient(cfg),
+		ChatNotificationPreference: NewChatNotificationPreferenceClient(cfg),
+		GroupChat:                  NewGroupChatClient(cfg),
+		GroupMember:                NewGroupMemberClient(cfg),
+		Media:                      NewMediaClient(cfg),
+		Message:                    NewMessageClient(cfg),
+		MessageOutbox:              NewMessageOutboxClient(cfg),
+		PrivateChat:                NewPrivateChatClient(cfg),
+		PushDelivery:               NewPushDeliveryClient(cfg),
+		PushDevice:                 NewPushDeviceClient(cfg),
+		Report:                     NewReportClient(cfg),
+		User:                       NewUserClient(cfg),
+		UserBlock:                  NewUserBlockClient(cfg),
+		UserIdentity:               NewUserIdentityClient(cfg),
 	}, nil
 }
 
@@ -199,19 +214,22 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:           ctx,
-		config:        cfg,
-		Chat:          NewChatClient(cfg),
-		GroupChat:     NewGroupChatClient(cfg),
-		GroupMember:   NewGroupMemberClient(cfg),
-		Media:         NewMediaClient(cfg),
-		Message:       NewMessageClient(cfg),
-		MessageOutbox: NewMessageOutboxClient(cfg),
-		PrivateChat:   NewPrivateChatClient(cfg),
-		Report:        NewReportClient(cfg),
-		User:          NewUserClient(cfg),
-		UserBlock:     NewUserBlockClient(cfg),
-		UserIdentity:  NewUserIdentityClient(cfg),
+		ctx:                        ctx,
+		config:                     cfg,
+		Chat:                       NewChatClient(cfg),
+		ChatNotificationPreference: NewChatNotificationPreferenceClient(cfg),
+		GroupChat:                  NewGroupChatClient(cfg),
+		GroupMember:                NewGroupMemberClient(cfg),
+		Media:                      NewMediaClient(cfg),
+		Message:                    NewMessageClient(cfg),
+		MessageOutbox:              NewMessageOutboxClient(cfg),
+		PrivateChat:                NewPrivateChatClient(cfg),
+		PushDelivery:               NewPushDeliveryClient(cfg),
+		PushDevice:                 NewPushDeviceClient(cfg),
+		Report:                     NewReportClient(cfg),
+		User:                       NewUserClient(cfg),
+		UserBlock:                  NewUserBlockClient(cfg),
+		UserIdentity:               NewUserIdentityClient(cfg),
 	}, nil
 }
 
@@ -241,8 +259,9 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Chat, c.GroupChat, c.GroupMember, c.Media, c.Message, c.MessageOutbox,
-		c.PrivateChat, c.Report, c.User, c.UserBlock, c.UserIdentity,
+		c.Chat, c.ChatNotificationPreference, c.GroupChat, c.GroupMember, c.Media,
+		c.Message, c.MessageOutbox, c.PrivateChat, c.PushDelivery, c.PushDevice,
+		c.Report, c.User, c.UserBlock, c.UserIdentity,
 	} {
 		n.Use(hooks...)
 	}
@@ -252,8 +271,9 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Chat, c.GroupChat, c.GroupMember, c.Media, c.Message, c.MessageOutbox,
-		c.PrivateChat, c.Report, c.User, c.UserBlock, c.UserIdentity,
+		c.Chat, c.ChatNotificationPreference, c.GroupChat, c.GroupMember, c.Media,
+		c.Message, c.MessageOutbox, c.PrivateChat, c.PushDelivery, c.PushDevice,
+		c.Report, c.User, c.UserBlock, c.UserIdentity,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -264,6 +284,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
 	case *ChatMutation:
 		return c.Chat.mutate(ctx, m)
+	case *ChatNotificationPreferenceMutation:
+		return c.ChatNotificationPreference.mutate(ctx, m)
 	case *GroupChatMutation:
 		return c.GroupChat.mutate(ctx, m)
 	case *GroupMemberMutation:
@@ -276,6 +298,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.MessageOutbox.mutate(ctx, m)
 	case *PrivateChatMutation:
 		return c.PrivateChat.mutate(ctx, m)
+	case *PushDeliveryMutation:
+		return c.PushDelivery.mutate(ctx, m)
+	case *PushDeviceMutation:
+		return c.PushDevice.mutate(ctx, m)
 	case *ReportMutation:
 		return c.Report.mutate(ctx, m)
 	case *UserMutation:
@@ -483,6 +509,139 @@ func (c *ChatClient) mutate(ctx context.Context, m *ChatMutation) (Value, error)
 		return (&ChatDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Chat mutation op: %q", m.Op())
+	}
+}
+
+// ChatNotificationPreferenceClient is a client for the ChatNotificationPreference schema.
+type ChatNotificationPreferenceClient struct {
+	config
+}
+
+// NewChatNotificationPreferenceClient returns a client for the ChatNotificationPreference from the given config.
+func NewChatNotificationPreferenceClient(c config) *ChatNotificationPreferenceClient {
+	return &ChatNotificationPreferenceClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `chatnotificationpreference.Hooks(f(g(h())))`.
+func (c *ChatNotificationPreferenceClient) Use(hooks ...Hook) {
+	c.hooks.ChatNotificationPreference = append(c.hooks.ChatNotificationPreference, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `chatnotificationpreference.Intercept(f(g(h())))`.
+func (c *ChatNotificationPreferenceClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ChatNotificationPreference = append(c.inters.ChatNotificationPreference, interceptors...)
+}
+
+// Create returns a builder for creating a ChatNotificationPreference entity.
+func (c *ChatNotificationPreferenceClient) Create() *ChatNotificationPreferenceCreate {
+	mutation := newChatNotificationPreferenceMutation(c.config, OpCreate)
+	return &ChatNotificationPreferenceCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ChatNotificationPreference entities.
+func (c *ChatNotificationPreferenceClient) CreateBulk(builders ...*ChatNotificationPreferenceCreate) *ChatNotificationPreferenceCreateBulk {
+	return &ChatNotificationPreferenceCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ChatNotificationPreferenceClient) MapCreateBulk(slice any, setFunc func(*ChatNotificationPreferenceCreate, int)) *ChatNotificationPreferenceCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ChatNotificationPreferenceCreateBulk{err: fmt.Errorf("calling to ChatNotificationPreferenceClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ChatNotificationPreferenceCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ChatNotificationPreferenceCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ChatNotificationPreference.
+func (c *ChatNotificationPreferenceClient) Update() *ChatNotificationPreferenceUpdate {
+	mutation := newChatNotificationPreferenceMutation(c.config, OpUpdate)
+	return &ChatNotificationPreferenceUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ChatNotificationPreferenceClient) UpdateOne(_m *ChatNotificationPreference) *ChatNotificationPreferenceUpdateOne {
+	mutation := newChatNotificationPreferenceMutation(c.config, OpUpdateOne, withChatNotificationPreference(_m))
+	return &ChatNotificationPreferenceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ChatNotificationPreferenceClient) UpdateOneID(id uuid.UUID) *ChatNotificationPreferenceUpdateOne {
+	mutation := newChatNotificationPreferenceMutation(c.config, OpUpdateOne, withChatNotificationPreferenceID(id))
+	return &ChatNotificationPreferenceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ChatNotificationPreference.
+func (c *ChatNotificationPreferenceClient) Delete() *ChatNotificationPreferenceDelete {
+	mutation := newChatNotificationPreferenceMutation(c.config, OpDelete)
+	return &ChatNotificationPreferenceDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ChatNotificationPreferenceClient) DeleteOne(_m *ChatNotificationPreference) *ChatNotificationPreferenceDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ChatNotificationPreferenceClient) DeleteOneID(id uuid.UUID) *ChatNotificationPreferenceDeleteOne {
+	builder := c.Delete().Where(chatnotificationpreference.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ChatNotificationPreferenceDeleteOne{builder}
+}
+
+// Query returns a query builder for ChatNotificationPreference.
+func (c *ChatNotificationPreferenceClient) Query() *ChatNotificationPreferenceQuery {
+	return &ChatNotificationPreferenceQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeChatNotificationPreference},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ChatNotificationPreference entity by its id.
+func (c *ChatNotificationPreferenceClient) Get(ctx context.Context, id uuid.UUID) (*ChatNotificationPreference, error) {
+	return c.Query().Where(chatnotificationpreference.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ChatNotificationPreferenceClient) GetX(ctx context.Context, id uuid.UUID) *ChatNotificationPreference {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *ChatNotificationPreferenceClient) Hooks() []Hook {
+	return c.hooks.ChatNotificationPreference
+}
+
+// Interceptors returns the client interceptors.
+func (c *ChatNotificationPreferenceClient) Interceptors() []Interceptor {
+	return c.inters.ChatNotificationPreference
+}
+
+func (c *ChatNotificationPreferenceClient) mutate(ctx context.Context, m *ChatNotificationPreferenceMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ChatNotificationPreferenceCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ChatNotificationPreferenceUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ChatNotificationPreferenceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ChatNotificationPreferenceDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ChatNotificationPreference mutation op: %q", m.Op())
 	}
 }
 
@@ -1621,6 +1780,272 @@ func (c *PrivateChatClient) mutate(ctx context.Context, m *PrivateChatMutation) 
 	}
 }
 
+// PushDeliveryClient is a client for the PushDelivery schema.
+type PushDeliveryClient struct {
+	config
+}
+
+// NewPushDeliveryClient returns a client for the PushDelivery from the given config.
+func NewPushDeliveryClient(c config) *PushDeliveryClient {
+	return &PushDeliveryClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `pushdelivery.Hooks(f(g(h())))`.
+func (c *PushDeliveryClient) Use(hooks ...Hook) {
+	c.hooks.PushDelivery = append(c.hooks.PushDelivery, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `pushdelivery.Intercept(f(g(h())))`.
+func (c *PushDeliveryClient) Intercept(interceptors ...Interceptor) {
+	c.inters.PushDelivery = append(c.inters.PushDelivery, interceptors...)
+}
+
+// Create returns a builder for creating a PushDelivery entity.
+func (c *PushDeliveryClient) Create() *PushDeliveryCreate {
+	mutation := newPushDeliveryMutation(c.config, OpCreate)
+	return &PushDeliveryCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of PushDelivery entities.
+func (c *PushDeliveryClient) CreateBulk(builders ...*PushDeliveryCreate) *PushDeliveryCreateBulk {
+	return &PushDeliveryCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PushDeliveryClient) MapCreateBulk(slice any, setFunc func(*PushDeliveryCreate, int)) *PushDeliveryCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PushDeliveryCreateBulk{err: fmt.Errorf("calling to PushDeliveryClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PushDeliveryCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PushDeliveryCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for PushDelivery.
+func (c *PushDeliveryClient) Update() *PushDeliveryUpdate {
+	mutation := newPushDeliveryMutation(c.config, OpUpdate)
+	return &PushDeliveryUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PushDeliveryClient) UpdateOne(_m *PushDelivery) *PushDeliveryUpdateOne {
+	mutation := newPushDeliveryMutation(c.config, OpUpdateOne, withPushDelivery(_m))
+	return &PushDeliveryUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PushDeliveryClient) UpdateOneID(id uuid.UUID) *PushDeliveryUpdateOne {
+	mutation := newPushDeliveryMutation(c.config, OpUpdateOne, withPushDeliveryID(id))
+	return &PushDeliveryUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for PushDelivery.
+func (c *PushDeliveryClient) Delete() *PushDeliveryDelete {
+	mutation := newPushDeliveryMutation(c.config, OpDelete)
+	return &PushDeliveryDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PushDeliveryClient) DeleteOne(_m *PushDelivery) *PushDeliveryDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PushDeliveryClient) DeleteOneID(id uuid.UUID) *PushDeliveryDeleteOne {
+	builder := c.Delete().Where(pushdelivery.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PushDeliveryDeleteOne{builder}
+}
+
+// Query returns a query builder for PushDelivery.
+func (c *PushDeliveryClient) Query() *PushDeliveryQuery {
+	return &PushDeliveryQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePushDelivery},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a PushDelivery entity by its id.
+func (c *PushDeliveryClient) Get(ctx context.Context, id uuid.UUID) (*PushDelivery, error) {
+	return c.Query().Where(pushdelivery.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PushDeliveryClient) GetX(ctx context.Context, id uuid.UUID) *PushDelivery {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PushDeliveryClient) Hooks() []Hook {
+	return c.hooks.PushDelivery
+}
+
+// Interceptors returns the client interceptors.
+func (c *PushDeliveryClient) Interceptors() []Interceptor {
+	return c.inters.PushDelivery
+}
+
+func (c *PushDeliveryClient) mutate(ctx context.Context, m *PushDeliveryMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PushDeliveryCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PushDeliveryUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PushDeliveryUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PushDeliveryDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown PushDelivery mutation op: %q", m.Op())
+	}
+}
+
+// PushDeviceClient is a client for the PushDevice schema.
+type PushDeviceClient struct {
+	config
+}
+
+// NewPushDeviceClient returns a client for the PushDevice from the given config.
+func NewPushDeviceClient(c config) *PushDeviceClient {
+	return &PushDeviceClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `pushdevice.Hooks(f(g(h())))`.
+func (c *PushDeviceClient) Use(hooks ...Hook) {
+	c.hooks.PushDevice = append(c.hooks.PushDevice, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `pushdevice.Intercept(f(g(h())))`.
+func (c *PushDeviceClient) Intercept(interceptors ...Interceptor) {
+	c.inters.PushDevice = append(c.inters.PushDevice, interceptors...)
+}
+
+// Create returns a builder for creating a PushDevice entity.
+func (c *PushDeviceClient) Create() *PushDeviceCreate {
+	mutation := newPushDeviceMutation(c.config, OpCreate)
+	return &PushDeviceCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of PushDevice entities.
+func (c *PushDeviceClient) CreateBulk(builders ...*PushDeviceCreate) *PushDeviceCreateBulk {
+	return &PushDeviceCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PushDeviceClient) MapCreateBulk(slice any, setFunc func(*PushDeviceCreate, int)) *PushDeviceCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PushDeviceCreateBulk{err: fmt.Errorf("calling to PushDeviceClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PushDeviceCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PushDeviceCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for PushDevice.
+func (c *PushDeviceClient) Update() *PushDeviceUpdate {
+	mutation := newPushDeviceMutation(c.config, OpUpdate)
+	return &PushDeviceUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PushDeviceClient) UpdateOne(_m *PushDevice) *PushDeviceUpdateOne {
+	mutation := newPushDeviceMutation(c.config, OpUpdateOne, withPushDevice(_m))
+	return &PushDeviceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PushDeviceClient) UpdateOneID(id uuid.UUID) *PushDeviceUpdateOne {
+	mutation := newPushDeviceMutation(c.config, OpUpdateOne, withPushDeviceID(id))
+	return &PushDeviceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for PushDevice.
+func (c *PushDeviceClient) Delete() *PushDeviceDelete {
+	mutation := newPushDeviceMutation(c.config, OpDelete)
+	return &PushDeviceDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PushDeviceClient) DeleteOne(_m *PushDevice) *PushDeviceDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PushDeviceClient) DeleteOneID(id uuid.UUID) *PushDeviceDeleteOne {
+	builder := c.Delete().Where(pushdevice.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PushDeviceDeleteOne{builder}
+}
+
+// Query returns a query builder for PushDevice.
+func (c *PushDeviceClient) Query() *PushDeviceQuery {
+	return &PushDeviceQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePushDevice},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a PushDevice entity by its id.
+func (c *PushDeviceClient) Get(ctx context.Context, id uuid.UUID) (*PushDevice, error) {
+	return c.Query().Where(pushdevice.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PushDeviceClient) GetX(ctx context.Context, id uuid.UUID) *PushDevice {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PushDeviceClient) Hooks() []Hook {
+	return c.hooks.PushDevice
+}
+
+// Interceptors returns the client interceptors.
+func (c *PushDeviceClient) Interceptors() []Interceptor {
+	return c.inters.PushDevice
+}
+
+func (c *PushDeviceClient) mutate(ctx context.Context, m *PushDeviceMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PushDeviceCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PushDeviceUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PushDeviceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PushDeviceDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown PushDevice mutation op: %q", m.Op())
+	}
+}
+
 // ReportClient is a client for the Report schema.
 type ReportClient struct {
 	config
@@ -2492,11 +2917,13 @@ func (c *UserIdentityClient) mutate(ctx context.Context, m *UserIdentityMutation
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Chat, GroupChat, GroupMember, Media, Message, MessageOutbox, PrivateChat,
-		Report, User, UserBlock, UserIdentity []ent.Hook
+		Chat, ChatNotificationPreference, GroupChat, GroupMember, Media, Message,
+		MessageOutbox, PrivateChat, PushDelivery, PushDevice, Report, User, UserBlock,
+		UserIdentity []ent.Hook
 	}
 	inters struct {
-		Chat, GroupChat, GroupMember, Media, Message, MessageOutbox, PrivateChat,
-		Report, User, UserBlock, UserIdentity []ent.Interceptor
+		Chat, ChatNotificationPreference, GroupChat, GroupMember, Media, Message,
+		MessageOutbox, PrivateChat, PushDelivery, PushDevice, Report, User, UserBlock,
+		UserIdentity []ent.Interceptor
 	}
 )

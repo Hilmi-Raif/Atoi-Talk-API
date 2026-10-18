@@ -27,7 +27,7 @@ func (s *GroupChatService) UpdateMemberRole(ctx context.Context, requestorID uui
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	defer func() { _ = tx.Rollback() }()
@@ -44,7 +44,7 @@ func (s *GroupChatService) UpdateMemberRole(ctx context.Context, requestorID uui
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("Group chat not found")
 		}
-		slog.Error("Failed to query group chat", "error", err)
+		slog.ErrorContext(ctx, "Failed to query group chat", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -101,7 +101,7 @@ func (s *GroupChatService) UpdateMemberRole(ctx context.Context, requestorID uui
 
 	err = tx.GroupMember.UpdateOne(targetMember).SetRole(newRole).Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to update member role", "error", err)
+		slog.ErrorContext(ctx, "Failed to update member role", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -121,11 +121,11 @@ func (s *GroupChatService) UpdateMemberRole(ctx context.Context, requestorID uui
 		}).
 		Save(ctx)
 	if err != nil {
-		slog.Error("Failed to create system message for role update", "error", err)
+		slog.ErrorContext(ctx, "Failed to create system message for role update", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	if err := outbox.PersistMessageOutbox(ctx, tx, systemMsg, events.EventMessageNew, requestorID); err != nil {
-		slog.Error("Failed to persist system message outbox event", "error", err)
+		slog.ErrorContext(ctx, "Failed to persist system message outbox event", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -134,12 +134,12 @@ func (s *GroupChatService) UpdateMemberRole(ctx context.Context, requestorID uui
 		SetLastMessageAt(systemMsg.CreatedAt).
 		Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to update chat with last message", "error", err)
+		slog.ErrorContext(ctx, "Failed to update chat with last message", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -175,7 +175,7 @@ func (s *GroupChatService) TransferOwnership(ctx context.Context, requestorID uu
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	defer func() { _ = tx.Rollback() }()
@@ -192,7 +192,7 @@ func (s *GroupChatService) TransferOwnership(ctx context.Context, requestorID uu
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("Group chat not found")
 		}
-		slog.Error("Failed to query group chat", "error", err)
+		slog.ErrorContext(ctx, "Failed to query group chat", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -244,13 +244,13 @@ func (s *GroupChatService) TransferOwnership(ctx context.Context, requestorID uu
 
 	err = tx.GroupMember.UpdateOne(requestorMember).SetRole(groupmember.RoleAdmin).Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to demote old owner", "error", err)
+		slog.ErrorContext(ctx, "Failed to demote old owner", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	err = tx.GroupMember.UpdateOne(targetMember).SetRole(groupmember.RoleOwner).Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to promote new owner", "error", err)
+		slog.ErrorContext(ctx, "Failed to promote new owner", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -266,11 +266,11 @@ func (s *GroupChatService) TransferOwnership(ctx context.Context, requestorID uu
 		}).
 		Save(ctx)
 	if err != nil {
-		slog.Error("Failed to create system message for ownership transfer", "error", err)
+		slog.ErrorContext(ctx, "Failed to create system message for ownership transfer", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	if err := outbox.PersistMessageOutbox(ctx, tx, systemMsg, events.EventMessageNew, requestorID); err != nil {
-		slog.Error("Failed to persist system message outbox event", "error", err)
+		slog.ErrorContext(ctx, "Failed to persist system message outbox event", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -279,12 +279,12 @@ func (s *GroupChatService) TransferOwnership(ctx context.Context, requestorID uu
 		SetLastMessageAt(systemMsg.CreatedAt).
 		Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to update chat with last message", "error", err)
+		slog.ErrorContext(ctx, "Failed to update chat with last message", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 

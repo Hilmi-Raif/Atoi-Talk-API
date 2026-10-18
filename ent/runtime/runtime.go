@@ -4,12 +4,15 @@ package runtime
 
 import (
 	"AtoiTalkAPI/ent/chat"
+	"AtoiTalkAPI/ent/chatnotificationpreference"
 	"AtoiTalkAPI/ent/groupchat"
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/media"
 	"AtoiTalkAPI/ent/message"
 	"AtoiTalkAPI/ent/messageoutbox"
 	"AtoiTalkAPI/ent/privatechat"
+	"AtoiTalkAPI/ent/pushdelivery"
+	"AtoiTalkAPI/ent/pushdevice"
 	"AtoiTalkAPI/ent/report"
 	"AtoiTalkAPI/ent/schema"
 	"AtoiTalkAPI/ent/user"
@@ -43,6 +46,29 @@ func init() {
 	chatDescID := chatFields[0].Descriptor()
 	// chat.DefaultID holds the default value on creation for the id field.
 	chat.DefaultID = chatDescID.Default.(func() uuid.UUID)
+	chatnotificationpreferenceMixin := schema.ChatNotificationPreference{}.Mixin()
+	chatnotificationpreferenceMixinFields0 := chatnotificationpreferenceMixin[0].Fields()
+	_ = chatnotificationpreferenceMixinFields0
+	chatnotificationpreferenceFields := schema.ChatNotificationPreference{}.Fields()
+	_ = chatnotificationpreferenceFields
+	// chatnotificationpreferenceDescCreatedAt is the schema descriptor for created_at field.
+	chatnotificationpreferenceDescCreatedAt := chatnotificationpreferenceMixinFields0[0].Descriptor()
+	// chatnotificationpreference.DefaultCreatedAt holds the default value on creation for the created_at field.
+	chatnotificationpreference.DefaultCreatedAt = chatnotificationpreferenceDescCreatedAt.Default.(func() time.Time)
+	// chatnotificationpreferenceDescUpdatedAt is the schema descriptor for updated_at field.
+	chatnotificationpreferenceDescUpdatedAt := chatnotificationpreferenceMixinFields0[1].Descriptor()
+	// chatnotificationpreference.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	chatnotificationpreference.DefaultUpdatedAt = chatnotificationpreferenceDescUpdatedAt.Default.(func() time.Time)
+	// chatnotificationpreference.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	chatnotificationpreference.UpdateDefaultUpdatedAt = chatnotificationpreferenceDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// chatnotificationpreferenceDescMutedForever is the schema descriptor for muted_forever field.
+	chatnotificationpreferenceDescMutedForever := chatnotificationpreferenceFields[3].Descriptor()
+	// chatnotificationpreference.DefaultMutedForever holds the default value on creation for the muted_forever field.
+	chatnotificationpreference.DefaultMutedForever = chatnotificationpreferenceDescMutedForever.Default.(bool)
+	// chatnotificationpreferenceDescID is the schema descriptor for id field.
+	chatnotificationpreferenceDescID := chatnotificationpreferenceFields[0].Descriptor()
+	// chatnotificationpreference.DefaultID holds the default value on creation for the id field.
+	chatnotificationpreference.DefaultID = chatnotificationpreferenceDescID.Default.(func() uuid.UUID)
 	groupchatFields := schema.GroupChat{}.Fields()
 	_ = groupchatFields
 	// groupchatDescName is the schema descriptor for name field.
@@ -242,6 +268,82 @@ func init() {
 	privatechatDescID := privatechatFields[0].Descriptor()
 	// privatechat.DefaultID holds the default value on creation for the id field.
 	privatechat.DefaultID = privatechatDescID.Default.(func() uuid.UUID)
+	pushdeliveryMixin := schema.PushDelivery{}.Mixin()
+	pushdeliveryMixinFields0 := pushdeliveryMixin[0].Fields()
+	_ = pushdeliveryMixinFields0
+	pushdeliveryFields := schema.PushDelivery{}.Fields()
+	_ = pushdeliveryFields
+	// pushdeliveryDescCreatedAt is the schema descriptor for created_at field.
+	pushdeliveryDescCreatedAt := pushdeliveryMixinFields0[0].Descriptor()
+	// pushdelivery.DefaultCreatedAt holds the default value on creation for the created_at field.
+	pushdelivery.DefaultCreatedAt = pushdeliveryDescCreatedAt.Default.(func() time.Time)
+	// pushdeliveryDescUpdatedAt is the schema descriptor for updated_at field.
+	pushdeliveryDescUpdatedAt := pushdeliveryMixinFields0[1].Descriptor()
+	// pushdelivery.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	pushdelivery.DefaultUpdatedAt = pushdeliveryDescUpdatedAt.Default.(func() time.Time)
+	// pushdelivery.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	pushdelivery.UpdateDefaultUpdatedAt = pushdeliveryDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// pushdeliveryDescAvailableAt is the schema descriptor for available_at field.
+	pushdeliveryDescAvailableAt := pushdeliveryFields[7].Descriptor()
+	// pushdelivery.DefaultAvailableAt holds the default value on creation for the available_at field.
+	pushdelivery.DefaultAvailableAt = pushdeliveryDescAvailableAt.Default.(func() time.Time)
+	// pushdeliveryDescAttemptCount is the schema descriptor for attempt_count field.
+	pushdeliveryDescAttemptCount := pushdeliveryFields[9].Descriptor()
+	// pushdelivery.DefaultAttemptCount holds the default value on creation for the attempt_count field.
+	pushdelivery.DefaultAttemptCount = pushdeliveryDescAttemptCount.Default.(int)
+	// pushdeliveryDescOutcome is the schema descriptor for outcome field.
+	pushdeliveryDescOutcome := pushdeliveryFields[14].Descriptor()
+	// pushdelivery.DefaultOutcome holds the default value on creation for the outcome field.
+	pushdelivery.DefaultOutcome = pushdeliveryDescOutcome.Default.(string)
+	// pushdeliveryDescID is the schema descriptor for id field.
+	pushdeliveryDescID := pushdeliveryFields[0].Descriptor()
+	// pushdelivery.DefaultID holds the default value on creation for the id field.
+	pushdelivery.DefaultID = pushdeliveryDescID.Default.(func() uuid.UUID)
+	pushdeviceMixin := schema.PushDevice{}.Mixin()
+	pushdeviceMixinFields0 := pushdeviceMixin[0].Fields()
+	_ = pushdeviceMixinFields0
+	pushdeviceFields := schema.PushDevice{}.Fields()
+	_ = pushdeviceFields
+	// pushdeviceDescCreatedAt is the schema descriptor for created_at field.
+	pushdeviceDescCreatedAt := pushdeviceMixinFields0[0].Descriptor()
+	// pushdevice.DefaultCreatedAt holds the default value on creation for the created_at field.
+	pushdevice.DefaultCreatedAt = pushdeviceDescCreatedAt.Default.(func() time.Time)
+	// pushdeviceDescUpdatedAt is the schema descriptor for updated_at field.
+	pushdeviceDescUpdatedAt := pushdeviceMixinFields0[1].Descriptor()
+	// pushdevice.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	pushdevice.DefaultUpdatedAt = pushdeviceDescUpdatedAt.Default.(func() time.Time)
+	// pushdevice.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	pushdevice.UpdateDefaultUpdatedAt = pushdeviceDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// pushdeviceDescToken is the schema descriptor for token field.
+	pushdeviceDescToken := pushdeviceFields[3].Descriptor()
+	// pushdevice.TokenValidator is a validator for the "token" field. It is called by the builders before save.
+	pushdevice.TokenValidator = func() func(string) error {
+		validators := pushdeviceDescToken.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(token string) error {
+			for _, fn := range fns {
+				if err := fn(token); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// pushdeviceDescSessionHash is the schema descriptor for session_hash field.
+	pushdeviceDescSessionHash := pushdeviceFields[5].Descriptor()
+	// pushdevice.SessionHashValidator is a validator for the "session_hash" field. It is called by the builders before save.
+	pushdevice.SessionHashValidator = pushdeviceDescSessionHash.Validators[0].(func(string) error)
+	// pushdeviceDescSecretHash is the schema descriptor for secret_hash field.
+	pushdeviceDescSecretHash := pushdeviceFields[6].Descriptor()
+	// pushdevice.SecretHashValidator is a validator for the "secret_hash" field. It is called by the builders before save.
+	pushdevice.SecretHashValidator = pushdeviceDescSecretHash.Validators[0].(func(string) error)
+	// pushdeviceDescID is the schema descriptor for id field.
+	pushdeviceDescID := pushdeviceFields[0].Descriptor()
+	// pushdevice.DefaultID holds the default value on creation for the id field.
+	pushdevice.DefaultID = pushdeviceDescID.Default.(func() uuid.UUID)
 	reportFields := schema.Report{}.Fields()
 	_ = reportFields
 	// reportDescReason is the schema descriptor for reason field.
@@ -301,6 +403,10 @@ func init() {
 	userDescIsBanned := userFields[10].Descriptor()
 	// user.DefaultIsBanned holds the default value on creation for the is_banned field.
 	user.DefaultIsBanned = userDescIsBanned.Default.(bool)
+	// userDescMessageNotificationsEnabled is the schema descriptor for message_notifications_enabled field.
+	userDescMessageNotificationsEnabled := userFields[11].Descriptor()
+	// user.DefaultMessageNotificationsEnabled holds the default value on creation for the message_notifications_enabled field.
+	user.DefaultMessageNotificationsEnabled = userDescMessageNotificationsEnabled.Default.(bool)
 	// userDescID is the schema descriptor for id field.
 	userDescID := userFields[0].Descriptor()
 	// user.DefaultID holds the default value on creation for the id field.

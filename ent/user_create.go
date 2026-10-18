@@ -200,6 +200,20 @@ func (_c *UserCreate) SetNillableIsBanned(v *bool) *UserCreate {
 	return _c
 }
 
+// SetMessageNotificationsEnabled sets the "message_notifications_enabled" field.
+func (_c *UserCreate) SetMessageNotificationsEnabled(v bool) *UserCreate {
+	_c.mutation.SetMessageNotificationsEnabled(v)
+	return _c
+}
+
+// SetNillableMessageNotificationsEnabled sets the "message_notifications_enabled" field if the given value is not nil.
+func (_c *UserCreate) SetNillableMessageNotificationsEnabled(v *bool) *UserCreate {
+	if v != nil {
+		_c.SetMessageNotificationsEnabled(*v)
+	}
+	return _c
+}
+
 // SetBannedUntil sets the "banned_until" field.
 func (_c *UserCreate) SetBannedUntil(v time.Time) *UserCreate {
 	_c.mutation.SetBannedUntil(v)
@@ -463,6 +477,10 @@ func (_c *UserCreate) defaults() {
 		v := user.DefaultIsBanned
 		_c.mutation.SetIsBanned(v)
 	}
+	if _, ok := _c.mutation.MessageNotificationsEnabled(); !ok {
+		v := user.DefaultMessageNotificationsEnabled
+		_c.mutation.SetMessageNotificationsEnabled(v)
+	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := user.DefaultID()
 		_c.mutation.SetID(v)
@@ -512,6 +530,9 @@ func (_c *UserCreate) check() error {
 	}
 	if _, ok := _c.mutation.IsBanned(); !ok {
 		return &ValidationError{Name: "is_banned", err: errors.New(`ent: missing required field "User.is_banned"`)}
+	}
+	if _, ok := _c.mutation.MessageNotificationsEnabled(); !ok {
+		return &ValidationError{Name: "message_notifications_enabled", err: errors.New(`ent: missing required field "User.message_notifications_enabled"`)}
 	}
 	return nil
 }
@@ -592,6 +613,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.IsBanned(); ok {
 		_spec.SetField(user.FieldIsBanned, field.TypeBool, value)
 		_node.IsBanned = value
+	}
+	if value, ok := _c.mutation.MessageNotificationsEnabled(); ok {
+		_spec.SetField(user.FieldMessageNotificationsEnabled, field.TypeBool, value)
+		_node.MessageNotificationsEnabled = value
 	}
 	if value, ok := _c.mutation.BannedUntil(); ok {
 		_spec.SetField(user.FieldBannedUntil, field.TypeTime, value)
@@ -1026,6 +1051,18 @@ func (u *UserUpsert) UpdateIsBanned() *UserUpsert {
 	return u
 }
 
+// SetMessageNotificationsEnabled sets the "message_notifications_enabled" field.
+func (u *UserUpsert) SetMessageNotificationsEnabled(v bool) *UserUpsert {
+	u.Set(user.FieldMessageNotificationsEnabled, v)
+	return u
+}
+
+// UpdateMessageNotificationsEnabled sets the "message_notifications_enabled" field to the value that was provided on create.
+func (u *UserUpsert) UpdateMessageNotificationsEnabled() *UserUpsert {
+	u.SetExcluded(user.FieldMessageNotificationsEnabled)
+	return u
+}
+
 // SetBannedUntil sets the "banned_until" field.
 func (u *UserUpsert) SetBannedUntil(v time.Time) *UserUpsert {
 	u.Set(user.FieldBannedUntil, v)
@@ -1320,6 +1357,20 @@ func (u *UserUpsertOne) SetIsBanned(v bool) *UserUpsertOne {
 func (u *UserUpsertOne) UpdateIsBanned() *UserUpsertOne {
 	return u.Update(func(s *UserUpsert) {
 		s.UpdateIsBanned()
+	})
+}
+
+// SetMessageNotificationsEnabled sets the "message_notifications_enabled" field.
+func (u *UserUpsertOne) SetMessageNotificationsEnabled(v bool) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetMessageNotificationsEnabled(v)
+	})
+}
+
+// UpdateMessageNotificationsEnabled sets the "message_notifications_enabled" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateMessageNotificationsEnabled() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateMessageNotificationsEnabled()
 	})
 }
 
@@ -1790,6 +1841,20 @@ func (u *UserUpsertBulk) SetIsBanned(v bool) *UserUpsertBulk {
 func (u *UserUpsertBulk) UpdateIsBanned() *UserUpsertBulk {
 	return u.Update(func(s *UserUpsert) {
 		s.UpdateIsBanned()
+	})
+}
+
+// SetMessageNotificationsEnabled sets the "message_notifications_enabled" field.
+func (u *UserUpsertBulk) SetMessageNotificationsEnabled(v bool) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetMessageNotificationsEnabled(v)
+	})
+}
+
+// UpdateMessageNotificationsEnabled sets the "message_notifications_enabled" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateMessageNotificationsEnabled() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateMessageNotificationsEnabled()
 	})
 }
 

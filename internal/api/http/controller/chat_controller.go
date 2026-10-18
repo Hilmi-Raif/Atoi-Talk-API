@@ -34,11 +34,11 @@ func NewChatController(chatService chatService) *ChatController {
 // @Param        query query string false "Search query for chat name"
 // @Param        cursor query string false "Pagination cursor"
 // @Param        limit query int false "Number of items per page (default 20, max 50)"
-// @Success      200  {object}  helper.ResponseWithPagination{data=[]model.ChatListResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseWithPagination{data=[]model.ChatListResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats [get]
 func (c *ChatController) GetChats(w http.ResponseWriter, r *http.Request) {
@@ -84,12 +84,12 @@ func (c *ChatController) GetChats(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Param        id path string true "Chat ID (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.ChatListResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.ChatListResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/{id} [get]
 func (c *ChatController) GetChat(w http.ResponseWriter, r *http.Request) {
@@ -122,12 +122,12 @@ func (c *ChatController) GetChat(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Param        id path string true "Chat ID (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/{id}/read [post]
 func (c *ChatController) MarkAsRead(w http.ResponseWriter, r *http.Request) {
@@ -160,12 +160,12 @@ func (c *ChatController) MarkAsRead(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Param        id path string true "Chat ID (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/{id}/hide [post]
 func (c *ChatController) HideChat(w http.ResponseWriter, r *http.Request) {

@@ -91,7 +91,7 @@ func (s *GroupChatService) getGroupLastMessageResponse(ctx context.Context, chat
 		First(ctx)
 	if err != nil {
 		if !ent.IsNotFound(err) {
-			slog.Error("Failed to fetch group last message", "error", err, "chatID", chatID)
+			slog.ErrorContext(ctx, "Failed to fetch group last message", "error", err, "chatID", chatID)
 		}
 		return nil
 	}
@@ -118,7 +118,7 @@ func (s *GroupChatService) CreateGroupChat(ctx context.Context, creatorID uuid.U
 	req.Description = strings.TrimSpace(req.Description)
 
 	if err := s.validator.Struct(req); err != nil {
-		slog.Warn("Validation failed for CreateGroupChat", "error", err)
+		slog.WarnContext(ctx, "Validation failed for CreateGroupChat", "error", err)
 		return nil, helper.NewBadRequestError("")
 	}
 	if len(req.MemberIDs) >= constant.MaxGroupMembers {
@@ -136,7 +136,7 @@ func (s *GroupChatService) CreateGroupChat(ctx context.Context, creatorID uuid.U
 		Select(user.FieldID, user.FieldIsBanned, user.FieldBannedUntil).
 		All(ctx)
 	if err != nil {
-		slog.Error("Failed to query users for group creation", "error", err)
+		slog.ErrorContext(ctx, "Failed to query users for group creation", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -166,7 +166,7 @@ func (s *GroupChatService) CreateGroupChat(ctx context.Context, creatorID uuid.U
 		),
 	).Exist(ctx)
 	if err != nil {
-		slog.Error("Failed to check block status for group creation", "error", err)
+		slog.ErrorContext(ctx, "Failed to check block status for group creation", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	if blocked {
@@ -175,7 +175,7 @@ func (s *GroupChatService) CreateGroupChat(ctx context.Context, creatorID uuid.U
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	defer func() { _ = tx.Rollback() }()
@@ -198,20 +198,20 @@ func (s *GroupChatService) CreateGroupChat(ctx context.Context, creatorID uuid.U
 			if ent.IsNotFound(err) {
 				return nil, helper.NewBadRequestError("Invalid avatar media")
 			}
-			slog.Error("Failed to query group avatar media", "error", err, "mediaID", *req.AvatarMediaID)
+			slog.ErrorContext(ctx, "Failed to query group avatar media", "error", err, "mediaID", *req.AvatarMediaID)
 			return nil, helper.NewInternalServerError("")
 		}
 	}
 
 	newChat, err := tx.Chat.Create().SetType(chat.TypeGroup).Save(ctx)
 	if err != nil {
-		slog.Error("Failed to create chat entity for group", "error", err)
+		slog.ErrorContext(ctx, "Failed to create chat entity for group", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	inviteCode, err := helper.GenerateRandomString(12)
 	if err != nil {
-		slog.Error("Failed to generate invite code for group creation", "error", err)
+		slog.ErrorContext(ctx, "Failed to generate invite code for group creation", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -233,7 +233,7 @@ func (s *GroupChatService) CreateGroupChat(ctx context.Context, creatorID uuid.U
 
 	newGroupChat, err := groupCreate.Save(ctx)
 	if err != nil {
-		slog.Error("Failed to create group chat", "error", err)
+		slog.ErrorContext(ctx, "Failed to create group chat", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -251,7 +251,7 @@ func (s *GroupChatService) CreateGroupChat(ctx context.Context, creatorID uuid.U
 			SetRole(groupmember.RoleMember))
 	}
 	if err := tx.GroupMember.CreateBulk(memberCreates...).Exec(ctx); err != nil {
-		slog.Error("Failed to create group members", "error", err)
+		slog.ErrorContext(ctx, "Failed to create group members", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -264,11 +264,11 @@ func (s *GroupChatService) CreateGroupChat(ctx context.Context, creatorID uuid.U
 		}).
 		Save(ctx)
 	if err != nil {
-		slog.Error("Failed to create system message for group creation", "error", err)
+		slog.ErrorContext(ctx, "Failed to create system message for group creation", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	if err := outbox.PersistMessageOutbox(ctx, tx, systemMsg, events.EventMessageNew, creatorID); err != nil {
-		slog.Error("Failed to persist system message outbox event", "error", err)
+		slog.ErrorContext(ctx, "Failed to persist system message outbox event", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -277,12 +277,12 @@ func (s *GroupChatService) CreateGroupChat(ctx context.Context, creatorID uuid.U
 		SetLastMessageAt(systemMsg.CreatedAt).
 		Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to update chat with last message", "error", err)
+		slog.ErrorContext(ctx, "Failed to update chat with last message", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction for group creation", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction for group creation", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -362,7 +362,7 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	defer func() { _ = tx.Rollback() }()
@@ -379,7 +379,7 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("Group chat not found")
 		}
-		slog.Error("Failed to query group chat", "error", err)
+		slog.ErrorContext(ctx, "Failed to query group chat", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -395,7 +395,7 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 			if ent.IsNotFound(err) {
 				return nil, helper.NewForbiddenError("You are not a member of this group")
 			}
-			slog.Error("Failed to query requestor membership", "error", err)
+			slog.ErrorContext(ctx, "Failed to query requestor membership", "error", err)
 			return nil, helper.NewInternalServerError("")
 		}
 
@@ -454,7 +454,7 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 
 			newCode, err := helper.GenerateRandomString(12)
 			if err != nil {
-				slog.Error("Failed to generate invite code while switching group to private", "error", err)
+				slog.ErrorContext(ctx, "Failed to generate invite code while switching group to private", "error", err)
 				return nil, helper.NewInternalServerError("")
 			}
 			update.SetInviteCode(newCode)
@@ -499,7 +499,7 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 			if ent.IsNotFound(err) {
 				return nil, helper.NewBadRequestError("Invalid avatar media")
 			}
-			slog.Error("Failed to query group avatar media", "error", err, "mediaID", *req.AvatarMediaID)
+			slog.ErrorContext(ctx, "Failed to query group avatar media", "error", err, "mediaID", *req.AvatarMediaID)
 			return nil, helper.NewInternalServerError("")
 		}
 
@@ -520,7 +520,7 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 			Where(groupmember.GroupChatID(gc.ID), groupmember.HasUserWith(user.DeletedAtIsNil())).
 			Count(ctx)
 		if err != nil {
-			slog.Error("Failed to count group members", "error", err, "groupID", gc.ID)
+			slog.ErrorContext(ctx, "Failed to count group members", "error", err, "groupID", gc.ID)
 		}
 		resp := s.buildGroupChatListResponse(gc, &requestorRole, nil, memberCount)
 		return &resp, nil
@@ -528,7 +528,7 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 
 	updatedGroup, err := update.Save(ctx)
 	if err != nil {
-		slog.Error("Failed to update group chat", "error", err)
+		slog.ErrorContext(ctx, "Failed to update group chat", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -536,13 +536,13 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 	if len(systemMessages) > 0 {
 		msgs, err := tx.Message.CreateBulk(systemMessages...).Save(ctx)
 		if err != nil {
-			slog.Error("Failed to create system messages", "error", err)
+			slog.ErrorContext(ctx, "Failed to create system messages", "error", err)
 			return nil, helper.NewInternalServerError("")
 		}
 		createdSystemMessages = msgs
 		lastSystemMsg := msgs[len(msgs)-1]
 		if err := outbox.PersistMessageOutboxes(ctx, tx, msgs, events.EventMessageNew, requestorID); err != nil {
-			slog.Error("Failed to persist system message outbox events", "error", err)
+			slog.ErrorContext(ctx, "Failed to persist system message outbox events", "error", err)
 			return nil, helper.NewInternalServerError("")
 		}
 
@@ -551,13 +551,13 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 			SetLastMessageAt(lastSystemMsg.CreatedAt).
 			Exec(ctx)
 		if err != nil {
-			slog.Error("Failed to update chat last message", "error", err)
+			slog.ErrorContext(ctx, "Failed to update chat last message", "error", err)
 			return nil, helper.NewInternalServerError("")
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -573,7 +573,7 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 				WithSender().
 				All(context.Background())
 			if err != nil {
-				slog.Error("Failed to fetch system messages for broadcast", "error", err, "messageIDs", msgIDs)
+				slog.ErrorContext(ctx, "Failed to fetch system messages for broadcast", "error", err, "messageIDs", msgIDs)
 				return
 			}
 
@@ -588,7 +588,7 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 				Only(context.Background())
 
 			if err != nil {
-				slog.Error("Failed to fetch updated group for broadcast", "error", err)
+				slog.ErrorContext(ctx, "Failed to fetch updated group for broadcast", "error", err)
 				return
 			}
 
@@ -599,14 +599,14 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 				All(context.Background())
 
 			if err != nil {
-				slog.Error("Failed to fetch group members for chat update broadcast", "error", err, "groupID", gc.ID)
+				slog.ErrorContext(ctx, "Failed to fetch group members for chat update broadcast", "error", err, "groupID", gc.ID)
 				return
 			}
 			memberCount, err := s.client.GroupMember.Query().
 				Where(groupmember.GroupChatID(gc.ID), groupmember.HasUserWith(user.DeletedAtIsNil())).
 				Count(context.Background())
 			if err != nil {
-				slog.Error("Failed to count group members for chat update broadcast", "error", err, "groupID", gc.ID)
+				slog.ErrorContext(ctx, "Failed to count group members for chat update broadcast", "error", err, "groupID", gc.ID)
 			}
 
 			for _, m := range members {
@@ -630,7 +630,7 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 		WithAvatar().
 		Only(context.Background())
 	if err != nil {
-		slog.Error("Failed to fetch updated group for response", "error", err, "groupID", updatedGroup.ID)
+		slog.ErrorContext(ctx, "Failed to fetch updated group for response", "error", err, "groupID", updatedGroup.ID)
 		return nil, helper.NewInternalServerError("")
 	}
 	var lastMsgResponse *model.MessageResponse
@@ -641,7 +641,7 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 		Where(groupmember.GroupChatID(updatedGroupWithAvatar.ID), groupmember.HasUserWith(user.DeletedAtIsNil())).
 		Count(ctx)
 	if err != nil {
-		slog.Error("Failed to count group members for response", "error", err, "groupID", updatedGroupWithAvatar.ID)
+		slog.ErrorContext(ctx, "Failed to count group members for response", "error", err, "groupID", updatedGroupWithAvatar.ID)
 	}
 	resp := s.buildGroupChatListResponse(updatedGroupWithAvatar, &requestorRole, lastMsgResponse, memberCount)
 	return &resp, nil
@@ -650,7 +650,7 @@ func (s *GroupChatService) UpdateGroupChat(ctx context.Context, requestorID uuid
 func (s *GroupChatService) DeleteGroup(ctx context.Context, userID, groupID uuid.UUID, isAdmin bool) error {
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return helper.NewInternalServerError("")
 	}
 	defer func() { _ = tx.Rollback() }()
@@ -666,7 +666,7 @@ func (s *GroupChatService) DeleteGroup(ctx context.Context, userID, groupID uuid
 		if ent.IsNotFound(err) {
 			return helper.NewNotFoundError("Group chat not found")
 		}
-		slog.Error("Failed to query group chat", "error", err)
+		slog.ErrorContext(ctx, "Failed to query group chat", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -681,7 +681,7 @@ func (s *GroupChatService) DeleteGroup(ctx context.Context, userID, groupID uuid
 			if ent.IsNotFound(err) {
 				return helper.NewForbiddenError("You are not a member of this group")
 			}
-			slog.Error("Failed to query requestor membership", "error", err)
+			slog.ErrorContext(ctx, "Failed to query requestor membership", "error", err)
 			return helper.NewInternalServerError("")
 		}
 
@@ -692,12 +692,12 @@ func (s *GroupChatService) DeleteGroup(ctx context.Context, userID, groupID uuid
 
 	err = tx.Chat.UpdateOneID(groupID).SetDeletedAt(time.Now().UTC()).Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to soft delete chat", "error", err)
+		slog.ErrorContext(ctx, "Failed to soft delete chat", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -709,7 +709,7 @@ func (s *GroupChatService) DeleteGroup(ctx context.Context, userID, groupID uuid
 		Where(groupmember.GroupChatID(gc.ID)).
 		All(context.Background())
 	if err != nil {
-		slog.Error("Failed to fetch group members after delete", "error", err, "groupID", groupID)
+		slog.ErrorContext(ctx, "Failed to fetch group members after delete", "error", err, "groupID", groupID)
 		return nil
 	}
 

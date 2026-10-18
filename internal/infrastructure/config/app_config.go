@@ -12,6 +12,8 @@ import (
 )
 
 type AppConfig struct {
+	PushEnabled           bool
+	FCMProjectID          string
 	AppPort               string
 	RealtimePort          string
 	AppEnv                string
@@ -114,6 +116,8 @@ func LoadAppConfig() *AppConfig {
 	}
 
 	cfg := &AppConfig{
+		PushEnabled:           getEnvAsBool("PUSH_ENABLED", false),
+		FCMProjectID:          getEnv("FCM_PROJECT_ID", ""),
 		AppPort:               getEnv("APP_PORT", "8080"),
 		RealtimePort:          getEnv("REALTIME_PORT", "8081"),
 		AppEnv:                getEnv("APP_ENV", "development"),

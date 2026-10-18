@@ -12,23 +12,35 @@ import (
 )
 
 type Route struct {
-	cfg                   *config.AppConfig
-	chi                   *chi.Mux
-	authController        *controller.AuthController
-	otpController         *controller.OTPController
-	userController        *controller.UserController
-	accountController     *controller.AccountController
-	chatController        *controller.ChatController
-	privateChatController *controller.PrivateChatController
-	groupChatController   *controller.GroupChatController
-	messageController     *controller.MessageController
-	mediaController       *controller.MediaController
-	reportController      *controller.ReportController
-	adminController       *controller.AdminController
-	authMiddleware        *middleware.AuthMiddleware
-	rateLimitMiddleware   *middleware.RateLimitMiddleware
-	dbCheck               observability.CheckFunc
-	redisCheck            observability.CheckFunc
+	cfg                    *config.AppConfig
+	chi                    *chi.Mux
+	authController         *controller.AuthController
+	otpController          *controller.OTPController
+	userController         *controller.UserController
+	accountController      *controller.AccountController
+	chatController         *controller.ChatController
+	privateChatController  *controller.PrivateChatController
+	groupChatController    *controller.GroupChatController
+	messageController      *controller.MessageController
+	mediaController        *controller.MediaController
+	reportController       *controller.ReportController
+	adminController        *controller.AdminController
+	authMiddleware         *middleware.AuthMiddleware
+	rateLimitMiddleware    *middleware.RateLimitMiddleware
+	dbCheck                observability.CheckFunc
+	redisCheck             observability.CheckFunc
+	pushController         *controller.PushController
+	notificationController *controller.NotificationController
+}
+
+func (route *Route) WithNotifications(c *controller.NotificationController) *Route {
+	route.notificationController = c
+	return route
+}
+
+func (route *Route) WithPush(controller *controller.PushController) *Route {
+	route.pushController = controller
+	return route
 }
 
 func NewRoute(cfg *config.AppConfig, chi *chi.Mux, authController *controller.AuthController, otpController *controller.OTPController, userController *controller.UserController, accountController *controller.AccountController, chatController *controller.ChatController, privateChatController *controller.PrivateChatController, groupChatController *controller.GroupChatController, messageController *controller.MessageController, mediaController *controller.MediaController, reportController *controller.ReportController, adminController *controller.AdminController, authMiddleware *middleware.AuthMiddleware, rateLimitMiddleware *middleware.RateLimitMiddleware, dbCheck observability.CheckFunc, redisCheck observability.CheckFunc) *Route {
@@ -87,6 +99,24 @@ func (route *Route) Register() {
 		r.Group(func(r chi.Router) {
 			r.Use(route.authMiddleware.VerifyToken)
 			r.Use(route.rateLimitMiddleware.Limit("auth_verify", 1000, time.Minute))
+
+			if route.notificationController != nil {
+				r.Group(func(r chi.Router) {
+					r.Use(middleware.MaxBodySize(4 * 1024))
+					r.Get("/notifications", route.notificationController.Settings)
+					r.Get("/notifications/muted-chats", route.notificationController.MutedChats)
+					r.Put("/notifications", route.notificationController.Settings)
+					r.Put("/chats/{chatID}/notifications", route.notificationController.Chat)
+				})
+			}
+			if route.pushController != nil {
+				r.Group(func(r chi.Router) {
+					r.Use(middleware.MaxBodySize(16 * 1024))
+					r.Use(route.rateLimitMiddleware.Limit("push_devices", 30, time.Minute))
+					r.Put("/push/devices/{installationID}", route.pushController.Device)
+					r.Delete("/push/devices/{installationID}", route.pushController.Device)
+				})
+			}
 
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.MaxBodySize(100 * 1024))

@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/google/uuid"
+	"time"
 )
 
 type CreatePrivateChatRequest struct {
@@ -15,6 +16,8 @@ type ChatResponse struct {
 }
 
 type ChatListResponse struct {
+	MutedForever       bool             `json:"muted_forever"`
+	MutedUntil         *time.Time       `json:"muted_until"`
 	ID                 uuid.UUID        `json:"id"`
 	Type               string           `json:"type"`
 	Name               string           `json:"name"`

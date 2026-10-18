@@ -7,6 +7,7 @@ import (
 	"AtoiTalkAPI/internal/messaging/events"
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -143,6 +144,7 @@ func (w *Worker) ProcessBatch(ctx context.Context) (int, error) {
 	started := time.Now()
 	records, err := w.store.Claim(ctx, w.config.BatchSize, w.config.LeaseDuration)
 	if err != nil {
+		slog.ErrorContext(ctx, "Outbox claim failed", "stage", "claim", "outcome", "failed")
 		w.recordFailure(ctx, "claim")
 		w.recordBatchMetrics(ctx, 0, 0, 1, started)
 		return 0, err
@@ -239,6 +241,10 @@ func (w *Worker) recordBacklog(ctx context.Context) {
 }
 
 func (w *Worker) processRecord(ctx context.Context, record OutboxRecord) error {
+	parent, _ := record.Payload[observability.TraceParentKey].(string)
+	ctx, span := observability.StartServiceSpan(observability.WithTraceParent(ctx, parent), "message_worker.process")
+	defer span.End()
+	logger := slog.Default().With("outbox_id", record.ID, "event_id", record.ID, "message_id", record.MessageID, "attempt", record.AttemptCount)
 	stage := "project"
 	err := w.store.Project(ctx, record)
 	if err == nil {
@@ -255,8 +261,10 @@ func (w *Worker) processRecord(ctx context.Context, record OutboxRecord) error {
 		}
 	}
 	if err != nil {
+		observability.RecordError(span, fmt.Errorf("outbox stage %s failed", stage))
 		w.recordFailure(ctx, stage)
 		if record.AttemptCount >= w.config.MaxAttempts {
+			logger.ErrorContext(ctx, "Outbox exhausted retries", "stage", stage, "outcome", "dead_letter", "error_type", fmt.Sprintf("%T", err))
 			markErr := w.store.MarkDeadLetter(ctx, record.ID, recordLockToken(record), err, time.Now().UTC())
 			if markErr != nil {
 				return fmt.Errorf("process outbox record: %w (mark dead letter: %v)", err, markErr)
@@ -264,7 +272,9 @@ func (w *Worker) processRecord(ctx context.Context, record OutboxRecord) error {
 			return err
 		}
 		retryDelay := helper.BackoffDelay(record.AttemptCount-1, w.config.RetryBaseDelay, w.config.RetryMaxDelay)
-		markErr := w.store.MarkFailed(ctx, record.ID, recordLockToken(record), err, time.Now().UTC().Add(retryDelay))
+		retryAt := time.Now().UTC().Add(retryDelay)
+		logger.WarnContext(ctx, "Outbox retry scheduled", "stage", stage, "outcome", "pending", "retry_at", retryAt, "error_type", fmt.Sprintf("%T", err))
+		markErr := w.store.MarkFailed(ctx, record.ID, recordLockToken(record), err, retryAt)
 		if markErr != nil {
 			return fmt.Errorf("process outbox record: %w (mark failed: %v)", err, markErr)
 		}
@@ -272,9 +282,11 @@ func (w *Worker) processRecord(ctx context.Context, record OutboxRecord) error {
 	}
 
 	if err := w.store.MarkPublished(ctx, record.ID, recordLockToken(record), time.Now().UTC()); err != nil {
+		logger.ErrorContext(ctx, "Outbox completion failed", "stage", "mark", "outcome", "failed")
 		w.recordFailure(ctx, "mark")
 		return fmt.Errorf("mark outbox record published: %w", err)
 	}
+	logger.DebugContext(ctx, "Outbox published", "stage", "finish", "outcome", "published")
 	return nil
 }
 

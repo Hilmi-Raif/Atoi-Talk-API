@@ -4,8 +4,9 @@ import (
 	"AtoiTalkAPI/internal/bootstrap"
 	"AtoiTalkAPI/internal/infrastructure/config"
 	"AtoiTalkAPI/internal/infrastructure/object_storage"
+	"AtoiTalkAPI/internal/infrastructure/observability"
 	"AtoiTalkAPI/internal/infrastructure/redis"
-	"AtoiTalkAPI/internal/messaging/message_worker"
+	"AtoiTalkAPI/internal/message_worker"
 	"context"
 	"log/slog"
 	"os"
@@ -15,7 +16,7 @@ import (
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger := observability.NewLogger(os.Stdout, "production", "message-worker", "unknown")
 	slog.SetDefault(logger)
 
 	cfg := config.LoadAppConfig()
@@ -49,6 +50,7 @@ func main() {
 	storageAdapter := objectstorage.NewStorageAdapter(cfg, s3Client, config.NewHTTPClient())
 
 	store := messageworker.NewEntOutboxStoreWithURLGenerator(entClient, storageAdapter)
+	store.EnablePush(cfg.PushEnabled)
 	publisher := redis.NewRedisStreamPublisherWithDedupeTTL(
 		redisAdapter.Client(),
 		cfg.MessageEventStream,

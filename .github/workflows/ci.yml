@@ -49,7 +49,10 @@ jobs:
                - 'internal/infrastructure/redis/redis_stream.go'
              worker:
                - 'cmd/message_worker/**'
-               - 'internal/messaging/message_worker/**'
+               - 'internal/message_worker/**'
+               - 'internal/push_worker/**'
+               - 'cmd/push_worker/**'
+               - 'build/package/push_worker/Dockerfile'
                - 'internal/messaging/events/**'
              scheduler:
                - 'cmd/scheduler/**'
@@ -380,6 +383,39 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  build_push:
+    name: Build Push Worker Image
+    needs: [changes, quality, unit, integration, coverage]
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.build_worker == 'true') && needs.quality.result == 'success' && needs.unit.result == 'success' && needs.integration.result == 'success' && needs.coverage.result == 'success' }}
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/metadata-action@v5
+        id: metadata
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/atoitalk-push-worker
+          tags: type=sha,prefix=sha-
+      - name: Log in to GitHub Container Registry
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: build/package/push_worker/Dockerfile
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   build_gateway:
     name: Build WebSocket Gateway Image
     needs: [changes, quality, unit, integration, coverage]
@@ -416,7 +452,7 @@ jobs:
   gate:
     name: Selective CI Gate
     if: ${{ always() }}
-    needs: [changes, quality, unit, integration, coverage, build_api, build_scheduler, build_worker, build_gateway]
+    needs: [changes, quality, unit, integration, coverage, build_api, build_scheduler, build_worker, build_push, build_gateway]
     runs-on: ubuntu-latest
     steps:
       - name: Check Impacted Job Results
@@ -436,6 +472,7 @@ jobs:
           COVERAGE_RESULT: ${{ needs.coverage.result }}
           API_RESULT: ${{ needs.build_api.result }}
           SCHEDULER_RESULT: ${{ needs.build_scheduler.result }}
+          PUSH_RESULT: ${{ needs.build_push.result }}
           WORKER_RESULT: ${{ needs.build_worker.result }}
           GATEWAY_RESULT: ${{ needs.build_gateway.result }}
         shell: bash
@@ -457,6 +494,7 @@ jobs:
           check_required "$COVERAGE_REQUIRED" "$COVERAGE_RESULT" coverage
           check_required "$API_REQUIRED" "$API_RESULT" build_api
           check_required "$SCHEDULER_REQUIRED" "$SCHEDULER_RESULT" build_scheduler
+          check_required "$WORKER_REQUIRED" "$PUSH_RESULT" build_push
           check_required "$WORKER_REQUIRED" "$WORKER_RESULT" build_worker
           check_required "$GATEWAY_REQUIRED" "$GATEWAY_RESULT" build_gateway
           exit "$failed"

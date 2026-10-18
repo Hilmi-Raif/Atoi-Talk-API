@@ -23,7 +23,7 @@ import (
 func (s *GroupChatService) JoinGroupByInvite(ctx context.Context, userID uuid.UUID, inviteCode string) (*model.ChatListResponse, error) {
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	defer func() { _ = tx.Rollback() }()
@@ -41,7 +41,7 @@ func (s *GroupChatService) JoinGroupByInvite(ctx context.Context, userID uuid.UU
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("Invalid invite code")
 		}
-		slog.Error("Failed to query group chat by invite code", "error", err)
+		slog.ErrorContext(ctx, "Failed to query group chat by invite code", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -59,7 +59,7 @@ func (s *GroupChatService) JoinGroupByInvite(ctx context.Context, userID uuid.UU
 		).
 		Exist(ctx)
 	if err != nil {
-		slog.Error("Failed to check membership", "error", err)
+		slog.ErrorContext(ctx, "Failed to check membership", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	if isMember {
@@ -75,7 +75,7 @@ func (s *GroupChatService) JoinGroupByInvite(ctx context.Context, userID uuid.UU
 		SetRole(groupmember.RoleMember).
 		Save(ctx)
 	if err != nil {
-		slog.Error("Failed to add member via invite", "error", err)
+		slog.ErrorContext(ctx, "Failed to add member via invite", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -85,11 +85,11 @@ func (s *GroupChatService) JoinGroupByInvite(ctx context.Context, userID uuid.UU
 		SetType(message.TypeSystemJoin).
 		Save(ctx)
 	if err != nil {
-		slog.Error("Failed to create system message for invite join", "error", err)
+		slog.ErrorContext(ctx, "Failed to create system message for invite join", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	if err := outbox.PersistMessageOutbox(ctx, tx, systemMsg, events.EventMessageNew, userID); err != nil {
-		slog.Error("Failed to persist system message outbox event", "error", err)
+		slog.ErrorContext(ctx, "Failed to persist system message outbox event", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -98,12 +98,12 @@ func (s *GroupChatService) JoinGroupByInvite(ctx context.Context, userID uuid.UU
 		SetLastMessageAt(systemMsg.CreatedAt).
 		Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to update chat with last message", "error", err)
+		slog.ErrorContext(ctx, "Failed to update chat with last message", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -131,7 +131,7 @@ func (s *GroupChatService) JoinGroupByInvite(ctx context.Context, userID uuid.UU
 		).
 		Count(ctx)
 	if err != nil {
-		slog.Error("Failed to count group members after join", "error", err)
+		slog.ErrorContext(ctx, "Failed to count group members after join", "error", err)
 	}
 
 	if msgResponse != nil {
@@ -200,7 +200,7 @@ func (s *GroupChatService) GetGroupByInviteCode(ctx context.Context, inviteCode 
 		).
 		Count(ctx)
 	if err != nil {
-		slog.Error("Failed to count group members", "error", err)
+		slog.ErrorContext(ctx, "Failed to count group members", "error", err)
 	}
 
 	avatarURL := ""
@@ -254,7 +254,7 @@ func (s *GroupChatService) ResetInviteCode(ctx context.Context, userID, groupID 
 
 	newCode, err := helper.GenerateRandomString(12)
 	if err != nil {
-		slog.Error("Failed to generate new invite code", "error", err, "groupID", gc.ID)
+		slog.ErrorContext(ctx, "Failed to generate new invite code", "error", err, "groupID", gc.ID)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -273,7 +273,7 @@ func (s *GroupChatService) ResetInviteCode(ctx context.Context, userID, groupID 
 
 	_, err = update.Save(ctx)
 	if err != nil {
-		slog.Error("Failed to reset invite code", "error", err)
+		slog.ErrorContext(ctx, "Failed to reset invite code", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -290,7 +290,7 @@ func (s *GroupChatService) ResetInviteCode(ctx context.Context, userID, groupID 
 				WithAvatar().
 				Only(context.Background())
 			if err != nil {
-				slog.Error("Failed to fetch updated group for invite reset event", "error", err, "groupID", gc.ID)
+				slog.ErrorContext(ctx, "Failed to fetch updated group for invite reset event", "error", err, "groupID", gc.ID)
 				return
 			}
 
@@ -304,14 +304,14 @@ func (s *GroupChatService) ResetInviteCode(ctx context.Context, userID, groupID 
 
 			members, err := memberQuery.All(context.Background())
 			if err != nil {
-				slog.Error("Failed to fetch invite reset recipients", "error", err, "groupID", gc.ID)
+				slog.ErrorContext(ctx, "Failed to fetch invite reset recipients", "error", err, "groupID", gc.ID)
 				return
 			}
 			memberCount, err := s.client.GroupMember.Query().
 				Where(groupmember.GroupChatID(gc.ID), groupmember.HasUserWith(user.DeletedAtIsNil())).
 				Count(context.Background())
 			if err != nil {
-				slog.Error("Failed to count group members for invite reset event", "error", err, "groupID", gc.ID)
+				slog.ErrorContext(ctx, "Failed to count group members for invite reset event", "error", err, "groupID", gc.ID)
 			}
 
 			lastMessage := s.getGroupLastMessageResponse(context.Background(), gc.ChatID)
