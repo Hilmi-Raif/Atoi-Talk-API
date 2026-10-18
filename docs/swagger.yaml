@@ -3224,16 +3224,6 @@ paths:
       - message
   /api/notifications:
     get:
-      consumes:
-      - application/json
-      description: GET returns message_notifications_enabled. PUT requires that boolean
-        field and preserves chat mutes.
-      parameters:
-      - description: Required for PUT only
-        in: body
-        name: body
-        schema:
-          $ref: '#/definitions/AtoiTalkAPI_internal_api_application_push.Preferences'
       produces:
       - application/json
       responses:
@@ -3246,10 +3236,6 @@ paths:
                 data:
                   $ref: '#/definitions/AtoiTalkAPI_internal_api_application_push.Preferences'
               type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "401":
           description: Unauthorized
           schema:
@@ -3260,18 +3246,18 @@ paths:
             $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
-      summary: Read or update account notification preferences
+      summary: Get notification preferences
       tags:
       - notifications
     put:
       consumes:
       - application/json
-      description: GET returns message_notifications_enabled. PUT requires that boolean
-        field and preserves chat mutes.
+      description: Updates the account preference and preserves conversation mutes.
       parameters:
-      - description: Required for PUT only
+      - description: Notification preference
         in: body
         name: body
+        required: true
         schema:
           $ref: '#/definitions/AtoiTalkAPI_internal_api_application_push.Preferences'
       produces:
@@ -3280,12 +3266,7 @@ paths:
         "200":
           description: OK
           schema:
-            allOf:
-            - $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
-            - properties:
-                data:
-                  $ref: '#/definitions/AtoiTalkAPI_internal_api_application_push.Preferences'
-              type: object
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess'
         "400":
           description: Bad Request
           schema:
@@ -3300,7 +3281,7 @@ paths:
             $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
-      summary: Read or update account notification preferences
+      summary: Update notification preferences
       tags:
       - notifications
   /api/notifications/muted-chats:
@@ -3390,21 +3371,13 @@ paths:
       - otp
   /api/push/devices/{installationID}:
     delete:
-      consumes:
-      - application/json
-      description: PUT registers a device with an installation secret; DELETE disables
-        the current session binding.
+      description: Disables the installation binding belonging to the current session.
       parameters:
       - description: Installation UUID
         in: path
         name: installationID
         required: true
         type: string
-      - description: Required for PUT only
-        in: body
-        name: body
-        schema:
-          $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.PushDeviceRequest'
       produces:
       - application/json
       responses:
@@ -3420,16 +3393,12 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "404":
           description: Not Found
           schema:
             $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
-        "409":
-          description: Conflict
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "503":
@@ -3438,23 +3407,24 @@ paths:
             $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
-      summary: Register or disable a push device
+      summary: Disable push device
       tags:
       - notifications
     put:
       consumes:
       - application/json
-      description: PUT registers a device with an installation secret; DELETE disables
-        the current session binding.
+      description: Registers an installation or updates its token and session binding
+        using its installation secret.
       parameters:
       - description: Installation UUID
         in: path
         name: installationID
         required: true
         type: string
-      - description: Required for PUT only
+      - description: Device registration
         in: body
         name: body
+        required: true
         schema:
           $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.PushDeviceRequest'
       produces:
@@ -3476,12 +3446,12 @@ paths:
           description: Forbidden
           schema:
             $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "409":
           description: Conflict
+          schema:
+            $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
         "503":
@@ -3490,7 +3460,7 @@ paths:
             $ref: '#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError'
       security:
       - BearerAuth: []
-      summary: Register or disable a push device
+      summary: Save push device
       tags:
       - notifications
   /api/reports:

@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -39,6 +40,10 @@ func TestPushControllerBoundaries(t *testing.T) {
 		{"unknown field", "PUT", uuid.NewString(), `{"user_id":"forged"}`, true, true, false, 400, 0},
 		{"register", "PUT", uuid.NewString(), `{"token":"token","platform":"web","device_secret":"secret"}`, true, true, false, 200, 1},
 		{"unregister", "DELETE", uuid.NewString(), ``, true, true, false, 200, 1},
+		{"unsupported method", "POST", uuid.NewString(), `{}`, true, true, false, http.StatusMethodNotAllowed, 0},
+		{"delete no user", "DELETE", uuid.NewString(), ``, false, false, false, 401, 0},
+		{"delete invalid installation", "DELETE", "invalid", ``, true, true, false, 400, 0},
+		{"delete failure", "DELETE", uuid.NewString(), ``, true, true, true, 500, 1},
 		{"service failure", "PUT", uuid.NewString(), `{}`, true, true, true, 500, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -58,7 +63,11 @@ func TestPushControllerBoundaries(t *testing.T) {
 			route.URLParams.Add("installationID", tc.id)
 			ctx = context.WithValue(ctx, chi.RouteCtxKey, route)
 			w := httptest.NewRecorder()
-			NewPushController(s).Device(w, r.WithContext(ctx))
+			c := NewPushController(s)
+			router := chi.NewRouter()
+			router.Put("/", c.RegisterDevice)
+			router.Delete("/", c.UnregisterDevice)
+			router.ServeHTTP(w, r.WithContext(ctx))
 			require.Equal(t, tc.status, w.Code)
 			require.Equal(t, tc.calls, s.calls)
 		})

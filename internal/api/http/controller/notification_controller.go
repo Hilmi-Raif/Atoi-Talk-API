@@ -19,33 +19,46 @@ func NewNotificationController(s *pushapp.Service) *NotificationController {
 	return &NotificationController{s}
 }
 
-// Settings godoc
-// @Summary Read or update account notification preferences
-// @Description GET returns message_notifications_enabled. PUT requires that boolean field and preserves chat mutes.
+// GetSettings godoc
+// @Summary Get notification preferences
 // @Tags notifications
-// @Accept json
 // @Produce json
-// @Param body body pushapp.Preferences false "Required for PUT only"
 // @Success 200 {object} response.ResponseSuccess{data=pushapp.Preferences}
-// @Failure 400,401,500 {object} response.ResponseError
+// @Failure 401,500 {object} response.ResponseError
 // @Security BearerAuth
 // @Router /api/notifications [get]
-// @Router /api/notifications [put]
-func (c *NotificationController) Settings(w http.ResponseWriter, r *http.Request) {
+func (c *NotificationController) GetSettings(w http.ResponseWriter, r *http.Request) {
 	u, ok := r.Context().Value(middleware.UserContextKey).(*model.UserDTO)
 	if !ok {
 		response.WriteError(w, helper.NewUnauthorizedError(""))
 		return
 	}
-	if r.Method == http.MethodGet {
-		v, err := c.service.Preferences(r.Context(), u.ID)
-		if err != nil {
-			response.WriteError(w, err)
-			return
-		}
-		response.WriteSuccess(w, v)
+	v, err := c.service.Preferences(r.Context(), u.ID)
+	if err != nil {
+		response.WriteError(w, err)
 		return
 	}
+	response.WriteSuccess(w, v)
+}
+
+// UpdateSettings godoc
+// @Summary Update notification preferences
+// @Description Updates the account preference and preserves conversation mutes.
+// @Tags notifications
+// @Accept json
+// @Produce json
+// @Param body body pushapp.Preferences true "Notification preference"
+// @Success 200 {object} response.ResponseSuccess
+// @Failure 400,401,500 {object} response.ResponseError
+// @Security BearerAuth
+// @Router /api/notifications [put]
+func (c *NotificationController) UpdateSettings(w http.ResponseWriter, r *http.Request) {
+	u, ok := r.Context().Value(middleware.UserContextKey).(*model.UserDTO)
+	if !ok {
+		response.WriteError(w, helper.NewUnauthorizedError(""))
+		return
+	}
+
 	var req struct {
 		Enabled *bool `json:"message_notifications_enabled"`
 	}
