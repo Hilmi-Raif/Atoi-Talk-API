@@ -3828,27 +3828,13 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "GET returns message_notifications_enabled. PUT requires that boolean field and preserves chat mutes.",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "notifications"
                 ],
-                "summary": "Read or update account notification preferences",
-                "parameters": [
-                    {
-                        "description": "Required for PUT only",
-                        "name": "body",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_application_push.Preferences"
-                        }
-                    }
-                ],
+                "summary": "Get notification preferences",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -3866,12 +3852,6 @@ const docTemplate = `{
                                     }
                                 }
                             ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
@@ -3894,7 +3874,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "GET returns message_notifications_enabled. PUT requires that boolean field and preserves chat mutes.",
+                "description": "Updates the account preference and preserves conversation mutes.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3904,12 +3884,13 @@ const docTemplate = `{
                 "tags": [
                     "notifications"
                 ],
-                "summary": "Read or update account notification preferences",
+                "summary": "Update notification preferences",
                 "parameters": [
                     {
-                        "description": "Required for PUT only",
+                        "description": "Notification preference",
                         "name": "body",
                         "in": "body",
+                        "required": true,
                         "schema": {
                             "$ref": "#/definitions/AtoiTalkAPI_internal_api_application_push.Preferences"
                         }
@@ -3919,19 +3900,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_application_push.Preferences"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
@@ -4097,7 +4066,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "PUT registers a device with an installation secret; DELETE disables the current session binding.",
+                "description": "Registers an installation or updates its token and session binding using its installation secret.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4107,7 +4076,7 @@ const docTemplate = `{
                 "tags": [
                     "notifications"
                 ],
-                "summary": "Register or disable a push device",
+                "summary": "Save push device",
                 "parameters": [
                     {
                         "type": "string",
@@ -4117,9 +4086,10 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Required for PUT only",
+                        "description": "Device registration",
                         "name": "body",
                         "in": "body",
+                        "required": true,
                         "schema": {
                             "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.PushDeviceRequest"
                         }
@@ -4150,14 +4120,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
@@ -4176,17 +4146,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "PUT registers a device with an installation secret; DELETE disables the current session binding.",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Disables the installation binding belonging to the current session.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "notifications"
                 ],
-                "summary": "Register or disable a push device",
+                "summary": "Disable push device",
                 "parameters": [
                     {
                         "type": "string",
@@ -4194,14 +4161,6 @@ const docTemplate = `{
                         "name": "installationID",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "Required for PUT only",
-                        "name": "body",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.PushDeviceRequest"
-                        }
                     }
                 ],
                 "responses": {
@@ -4223,20 +4182,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
-                        }
-                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }

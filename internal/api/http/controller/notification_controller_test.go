@@ -39,14 +39,14 @@ func TestNotificationControllerPreferences(t *testing.T) {
 		handler(w, r)
 		return w
 	}
-	for _, handler := range []http.HandlerFunc{c.Settings, c.Chat, c.MutedChats} {
+	for _, handler := range []http.HandlerFunc{c.GetSettings, c.UpdateSettings, c.Chat, c.MutedChats} {
 		require.Equal(t, 401, call(handler, "GET", "/", "", "", false).Code)
 	}
-	require.Equal(t, 200, call(c.Settings, "GET", "/", "", "", true).Code)
+	require.Equal(t, 200, call(c.GetSettings, "GET", "/", "", "", true).Code)
 	for _, body := range []string{"{", `{}`, `{"unknown":true}`, `{"message_notifications_enabled":"yes"}`} {
-		require.Equal(t, 400, call(c.Settings, "PUT", "/", body, "", true).Code)
+		require.Equal(t, 400, call(c.UpdateSettings, "PUT", "/", body, "", true).Code)
 	}
-	require.Equal(t, 200, call(c.Settings, "PUT", "/", `{"message_notifications_enabled":false}`, "", true).Code)
+	require.Equal(t, 200, call(c.UpdateSettings, "PUT", "/", `{"message_notifications_enabled":false}`, "", true).Code)
 	require.False(t, db.User.GetX(ctx, owner.ID).MessageNotificationsEnabled)
 	require.True(t, db.User.GetX(ctx, peer.ID).MessageNotificationsEnabled)
 	for _, id := range []string{"invalid", uuid.Nil.String()} {
@@ -63,7 +63,7 @@ func TestNotificationControllerPreferences(t *testing.T) {
 	require.Equal(t, 200, call(c.Chat, "PUT", "/", `{}`, chat.ID.String(), true).Code)
 	require.Zero(t, db.ChatNotificationPreference.Query().CountX(ctx))
 	require.NoError(t, db.Close())
-	require.Equal(t, 500, call(c.Settings, "GET", "/", "", "", true).Code)
-	require.Equal(t, 500, call(c.Settings, "PUT", "/", `{"message_notifications_enabled":true}`, "", true).Code)
+	require.Equal(t, 500, call(c.GetSettings, "GET", "/", "", "", true).Code)
+	require.Equal(t, 500, call(c.UpdateSettings, "PUT", "/", `{"message_notifications_enabled":true}`, "", true).Code)
 	require.Equal(t, 500, call(c.MutedChats, "GET", "/", "", "", true).Code)
 }

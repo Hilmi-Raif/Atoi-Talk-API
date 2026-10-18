@@ -103,9 +103,9 @@ func (route *Route) Register() {
 			if route.notificationController != nil {
 				r.Group(func(r chi.Router) {
 					r.Use(middleware.MaxBodySize(4 * 1024))
-					r.Get("/notifications", route.notificationController.Settings)
+					r.Get("/notifications", route.notificationController.GetSettings)
 					r.Get("/notifications/muted-chats", route.notificationController.MutedChats)
-					r.Put("/notifications", route.notificationController.Settings)
+					r.Put("/notifications", route.notificationController.UpdateSettings)
 					r.Put("/chats/{chatID}/notifications", route.notificationController.Chat)
 				})
 			}
@@ -113,8 +113,8 @@ func (route *Route) Register() {
 				r.Group(func(r chi.Router) {
 					r.Use(middleware.MaxBodySize(16 * 1024))
 					r.Use(route.rateLimitMiddleware.Limit("push_devices", 30, time.Minute))
-					r.Put("/push/devices/{installationID}", route.pushController.Device)
-					r.Delete("/push/devices/{installationID}", route.pushController.Device)
+					r.Put("/push/devices/{installationID}", route.pushController.RegisterDevice)
+					r.Delete("/push/devices/{installationID}", route.pushController.UnregisterDevice)
 				})
 			}
 
