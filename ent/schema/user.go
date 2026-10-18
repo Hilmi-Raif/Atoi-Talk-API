@@ -30,6 +30,7 @@ func (User) Fields() []ent.Field {
 
 		field.Enum("role").Values("user", "admin").Default("user"),
 		field.Bool("is_banned").Default(false),
+		field.Bool("message_notifications_enabled").Default(true),
 		field.Time("banned_until").Optional().Nillable(),
 		field.String("ban_reason").Optional().Nillable(),
 	}

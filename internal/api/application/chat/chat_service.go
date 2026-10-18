@@ -3,6 +3,7 @@ package chat
 import (
 	"AtoiTalkAPI/ent"
 	"AtoiTalkAPI/ent/chat"
+	"AtoiTalkAPI/ent/chatnotificationpreference"
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/user"
 	"AtoiTalkAPI/ent/userblock"
@@ -177,6 +178,11 @@ func (s *ChatService) GetChatByID(ctx context.Context, userID, chatID uuid.UUID)
 
 	}
 
+	if resp != nil {
+		if err := s.applyNotificationPreferences(ctx, userID, []*model.ChatListResponse{resp}); err != nil {
+			return nil, err
+		}
+	}
 	return resp, nil
 }
 
@@ -372,6 +378,13 @@ func (s *ChatService) GetChats(ctx context.Context, userID uuid.UUID, req model.
 		}
 	}
 
+	refs := make([]*model.ChatListResponse, len(response))
+	for i := range response {
+		refs[i] = &response[i]
+	}
+	if err := s.applyNotificationPreferences(ctx, userID, refs); err != nil {
+		return nil, "", false, err
+	}
 	return response, nextCursor, hasNext, nil
 }
 
@@ -549,5 +562,28 @@ func (s *ChatService) HideChat(ctx context.Context, userID uuid.UUID, chatID uui
 		})
 	}
 
+	return nil
+}
+
+func (s *ChatService) applyNotificationPreferences(ctx context.Context, userID uuid.UUID, chats []*model.ChatListResponse) error {
+	if len(chats) == 0 {
+		return nil
+	}
+	ids := make([]uuid.UUID, len(chats))
+	byID := make(map[uuid.UUID]*model.ChatListResponse, len(chats))
+	for i, c := range chats {
+		ids[i] = c.ID
+		byID[c.ID] = c
+	}
+	rows, err := s.client.ChatNotificationPreference.Query().Where(chatnotificationpreference.UserID(userID), chatnotificationpreference.ChatIDIn(ids...)).All(ctx)
+	if err != nil {
+		return helper.NewInternalServerError("")
+	}
+	for _, row := range rows {
+		if c := byID[row.ChatID]; c != nil {
+			c.MutedForever = row.MutedForever
+			c.MutedUntil = row.MutedUntil
+		}
+	}
 	return nil
 }

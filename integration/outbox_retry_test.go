@@ -10,7 +10,7 @@ import (
 	"AtoiTalkAPI/internal/domain/helper"
 	redisinfra "AtoiTalkAPI/internal/infrastructure/redis"
 	"AtoiTalkAPI/internal/messaging/events"
-	messageworker "AtoiTalkAPI/internal/messaging/message_worker"
+	messageworker "AtoiTalkAPI/internal/message_worker"
 	"context"
 	"errors"
 	"testing"

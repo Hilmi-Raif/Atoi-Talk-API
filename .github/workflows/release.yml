@@ -141,3 +141,23 @@ jobs:
           labels: ${{ steps.gateway-metadata.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - uses: docker/metadata-action@v5
+        id: push-metadata
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/atoitalk-push-worker
+          tags: |
+            type=raw,value=${{ needs.release-please.outputs.version }}
+            type=raw,value=latest
+            type=sha
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: build/package/push_worker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.push-metadata.outputs.tags }}
+          labels: ${{ steps.push-metadata.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

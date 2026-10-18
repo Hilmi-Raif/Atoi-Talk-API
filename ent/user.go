@@ -43,6 +43,8 @@ type User struct {
 	Role user.Role `json:"role,omitempty"`
 	// IsBanned holds the value of the "is_banned" field.
 	IsBanned bool `json:"is_banned,omitempty"`
+	// MessageNotificationsEnabled holds the value of the "message_notifications_enabled" field.
+	MessageNotificationsEnabled bool `json:"message_notifications_enabled,omitempty"`
 	// BannedUntil holds the value of the "banned_until" field.
 	BannedUntil *time.Time `json:"banned_until,omitempty"`
 	// BanReason holds the value of the "ban_reason" field.
@@ -201,7 +203,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case user.FieldAvatarID:
 			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
-		case user.FieldIsBanned:
+		case user.FieldIsBanned, user.FieldMessageNotificationsEnabled:
 			values[i] = new(sql.NullBool)
 		case user.FieldEmail, user.FieldUsername, user.FieldPasswordHash, user.FieldFullName, user.FieldBio, user.FieldRole, user.FieldBanReason:
 			values[i] = new(sql.NullString)
@@ -309,6 +311,12 @@ func (_m *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field is_banned", values[i])
 			} else if value.Valid {
 				_m.IsBanned = value.Bool
+			}
+		case user.FieldMessageNotificationsEnabled:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field message_notifications_enabled", values[i])
+			} else if value.Valid {
+				_m.MessageNotificationsEnabled = value.Bool
 			}
 		case user.FieldBannedUntil:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -468,6 +476,9 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("is_banned=")
 	builder.WriteString(fmt.Sprintf("%v", _m.IsBanned))
+	builder.WriteString(", ")
+	builder.WriteString("message_notifications_enabled=")
+	builder.WriteString(fmt.Sprintf("%v", _m.MessageNotificationsEnabled))
 	builder.WriteString(", ")
 	if v := _m.BannedUntil; v != nil {
 		builder.WriteString("banned_until=")

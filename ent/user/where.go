@@ -111,6 +111,11 @@ func IsBanned(v bool) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldIsBanned, v))
 }
 
+// MessageNotificationsEnabled applies equality check predicate on the "message_notifications_enabled" field. It's identical to MessageNotificationsEnabledEQ.
+func MessageNotificationsEnabled(v bool) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldMessageNotificationsEnabled, v))
+}
+
 // BannedUntil applies equality check predicate on the "banned_until" field. It's identical to BannedUntilEQ.
 func BannedUntil(v time.Time) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldBannedUntil, v))
@@ -734,6 +739,16 @@ func IsBannedEQ(v bool) predicate.User {
 // IsBannedNEQ applies the NEQ predicate on the "is_banned" field.
 func IsBannedNEQ(v bool) predicate.User {
 	return predicate.User(sql.FieldNEQ(FieldIsBanned, v))
+}
+
+// MessageNotificationsEnabledEQ applies the EQ predicate on the "message_notifications_enabled" field.
+func MessageNotificationsEnabledEQ(v bool) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldMessageNotificationsEnabled, v))
+}
+
+// MessageNotificationsEnabledNEQ applies the NEQ predicate on the "message_notifications_enabled" field.
+func MessageNotificationsEnabledNEQ(v bool) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldMessageNotificationsEnabled, v))
 }
 
 // BannedUntilEQ applies the EQ predicate on the "banned_until" field.

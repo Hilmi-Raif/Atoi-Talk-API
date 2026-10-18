@@ -31,12 +31,12 @@ func NewGroupChatController(groupChatService service.GroupChatServicePort) *Grou
 // @Accept       json
 // @Produce      json
 // @Param        request body model.CreateGroupChatRequest true "Group creation"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.ChatListResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.ChatListResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/group [post]
 func (c *GroupChatController) CreateGroupChat(w http.ResponseWriter, r *http.Request) {
@@ -69,13 +69,13 @@ func (c *GroupChatController) CreateGroupChat(w http.ResponseWriter, r *http.Req
 // @Produce      json
 // @Param        chatID path string true "Group Chat ID (UUID)"
 // @Param        request body model.UpdateGroupChatRequest true "Group update"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.ChatListResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.ChatListResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/group/{chatID} [put]
 func (c *GroupChatController) UpdateGroupChat(w http.ResponseWriter, r *http.Request) {
@@ -117,13 +117,13 @@ func (c *GroupChatController) UpdateGroupChat(w http.ResponseWriter, r *http.Req
 // @Param        query query string false "Search query"
 // @Param        cursor query string false "Pagination cursor"
 // @Param        limit query int false "Number of items per page (default 20, max 50)"
-// @Success      200  {object}  helper.ResponseWithPagination{data=[]model.GroupMemberDTO}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseWithPagination{data=[]model.GroupMemberDTO}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/group/{chatID}/members [get]
 func (c *GroupChatController) SearchGroupMembers(w http.ResponseWriter, r *http.Request) {
@@ -178,14 +178,14 @@ func (c *GroupChatController) SearchGroupMembers(w http.ResponseWriter, r *http.
 // @Produce      json
 // @Param        chatID path string true "Group Chat ID (UUID)"
 // @Param        request body model.AddGroupMemberRequest true "Add Member Request"
-// @Success      200  {object}  helper.ResponseSuccess{data=[]model.MessageResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      409  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=[]model.MessageResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      409  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/group/{chatID}/members [post]
 func (c *GroupChatController) AddMember(w http.ResponseWriter, r *http.Request) {
@@ -224,12 +224,12 @@ func (c *GroupChatController) AddMember(w http.ResponseWriter, r *http.Request) 
 // @Accept       json
 // @Produce      json
 // @Param        chatID path string true "Group Chat ID (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.MessageResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.MessageResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/group/{chatID}/leave [post]
 func (c *GroupChatController) LeaveGroup(w http.ResponseWriter, r *http.Request) {
@@ -263,13 +263,13 @@ func (c *GroupChatController) LeaveGroup(w http.ResponseWriter, r *http.Request)
 // @Produce      json
 // @Param        chatID path string true "Group Chat ID (UUID)"
 // @Param        userID path string true "Target User ID (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.MessageResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.MessageResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/group/{chatID}/members/{userID}/kick [post]
 func (c *GroupChatController) KickMember(w http.ResponseWriter, r *http.Request) {
@@ -311,13 +311,13 @@ func (c *GroupChatController) KickMember(w http.ResponseWriter, r *http.Request)
 // @Param        chatID path string true "Group Chat ID (UUID)"
 // @Param        userID path string true "Target User ID (UUID)"
 // @Param        request body model.UpdateGroupMemberRoleRequest true "Update Role Request"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.MessageResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.MessageResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/group/{chatID}/members/{userID}/role [put]
 func (c *GroupChatController) UpdateMemberRole(w http.ResponseWriter, r *http.Request) {
@@ -364,13 +364,13 @@ func (c *GroupChatController) UpdateMemberRole(w http.ResponseWriter, r *http.Re
 // @Produce      json
 // @Param        chatID path string true "Group Chat ID (UUID)"
 // @Param        request body model.TransferGroupOwnershipRequest true "Transfer Ownership Request"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.MessageResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.MessageResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/group/{chatID}/transfer [post]
 func (c *GroupChatController) TransferOwnership(w http.ResponseWriter, r *http.Request) {
@@ -409,13 +409,13 @@ func (c *GroupChatController) TransferOwnership(w http.ResponseWriter, r *http.R
 // @Accept       json
 // @Produce      json
 // @Param        chatID path string true "Group Chat ID (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/group/{chatID} [delete]
 func (c *GroupChatController) DeleteGroup(w http.ResponseWriter, r *http.Request) {
@@ -451,11 +451,11 @@ func (c *GroupChatController) DeleteGroup(w http.ResponseWriter, r *http.Request
 // @Param        cursor query string false "Pagination cursor"
 // @Param        limit query int false "Number of items per page (default 20, max 50)"
 // @Param        sort_by query string false "Sort order: 'name' (default, A-Z) or 'member_count' (most members first)"
-// @Success      200  {object}  helper.ResponseWithPagination{data=[]model.PublicGroupDTO}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseWithPagination{data=[]model.PublicGroupDTO}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/group/public [get]
 func (c *GroupChatController) SearchPublicGroups(w http.ResponseWriter, r *http.Request) {
@@ -507,14 +507,14 @@ func (c *GroupChatController) SearchPublicGroups(w http.ResponseWriter, r *http.
 // @Accept       json
 // @Produce      json
 // @Param        chatID path string true "Group Chat ID (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.ChatListResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      409  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.ChatListResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      409  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/group/{chatID}/join [post]
 func (c *GroupChatController) JoinPublicGroup(w http.ResponseWriter, r *http.Request) {
@@ -547,12 +547,12 @@ func (c *GroupChatController) JoinPublicGroup(w http.ResponseWriter, r *http.Req
 // @Accept       json
 // @Produce      json
 // @Param        request body model.JoinGroupByInviteRequest true "Join Request"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.ChatListResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.ChatListResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/group/join/invite [post]
 func (c *GroupChatController) JoinGroupByInvite(w http.ResponseWriter, r *http.Request) {
@@ -584,11 +584,11 @@ func (c *GroupChatController) JoinGroupByInvite(w http.ResponseWriter, r *http.R
 // @Accept       json
 // @Produce      json
 // @Param        inviteCode path string true "Invite Code"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.GroupPreviewDTO}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.GroupPreviewDTO}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Router       /api/chats/group/invite/{inviteCode} [get]
 func (c *GroupChatController) GetGroupByInviteCode(w http.ResponseWriter, r *http.Request) {
 	inviteCode := chi.URLParam(r, "inviteCode")
@@ -613,13 +613,13 @@ func (c *GroupChatController) GetGroupByInviteCode(w http.ResponseWriter, r *htt
 // @Accept       json
 // @Produce      json
 // @Param        chatID path string true "Group Chat ID (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.GroupInviteResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.GroupInviteResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/chats/group/{chatID}/invite [put]
 func (c *GroupChatController) ResetInviteCode(w http.ResponseWriter, r *http.Request) {

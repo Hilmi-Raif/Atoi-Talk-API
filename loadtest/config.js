@@ -1,5 +1,5 @@
 export const BASE_URL = __ENV.BASE_URL || 'http://127.0.0.1:8080';
-export const WS_BASE_URL = __ENV.WS_BASE_URL || 'ws://127.0.0.1:8080';
+export const WS_BASE_URL = __ENV.WS_BASE_URL || 'ws://127.0.0.1:8081';
 
 const staticUsers = [
   { email: 'alice@atoitalk.local', password: 'Password123!', name: 'Alice' },

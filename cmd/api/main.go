@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+// @title AtoiTalk API
+// @version 1.0
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)

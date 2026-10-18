@@ -15,6 +15,7 @@ import (
 	objectstorage "AtoiTalkAPI/internal/infrastructure/object_storage"
 	"AtoiTalkAPI/internal/infrastructure/observability"
 	"AtoiTalkAPI/internal/messaging/events"
+	"AtoiTalkAPI/internal/push_worker"
 	"context"
 	"encoding/json"
 	"errors"
@@ -32,12 +33,15 @@ const maxStoredOutboxErrorLength = 2048
 var ErrOutboxLeaseLost = errors.New("outbox lease ownership lost")
 
 type EntOutboxStore struct {
-	client   *ent.Client
-	dialect  string
-	now      func() time.Time
-	urlGen   objectstorage.URLGenerator
-	realtime *realtimequery.Query
+	client      *ent.Client
+	dialect     string
+	now         func() time.Time
+	urlGen      objectstorage.URLGenerator
+	realtime    *realtimequery.Query
+	pushEnabled bool
 }
+
+func (s *EntOutboxStore) EnablePush(enabled bool) { s.pushEnabled = enabled }
 
 func NewEntOutboxStore(client *ent.Client) *EntOutboxStore {
 	return NewEntOutboxStoreWithDialect(client, dialect.Postgres)
@@ -446,6 +450,11 @@ func (s *EntOutboxStore) Project(ctx context.Context, record OutboxRecord) error
 		}
 		if err := s.projectUnread(ctx, tx, record, msg.CreatedAt); err != nil {
 			return err
+		}
+		if s.pushEnabled {
+			if err := pushworker.Enqueue(ctx, tx, msg, record.ID); err != nil {
+				return fmt.Errorf("enqueue push: %w", err)
+			}
 		}
 	}
 

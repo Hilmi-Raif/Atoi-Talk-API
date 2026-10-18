@@ -27,12 +27,12 @@ func NewAccountController(accountService service.AccountServicePort) *AccountCon
 // @Accept       json
 // @Produce      json
 // @Param        request body model.ChangePasswordRequest true "Change Password Request"
-// @Success      200  {object}  helper.ResponseSuccess
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/account/password [put]
 func (c *AccountController) ChangePassword(w http.ResponseWriter, r *http.Request) {
@@ -63,12 +63,12 @@ func (c *AccountController) ChangePassword(w http.ResponseWriter, r *http.Reques
 // @Accept       json
 // @Produce      json
 // @Param        request body model.ChangeEmailRequest true "Change Email Request"
-// @Success      200  {object}  helper.ResponseSuccess
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      409  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      409  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/account/email [put]
 func (c *AccountController) ChangeEmail(w http.ResponseWriter, r *http.Request) {
@@ -99,12 +99,12 @@ func (c *AccountController) ChangeEmail(w http.ResponseWriter, r *http.Request) 
 // @Accept       json
 // @Produce      json
 // @Param        request body model.DeleteAccountRequest true "Delete Account Request"
-// @Success      200  {object}  helper.ResponseSuccess
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/account [delete]
 func (c *AccountController) DeleteAccount(w http.ResponseWriter, r *http.Request) {

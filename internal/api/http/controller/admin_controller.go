@@ -36,12 +36,12 @@ func NewAdminController(adminService service.AdminServicePort, groupChatService 
 // @Accept       json
 // @Produce      json
 // @Param        request body model.BanUserRequest true "Ban Request"
-// @Success      200  {object}  helper.ResponseSuccess
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess
+// @Failure      400  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/admin/users/ban [post]
 func (c *AdminController) BanUser(w http.ResponseWriter, r *http.Request) {
@@ -72,12 +72,12 @@ func (c *AdminController) BanUser(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Param        userID path string true "User ID (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess
+// @Failure      400  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/admin/users/{userID}/unban [post]
 func (c *AdminController) UnbanUser(w http.ResponseWriter, r *http.Request) {
@@ -112,11 +112,11 @@ func (c *AdminController) UnbanUser(w http.ResponseWriter, r *http.Request) {
 // @Param        status query string false "Filter by status (pending, reviewed, resolved, rejected)"
 // @Param        limit query int false "Limit (default 20)"
 // @Param        cursor query string false "Cursor for pagination"
-// @Success      200  {object}  helper.ResponseWithPagination{data=[]model.ReportListResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseWithPagination{data=[]model.ReportListResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/admin/reports [get]
 func (c *AdminController) GetReports(w http.ResponseWriter, r *http.Request) {
@@ -164,12 +164,12 @@ func (c *AdminController) GetReports(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Param        reportID path string true "Report ID (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.ReportDetailResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.ReportDetailResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/admin/reports/{reportID} [get]
 func (c *AdminController) GetReportDetail(w http.ResponseWriter, r *http.Request) {
@@ -203,12 +203,12 @@ func (c *AdminController) GetReportDetail(w http.ResponseWriter, r *http.Request
 // @Produce      json
 // @Param        reportID path string true "Report ID (UUID)"
 // @Param        request body model.ResolveReportRequest true "Resolve Request"
-// @Success      200  {object}  helper.ResponseSuccess
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess
+// @Failure      400  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/admin/reports/{reportID}/resolve [put]
 func (c *AdminController) ResolveReport(w http.ResponseWriter, r *http.Request) {
@@ -246,11 +246,11 @@ func (c *AdminController) ResolveReport(w http.ResponseWriter, r *http.Request) 
 // @Accept       json
 // @Produce      json
 // @Param        reportID path string true "Report ID (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess
+// @Failure      400  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/admin/reports/{reportID} [delete]
 func (c *AdminController) DeleteReport(w http.ResponseWriter, r *http.Request) {
@@ -281,10 +281,10 @@ func (c *AdminController) DeleteReport(w http.ResponseWriter, r *http.Request) {
 // @Tags         admin
 // @Accept       json
 // @Produce      json
-// @Success      200  {object}  helper.ResponseSuccess{data=model.DashboardStatsResponse}
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.DashboardStatsResponse}
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/admin/dashboard [get]
 func (c *AdminController) GetDashboardStats(w http.ResponseWriter, r *http.Request) {
@@ -312,9 +312,9 @@ func (c *AdminController) GetDashboardStats(w http.ResponseWriter, r *http.Reque
 // @Param        query   query     string  false  "Search query (username, email, or full name)"
 // @Param        role    query     string  false  "Filter by role (user, admin)"
 // @Param        limit   query     int     false  "Limit (default 20)"
-// @Success      200     {object}  helper.ResponseWithPagination{data=[]model.AdminUserListResponse}
-// @Failure      403     {object}  helper.ResponseError
-// @Failure      500     {object}  helper.ResponseError
+// @Success      200     {object}  response.ResponseWithPagination{data=[]model.AdminUserListResponse}
+// @Failure      403     {object}  response.ResponseError
+// @Failure      500     {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/admin/users [get]
 func (c *AdminController) GetUsers(w http.ResponseWriter, r *http.Request) {
@@ -354,9 +354,9 @@ func (c *AdminController) GetUsers(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Param        userID  path      string  true  "User ID"
-// @Success      200     {object}  helper.ResponseSuccess{data=model.AdminUserDetailResponse}
-// @Failure      400     {object}  helper.ResponseError
-// @Failure      404     {object}  helper.ResponseError
+// @Success      200     {object}  response.ResponseSuccess{data=model.AdminUserDetailResponse}
+// @Failure      400     {object}  response.ResponseError
+// @Failure      404     {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/admin/users/{userID} [get]
 func (c *AdminController) GetUserDetail(w http.ResponseWriter, r *http.Request) {
@@ -390,9 +390,9 @@ func (c *AdminController) GetUserDetail(w http.ResponseWriter, r *http.Request) 
 // @Produce      json
 // @Param        userID  path      string                      true  "User ID"
 // @Param        req     body      model.ResetUserInfoRequest  true  "Reset Request"
-// @Success      200     {object}  helper.ResponseSuccess
-// @Failure      400     {object}  helper.ResponseError
-// @Failure      500     {object}  helper.ResponseError
+// @Success      200     {object}  response.ResponseSuccess
+// @Failure      400     {object}  response.ResponseError
+// @Failure      500     {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/admin/users/{userID}/reset [post]
 func (c *AdminController) ResetUserInfo(w http.ResponseWriter, r *http.Request) {
@@ -437,8 +437,8 @@ func (c *AdminController) ResetUserInfo(w http.ResponseWriter, r *http.Request) 
 // @Param        query   query     string  false  "Search by name"
 // @Param        limit   query     int     false  "Limit"
 // @Param        cursor  query     string  false  "Pagination cursor"
-// @Success      200     {object}  helper.ResponseWithPagination
-// @Failure      403     {object}  helper.ResponseError
+// @Success      200     {object}  response.ResponseWithPagination
+// @Failure      403     {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/admin/groups [get]
 func (c *AdminController) GetGroups(w http.ResponseWriter, r *http.Request) {
@@ -475,8 +475,8 @@ func (c *AdminController) GetGroups(w http.ResponseWriter, r *http.Request) {
 // @Tags         admin
 // @Produce      json
 // @Param        chatID  path      string  true  "Group Chat ID (chat_id)"
-// @Success      200      {object}  helper.ResponseSuccess
-// @Failure      404      {object}  helper.ResponseError
+// @Success      200      {object}  response.ResponseSuccess
+// @Failure      404      {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/admin/groups/{chatID} [get]
 func (c *AdminController) GetGroupDetail(w http.ResponseWriter, r *http.Request) {
@@ -508,8 +508,8 @@ func (c *AdminController) GetGroupDetail(w http.ResponseWriter, r *http.Request)
 // @Tags         admin
 // @Produce      json
 // @Param        chatID  path      string  true  "Group Chat ID (chat_id)"
-// @Success      200      {object}  helper.ResponseSuccess
-// @Failure      404      {object}  helper.ResponseError
+// @Success      200      {object}  response.ResponseSuccess
+// @Failure      404      {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/admin/groups/{chatID} [delete]
 func (c *AdminController) DissolveGroup(w http.ResponseWriter, r *http.Request) {
@@ -542,8 +542,8 @@ func (c *AdminController) DissolveGroup(w http.ResponseWriter, r *http.Request) 
 // @Produce      json
 // @Param        chatID  path      string                      true  "Group Chat ID (chat_id)"
 // @Param        req      body      model.ResetGroupInfoRequest true  "Reset Request"
-// @Success      200      {object}  helper.ResponseSuccess
-// @Failure      400      {object}  helper.ResponseError
+// @Success      200      {object}  response.ResponseSuccess
+// @Failure      400      {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/admin/groups/{chatID}/reset [post]
 func (c *AdminController) ResetGroupInfo(w http.ResponseWriter, r *http.Request) {
@@ -600,10 +600,10 @@ func (c *AdminController) ResetGroupInfo(w http.ResponseWriter, r *http.Request)
 // @Param        query query string false "Search query"
 // @Param        cursor query string false "Pagination cursor"
 // @Param        limit query int false "Number of items per page (default 20, max 50)"
-// @Success      200  {object}  helper.ResponseWithPagination{data=[]model.GroupMemberDTO}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseWithPagination{data=[]model.GroupMemberDTO}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/admin/groups/{chatID}/members [get]
 func (c *AdminController) GetGroupMembers(w http.ResponseWriter, r *http.Request) {

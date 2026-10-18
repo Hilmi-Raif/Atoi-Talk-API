@@ -5,6 +5,8 @@ import (
 	"AtoiTalkAPI/internal/infrastructure/config"
 	redisinfra "AtoiTalkAPI/internal/infrastructure/redis"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"time"
@@ -105,6 +107,10 @@ func (r *SessionRepository) RollbackUserRevoke(ctx context.Context, userID uuid.
 
 func (r *SessionRepository) BlacklistToken(ctx context.Context, tokenString string, ttl time.Duration) error {
 	key := fmt.Sprintf("blacklist:%s", tokenString)
+	sum := sha256.Sum256([]byte(tokenString))
+	if err := r.redisAdapter.Set(ctx, "push_logout:"+hex.EncodeToString(sum[:]), "revoked", ttl); err != nil {
+		return err
+	}
 	return r.redisAdapter.Set(ctx, key, "revoked", ttl)
 }
 

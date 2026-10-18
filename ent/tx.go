@@ -14,6 +14,8 @@ type Tx struct {
 	config
 	// Chat is the client for interacting with the Chat builders.
 	Chat *ChatClient
+	// ChatNotificationPreference is the client for interacting with the ChatNotificationPreference builders.
+	ChatNotificationPreference *ChatNotificationPreferenceClient
 	// GroupChat is the client for interacting with the GroupChat builders.
 	GroupChat *GroupChatClient
 	// GroupMember is the client for interacting with the GroupMember builders.
@@ -26,6 +28,10 @@ type Tx struct {
 	MessageOutbox *MessageOutboxClient
 	// PrivateChat is the client for interacting with the PrivateChat builders.
 	PrivateChat *PrivateChatClient
+	// PushDelivery is the client for interacting with the PushDelivery builders.
+	PushDelivery *PushDeliveryClient
+	// PushDevice is the client for interacting with the PushDevice builders.
+	PushDevice *PushDeviceClient
 	// Report is the client for interacting with the Report builders.
 	Report *ReportClient
 	// User is the client for interacting with the User builders.
@@ -166,12 +172,15 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.Chat = NewChatClient(tx.config)
+	tx.ChatNotificationPreference = NewChatNotificationPreferenceClient(tx.config)
 	tx.GroupChat = NewGroupChatClient(tx.config)
 	tx.GroupMember = NewGroupMemberClient(tx.config)
 	tx.Media = NewMediaClient(tx.config)
 	tx.Message = NewMessageClient(tx.config)
 	tx.MessageOutbox = NewMessageOutboxClient(tx.config)
 	tx.PrivateChat = NewPrivateChatClient(tx.config)
+	tx.PushDelivery = NewPushDeliveryClient(tx.config)
+	tx.PushDevice = NewPushDeviceClient(tx.config)
 	tx.Report = NewReportClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 	tx.UserBlock = NewUserBlockClient(tx.config)

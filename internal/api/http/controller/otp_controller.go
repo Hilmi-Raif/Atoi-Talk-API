@@ -27,12 +27,12 @@ func NewOTPController(otpService service.OTPServicePort) *OTPController {
 // @Accept       json
 // @Produce      json
 // @Param        request body model.SendOTPRequest true "Send OTP Request"
-// @Success      200  {object}  helper.ResponseSuccess
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      409  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess
+// @Failure      400  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      409  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Router       /api/otp/send [post]
 func (c *OTPController) SendOTP(w http.ResponseWriter, r *http.Request) {
 	var req model.SendOTPRequest

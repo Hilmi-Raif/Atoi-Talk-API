@@ -4,9 +4,26 @@ RESTful API and event-driven services for real-time chat applications. Handles a
 
 See [Atoi-Talk](https://github.com/Hilmi-Raif/Atoi-Talk) for an example frontend.
 
+## Service Guides
+
+Each service has its own README. Select a service below for its dependencies,
+required and optional configuration, native/Docker commands, and health checks.
+
+| Service documentation | Responsibility | Dependencies |
+|---|---|---|
+| [API](cmd/api/README.md) | HTTP endpoints, authentication, message and outbox writes | PostgreSQL, Redis, S3; SMTP for OTP |
+| [Message worker](cmd/message_worker/README.md) | Outbox projection, realtime publishing and optional push enqueue | PostgreSQL, Redis, S3 |
+| [WebSocket gateway](cmd/websocket_gateway/README.md) | Socket delivery, presence and typing | PostgreSQL, Redis |
+| [Scheduler](cmd/scheduler/README.md) | Entity, private-chat and media cleanup | PostgreSQL, S3 |
+| [Push worker](cmd/push_worker/README.md) | Durable per-device FCM delivery | PostgreSQL, Redis, Firebase ADC |
+
+See [Configuration](docs/configuration.md) for shared environment-loading, networking, credentials, and telemetry settings.
+
+[Getting started](#getting-started) | [Configuration](docs/configuration.md) | [API documentation](#api-docs) | [Notifications](#push-notifications) | [Contributing](#contributing)
+
 ## Architecture
 
-The system runs as separate API, message-worker, websocket-gateway, and scheduler services sharing the same codebase and PostgreSQL source of truth:
+The system runs as separate API, message-worker, optional push-worker, websocket-gateway, and scheduler services sharing the same codebase and PostgreSQL source of truth:
 
 ```mermaid
 flowchart LR
@@ -24,6 +41,12 @@ flowchart LR
         relay[Outbox Relay]
         projection[Async Chat Projection]
         relay --> projection
+    end
+
+    subgraph push [Push Worker]
+        delivery[Eligibility and Retry]
+        fcm[FCM HTTP v1 Adapter]
+        delivery --> fcm
     end
 
     subgraph gateway [WebSocket Gateway]
@@ -65,7 +88,11 @@ flowchart LR
     application -->|normal reads and writes| pg
     application -->|message plus outbox in one transaction| pg
     pg -->|poll pending outbox rows| relay
-    projection -->|async metadata and unread projection| pg
+    projection -->|metadata unread and optional push deliveries atomically| pg
+    pg -->|claim per-device push deliveries| delivery
+    delivery -->|session revocation checks| redis
+    fcm -->|HTTPS| firebase[Firebase Cloud Messaging]
+    firebase -->|notification and data payload| client
     relay -->|XADD durable message events| streams
     streams -->|XREADGROUP and ACK after delivery| streamConsumer
 
@@ -86,14 +113,6 @@ flowchart LR
     cleanup -.->|traces metrics logs| collector
 ```
 
-**API service** handles REST endpoints and transactional business operations. WebSocket connections are served only by the separate `websocket-gateway` service.
-
-**Message worker** claims transactional outbox rows, updates asynchronous chat projections, and publishes durable message events to Redis Streams. PostgreSQL remains the source of truth; polling is always available as a fallback.
-
-**WebSocket gateway** owns WebSocket connections on `REALTIME_PORT` (local default `8081`). It consumes durable message events from Redis Streams and ephemeral events from Redis Pub/Sub. Production ingress should route `/ws` to this service.
-
-**Scheduler service** runs periodic cleanup jobs in the background. Hard-deletes expired soft-deleted entities, removes orphaned media from S3, and garbage-collects abandoned private chats. Deliberately skips database migrations to avoid race conditions with the API.
-
 ### Event-Driven Flow
 
 Durable message events use the transactional outbox pattern. The API stores the message and its outbox record in the same PostgreSQL transaction. The message worker polls eligible outbox records, applies asynchronous chat metadata and unread projections, then publishes targeted events to the `events:messages` Redis Stream. The WebSocket Gateway consumes the stream with a per-instance consumer group and acknowledges an event only after it has been delivered to local connections.
@@ -104,7 +123,7 @@ Ephemeral events such as typing, presence, and non-durable chat or user updates 
 
 ### Observability Flow
 
-The API, message worker, WebSocket Gateway, and scheduler export traces, metrics, and structured logs through OpenTelemetry Protocol. The local stack sends this telemetry to the OTel Collector, which stores trace and metric data in ClickHouse for SigNoz Query Service and the SigNoz UI.
+The API, message worker, push worker, WebSocket Gateway, and scheduler export traces, metrics, and structured logs through OpenTelemetry Protocol. The local stack sends this telemetry to the OTel Collector, which stores trace and metric data in ClickHouse for SigNoz Query Service and the SigNoz UI.
 
 The telemetry covers HTTP latency and active requests, PostgreSQL query and pool behavior, Redis commands and Stream consumer state, S3 calls, outbox backlog, worker processing stages, WebSocket delivery, health checks, and scheduler jobs. SQL text, SQL parameters, Redis keys, message content, and file names are excluded from telemetry attributes.
 
@@ -128,6 +147,12 @@ erDiagram
 
     Message ||--o{ Media : "attachments"
     Message ||--o| Message : "replies to"
+
+    User ||--o{ PushDevice : "registers"
+    User ||--o{ ChatNotificationPreference : "configures"
+    Chat ||--o{ ChatNotificationPreference : "has preferences"
+    PushDevice ||--o{ PushDelivery : "receives deliveries"
+    Message ||--o{ PushDelivery : "generates deliveries"
 
     Report }o--o{ Media : "evidence"
 ```
@@ -167,6 +192,13 @@ erDiagram
 - Redis Streams for durable message delivery and Redis Pub/Sub for ephemeral events such as typing and presence
 - Online presence tracking with TTL-based keepalive
 
+### Notifications
+
+- Optional FCM push delivery with durable per-device queues and bounded retries
+- Installation registration bound to the authenticated session
+- Account-wide notification settings and timed or indefinite per-chat mute
+- Cursor-paginated muted conversations and batched mute status in chat responses
+
 ### Media
 
 - File upload to S3-compatible storage (tested with Cloudflare R2)
@@ -202,6 +234,10 @@ erDiagram
 | Validation | go-playground/validator |
 | Email | SMTP (Mailpit or Mailtrap for dev) |
 | Scheduler | robfig/cron |
+| Push notifications | Firebase Cloud Messaging (HTTP v1) |
+| Instrumentation | OpenTelemetry (traces, metrics, logs) |
+| Telemetry collection | OpenTelemetry Collector (OTLP) |
+| Observability backend | SigNoz, ClickHouse |
 | Docs | Swagger (swag), AsyncAPI |
 | Captcha | Cloudflare Turnstile |
 
@@ -209,339 +245,89 @@ erDiagram
 
 ```
 cmd/
-├── api/                 # API server entrypoint
-├── message_worker/      # Transactional outbox and message projection worker
-├── websocket_gateway/   # WebSocket gateway and event consumers
-└── scheduler/           # Scheduler entrypoint
+  api/                       # API entrypoint
+  message_worker/            # Outbox relay entrypoint
+  push_worker/               # Optional push delivery entrypoint
+  websocket_gateway/         # WebSocket entrypoint
+  scheduler/                 # Scheduler entrypoint
 
 internal/
-├── api/
-│   ├── http/          # controllers, middleware, routes, and response writers
-│   └── application/   # feature-oriented application services
-├── bootstrap/         # dependency wiring
-├── domain/            # shared constants, DTOs, and domain helpers
-├── infrastructure/
-│   ├── database/      # Ent, repositories, and response mappers
-│   ├── redis/         # Redis cache, Pub/Sub, and Streams
-│   ├── object_storage/
-│   ├── email/
-│   ├── captcha/
-│   ├── config/
-│   └── observability/
-├── messaging/
-│   ├── events/        # shared event contracts
-│   ├── outbox/        # atomic outbox helpers
-│   └── message_worker/ # durable event relay and projections
-├── scheduler/
-│   └── job/            # individual cleanup jobs
-└── websocket_gateway/  # WebSocket connections and event consumers
+  api/
+    http/                    # Controllers, middleware, routes, responses
+    application/             # Feature-oriented application services
+  bootstrap/                 # Dependency wiring
+  domain/                    # Constants, DTOs, domain helpers
+  infrastructure/
+    database/                # Repositories, query helpers, response mappers
+    redis/                   # Cache, Pub/Sub, Streams
+    object_storage/
+    email/
+    fcm/                     # Sender contract, provider errors, HTTP v1 adapter
+    mocks/                   # Generated infrastructure mocks
+    captcha/
+    config/
+    observability/
+  messaging/
+    events/                  # Shared event contracts
+    outbox/                  # Atomic outbox helpers
+    pubsub/                  # Shared Pub/Sub transport helpers
+  message_worker/            # Durable event relay and projections
+  push_worker/               # Eligibility, preview, retry, delivery orchestration
+  scheduler/job/             # Cleanup jobs
+  websocket_gateway/         # Connections and event consumers
 
-ent/
-└── schema/           # Database schema definitions
-
-docs/                 # Generated Swagger + AsyncAPI specs
-deployments/          # Docker compose and environment configurations
-├── local/            # Local development compose and env template
-├── integration/      # Local integration test backing services
-└── observability/    # Standalone SigNoz observability stack
-integration/          # Integration test suite (*_test.go, requires -tags=integration)
+ent/schema/                  # Database schema definitions
+docs/                        # Generated Swagger and AsyncAPI specifications
+deployments/
+  local/                     # Application stack and environment template
+  integration/               # Integration backing services
+  observability/             # SigNoz stack
+integration/                 # Tests requiring -tags=integration
 ```
 
 ## Getting Started
 
-### Releases
-
-Release Please manages versioning and `CHANGELOG.md` from Conventional Commits on `main`. It creates a release pull request for review. After the release pull request is merged, the workflow creates the GitHub Release and publishes the API, message-worker, WebSocket Gateway, and scheduler images to GHCR.
-
-Commit types that create releases:
-
-| Commit | Release |
-|---|---|
-| `fix(scope): ...` | patch |
-| `feat(scope): ...` | minor |
-| `feat(scope)!: ...` | major |
-
-Release images use the version, `latest`, and immutable SHA tags. Release Please does not require Node.js or `package.json` in this Go repository.
-
 ### Prerequisites
 
-- Go 1.26+
+- Go 1.26.9 or a newer patched toolchain
 - PostgreSQL
 - Redis
 - S3-compatible storage with public and private buckets for media operations
 
-### Setup
+### Complete local stack
 
-1. Clone the repo:
+From the repository root:
 
-```bash
-git clone https://github.com/Hilmi-Raif/Atoi-Talk-API.git
-cd Atoi-Talk-API
-```
-
-2. Choose a runtime mode.
-
-For the complete Docker Compose stack, use the local template. It contains container network addresses, local buckets, and the OpenTelemetry defaults used by the Compose services:
-
-```bash
+```sh
 cp deployments/local/.env.example .env
-docker compose -f deployments/local/docker-compose.yaml --env-file .env up -d --build
-docker compose -f deployments/observability/docker-compose.yaml up -d
+docker compose --env-file .env -f deployments/local/docker-compose.yaml up -d --build
 ```
 
-This mode starts the API, message worker, WebSocket Gateway, scheduler, backing services, and observability stack. No separate `go run` commands are required.
+API listens on `http://localhost:8080`, gateway on `http://localhost:8081`.
+Push is disabled by default. The local template enables telemetry: start its
+separate stack with `make observability-up`, or set `OTEL_ENABLED=false`.
 
-For native Go processes, use the root template and update `.env` to use host-accessible ports before starting the dependencies:
+### Native Go processes
 
-```bash
-cp .env.example .env
-```
+Copy `.env.example` to `.env` and fill the required values in the
+[configuration reference](docs/configuration.md). For the local backing stack,
+set `DB_PORT=5434` before starting dependencies, use host-accessible S3/SMTP
+addresses, and supply bucket names, S3 credentials/region, JWT/OTP secrets and SMTP
+sender settings. Set `DB_MIGRATE=true` for the API to create the initial schema.
 
-Set at least these values in the native `.env`:
-
-```dotenv
-DB_HOST=localhost
-DB_PORT=5434
-S3_ENDPOINT=http://localhost:9090
-S3_PRESIGN_ENDPOINT=http://localhost:9090
-SMTP_HOST=localhost
-SMTP_PORT=1025
-S3_BUCKET_PUBLIC=public-bucket
-S3_BUCKET_PRIVATE=private-bucket
-```
-
-The `5434` database port is the host port published by the local dependency Compose file when using this native setup. The application processes still connect to PostgreSQL's container port when they run inside Compose.
-
-3. Install dependencies for native mode:
-
-```bash
+```sh
+docker compose --env-file .env -f deployments/local/docker-compose.yaml up -d postgres redis s3mock mailpit
 go mod download
 ```
 
-4. Start the required dependencies when running the Go processes natively:
+Start the processes using their [service guides](#service-guides). Run native commands from the repository root in separate terminals.
 
-```bash
-docker compose -f deployments/local/docker-compose.yaml --env-file .env up -d postgres redis s3mock mailpit
-```
+For optional FCM delivery, see [Push worker](cmd/push_worker/README.md) and the
+[notification API](#push-notifications).
 
-Skip steps 3 through 8 when using the complete Docker Compose mode.
+### Releases
 
-5. Run the API:
-
-```bash
-go run cmd/api/main.go
-```
-
-6. Run the message worker (separate terminal):
-
-```bash
-go run cmd/message_worker/main.go
-```
-
-7. Run the WebSocket Gateway (separate terminal):
-
-```bash
-go run cmd/websocket_gateway/main.go
-```
-
-8. Run the scheduler (separate terminal):
-
-```bash
-go run cmd/scheduler/main.go
-```
-
-### Docker
-
-Build and run each service separately:
-
-```bash
-# API
-docker build -f build/package/api/Dockerfile -t atoitalk-api .
-docker run --env-file .env -p 8080:8080 atoitalk-api
-
-# Scheduler
-docker build -f build/package/scheduler/Dockerfile -t atoitalk-scheduler .
-docker run --env-file .env atoitalk-scheduler
-
-# Message worker
-docker build -f build/package/message_worker/Dockerfile -t atoitalk-message-worker .
-docker run --env-file .env atoitalk-message-worker
-
-# WebSocket Gateway
-docker build -f build/package/websocket_gateway/Dockerfile -t atoitalk-websocket-gateway .
-docker run --env-file .env -p 8081:8081 atoitalk-websocket-gateway
-```
-
-Run the complete local stack with Docker Compose:
-
-```bash
-docker compose -f deployments/local/docker-compose.yaml --env-file .env up -d --build
-```
-
-The API listens on `http://localhost:8080` and the WebSocket Gateway listens on `http://localhost:8081`.
-
-## Environment Variables
-
-Copy `.env.example` to `.env` and fill in the values. Only the API runs database migrations from `DB_MIGRATE`; the message worker, WebSocket Gateway, and scheduler disable migrations when they start.
-
-### `.env` — Runtime Config
-
-#### Shared Runtime Settings
-
-The API, message worker, WebSocket Gateway, and scheduler share database and Redis connectivity. The tables below separate process-wide settings from process-specific settings.
-
-Timestamps represent instants: application-generated database timestamps use UTC, event and session-revocation timestamps use Unix milliseconds, and API date strings use RFC3339 (which may include an offset). Cron schedules use `SCHEDULER_TIMEZONE` (default `UTC`); this setting changes job execution time, not stored instants.
-
-The native default for `DB_PORT` is `5432`. The local dependency Compose file publishes PostgreSQL on host port `5434`, so native processes use `DB_PORT=5434` when connecting to that stack.
-
-| Variable | Description | Default |
-|---|---|---|
-| `APP_ENV` | `development` or `production` (controls log format) | `development` |
-| `DB_HOST` | PostgreSQL host | `localhost` |
-| `DB_PORT` | PostgreSQL port | `5432` |
-| `DB_USER` | Database user | `postgres` |
-| `DB_PASSWORD` | Database password | `postgres` |
-| `DB_NAME` | Database name | `atoitalk` |
-| `DB_SSLMODE` | SSL mode (`disable`, `require`, etc.) | `disable` |
-| `DB_MAX_OPEN_CONNS` | Maximum database connections for the process | `80` |
-| `DB_MAX_IDLE_CONNS` | Maximum idle database connections for the process | `40` |
-| `DB_CONN_MAX_LIFETIME` | Maximum lifetime of a database connection | `30m` |
-| `DB_CONN_MAX_IDLE_TIME` | Maximum idle time for a database connection | `5m` |
-
-#### API Only
-
-| Variable | Description | Default |
-|---|---|---|
-| `APP_PORT` | HTTP server port | `8080` |
-| `APP_URL` | Base URL of the API | `http://localhost:8080` |
-| `APP_CORS_ALLOWED_ORIGINS` | Allowed CORS origins | `*` |
-| `RATE_LIMIT_ENABLED` | Enables rate limiting middleware | `true` |
-| `CAPTCHA_ENABLED` | Enables Cloudflare Turnstile captcha verification | `true` |
-| `DB_MIGRATE` | Run schema migrations on startup | `false` |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID | — |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | — |
-| `GOOGLE_REDIRECT_URL` | Google OAuth redirect URL | — |
-| `JWT_SECRET` | JWT signing key | `secret` |
-| `JWT_EXP` | JWT expiration in seconds | `86400` |
-| `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile secret | — |
-| `OTP_EXP` | OTP expiration in seconds | `300` |
-| `OTP_RATE_LIMIT_SECONDS` | OTP rate limit window | `60` |
-| `OTP_SECRET` | OTP signing secret | `secret` |
-| `ENABLE_PPROF` | Expose `/debug/pprof/*` diagnostic endpoints | `false` |
-
-#### Shared S3 Settings
-
-| Variable | Description | Default |
-|---|---|---|
-| `S3_BUCKET_PUBLIC` | Public S3 bucket name | — |
-| `S3_BUCKET_PRIVATE` | Private S3 bucket name | — |
-
-All processes load these bucket names from the shared configuration. The WebSocket Gateway only needs the names for its runtime configuration and does not make S3 requests.
-
-#### API, Scheduler, and Message Worker S3 Settings
-
-| Variable | Description | Default |
-|---|---|---|
-| `S3_REGION` | S3 region | — |
-| `S3_ACCESS_KEY` | S3 access key | — |
-| `S3_SECRET_KEY` | S3 secret key | — |
-| `S3_ENDPOINT` | S3 endpoint URL | — |
-| `S3_PRESIGN_ENDPOINT` | Endpoint used in generated presigned URLs | — |
-| `S3_PUBLIC_DOMAIN` | CDN domain for public bucket | — |
-
-#### Shared Observability Settings
-
-These settings apply to the API, message worker, WebSocket Gateway, and scheduler.
-
-| Variable | Description | Default |
-|---|---|---|
-| `OTEL_ENABLED` | Enable OpenTelemetry tracing and metrics | `false` |
-| `OTEL_SERVICE_NAME` | Base service name in telemetry | `atoitalk-api` |
-| `OTEL_SERVICE_VERSION` | Service version in telemetry | `0.1.1` |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP gRPC collector endpoint | `localhost:4317` |
-| `OTEL_EXPORTER_OTLP_INSECURE` | Use plaintext gRPC for OTLP | `true` |
-| `OTEL_SAMPLING_RATIO` | Trace sampling fraction from 0.0 to 1.0 | `0.1` |
-| `OTEL_METRIC_EXPORT_INTERVAL` | Interval for metric reader collection and export | `5s` |
-
-#### SMTP Settings
-
-| Variable | Description | Default |
-|---|---|---|
-| `SMTP_HOST` | SMTP server host | — |
-| `SMTP_PORT` | SMTP port | `587` |
-| `SMTP_USER` | SMTP username | — |
-| `SMTP_PASSWORD` | SMTP password | — |
-| `SMTP_FROM_EMAIL` | Sender email address | — |
-| `SMTP_FROM_NAME` | Sender display name | — |
-| `SMTP_ASYNC` | Send emails asynchronously | `true` |
-
-#### Shared Redis Settings
-
-These settings are used by the API, message worker, and WebSocket Gateway.
-
-| Variable | Description | Default |
-|---|---|---|
-| `REDIS_HOST` | Redis host | `localhost` |
-| `REDIS_PORT` | Redis port | `6379` |
-| `REDIS_PASSWORD` | Redis password | — |
-| `REDIS_DB` | Redis database number | `0` |
-
-#### Scheduler Only
-
-| Variable | Description | Default |
-|---|---|---|
-| `SOFT_DELETE_RETENTION_DAYS` | Days before hard-deleting soft-deleted entities | `30` |
-| `MEDIA_RETENTION_DAYS` | Days before cleaning orphan media (supports decimals) | `7` |
-| `ENTITY_CLEANUP_CRON` | Cron schedule for entity cleanup | `0 2 * * *` |
-| `PRIVATE_CHAT_CLEANUP_CRON` | Cron schedule for private chat GC | `30 2 * * *` |
-| `MEDIA_CLEANUP_CRON` | Cron schedule for media cleanup | `0 3 * * *` |
-| `SCHEDULER_TIMEZONE` | IANA time zone for cron schedules; invalid values fall back to UTC | `UTC` |
-
-#### Message Worker Only
-
-| Variable | Description | Default |
-|---|---|---:|
-| `MESSAGE_WORKER_BATCH_SIZE` | Maximum outbox records claimed per batch | `100` |
-| `MESSAGE_WORKER_CONCURRENCY` | Maximum records processed concurrently | `5` |
-| `MESSAGE_WORKER_LEASE_DURATION` | Duration of an outbox claim lease | `5m` |
-| `MESSAGE_WORKER_POLL_INTERVAL` | Polling interval for pending outbox records | `1s` |
-| `MESSAGE_WORKER_BACKLOG_INTERVAL` | Interval for backlog metrics | `5s` |
-| `MESSAGE_EVENT_STREAM` | Redis Stream used for durable message events | `events:messages` |
-| `MESSAGE_EVENT_STREAM_MAX_LEN` | Approximate maximum Redis Stream length | `10000` |
-| `MESSAGE_OUTBOX_RETENTION_DAYS` | Retention for published and dead-letter outbox rows | `7` |
-
-#### WebSocket Gateway Only
-
-| Variable | Description | Default |
-|---|---|---:|
-| `REALTIME_PORT` | WebSocket Gateway HTTP port | `8081` |
-| `REALTIME_INSTANCE_ID` | Unique gateway instance identifier | hostname or generated UUID |
-| `REALTIME_CONSUMER_GROUP` | Optional Redis Stream consumer group prefix; instance ID is always appended | `realtime` |
-
-Realtime socket delivery is best-effort after an event reaches a gateway. A client whose local send buffer is full is disconnected; after reconnecting, it must resynchronize message history through the API.
-
-### `.env.test` — Test Config
-
-Copy `deployments/integration/.env.example` to `deployments/integration/.env.test`. Uses a separate database and Redis DB to avoid polluting real data.
-
-| Variable | Description | Default |
-|---|---|---|
-| `DB_HOST` | Test database host | `localhost` |
-| `DB_PORT` | Test database port | `5433` |
-| `DB_USER` | Test database user | `postgres` |
-| `DB_PASSWORD` | Test database password | `postgres` |
-| `DB_NAME` | Test database name | `atoitalk_test` |
-| `DB_SSLMODE` | SSL mode | `disable` |
-| `REDIS_HOST` | Test Redis host | `localhost` |
-| `REDIS_PORT` | Test Redis port | `6379` |
-| `REDIS_PASSWORD` | Test Redis password | — |
-| `REDIS_DB` | Test Redis DB (use different from prod) | `1` |
-| `GOOGLE_CLIENT_ID` | Placeholder for tests | `test` |
-| `GOOGLE_CLIENT_SECRET` | Placeholder for tests | `test` |
-| `GOOGLE_REDIRECT_URL` | Placeholder for tests | `test` |
-| `S3_*` | S3 config (same keys as runtime) | — |
-| `SMTP_*` | SMTP config (same keys as runtime) | — |
-| `TEST_GOOGLE_AUTH_CODE` | Google auth code for integration tests | — |
+See [GitHub Releases](https://github.com/Hilmi-Raif/Atoi-Talk-API/releases) for available versions and release notes. Container images are published to GHCR for each service. Use a version or immutable SHA tag when pinning a deployment.
 
 ## API Docs
 
@@ -549,7 +335,7 @@ Full documentation is available [here](https://doc-atoitalk-api.netlify.app/). R
 
 ## Observability
 
-When enabled, the API, message worker, WebSocket Gateway, and scheduler export traces, metrics, and correlated structured logs through OpenTelemetry Protocol. The local observability stack uses an OTel Collector, SigNoz Query Service, and ClickHouse.
+When enabled, the API, message worker, push worker, WebSocket Gateway, and scheduler export traces, metrics, and correlated structured logs through OpenTelemetry Protocol. The local observability stack uses an OTel Collector, SigNoz Query Service, and ClickHouse.
 
 The telemetry covers HTTP latency and active requests, PostgreSQL query and pool behavior, Redis commands and Stream consumer state, S3 calls, outbox backlog, worker processing stages, WebSocket delivery, health checks, and scheduler jobs. SQL text, SQL parameters, Redis keys, message content, and file names are excluded from telemetry attributes.
 
@@ -562,17 +348,11 @@ make observability-up
 
 Open SigNoz at `http://localhost:3301` after starting telemetry. Each process reports its own service identity through `OTEL_SERVICE_NAME`; the worker, gateway, and scheduler append their process suffixes to the configured base name.
 
-The importable live dashboard is `deployments/observability/dashboards/atoitalk-benchmark.json`. The SigNoz Query Service provisions this file automatically from `DASHBOARDS_PATH` when the observability stack starts. If the Query Service was already running before the file was added, recreate only that service:
-
-```bash
-docker compose -f deployments/observability/docker-compose.yaml up -d --force-recreate signoz-query-service
-```
-
-The dashboard reads current metrics instead of embedding a benchmark snapshot. Redis Stream pending entries and lag are not included as a fabricated metric; validate them with `XINFO GROUPS` for the configured stream and consumer group.
+The local stack provisions the dashboard in `deployments/observability/dashboards/atoitalk-benchmark.json`. Inspect Redis Stream pending entries and consumer lag with `XINFO GROUPS`.
 
 ## Performance Validation
 
-The reference benchmarks evaluate performance using the k6 `constant-arrival-rate` executor with **native k6 on the Windows host**. The API stack and its dependencies run in WSL2 Docker, with SigNoz enabled and `OTEL_SAMPLING_RATIO=0.1`. Each endpoint was tested independently so one workload could not affect another.
+The reference benchmarks evaluate performance using the k6 `constant-arrival-rate` executor with **k6 running outside the application containers**. The API stack and its dependencies run in Docker, with SigNoz enabled and `OTEL_SAMPLING_RATIO=0.1`. Each endpoint was tested independently so one workload could not affect another.
 
 Test profile:
 
@@ -596,7 +376,7 @@ The table reports the completed iterations, dropped iterations, latency percenti
 | `GET /api/chats/:id/messages/around` | 30,000 | 0 | 9.99 ms | 15.00 ms | 0.00% | 9 | Pass |
 | `POST /api/messages` | 30,001 | 0 | 16.99 ms | 29.00 ms | 0.00% | 15 | Pass |
 
-All isolated endpoints achieved a 100% pass rate under 500 RPS sustained load with 0 dropped iterations and 0.00% application errors. Latency percentiles across all endpoints remained well beneath target thresholds (all P95 < 17ms vs 500ms target, all P99 < 30ms vs 1000ms target). Active virtual user requirements remained exceptionally low (2 to 15 VUs across all endpoints), demonstrating excellent query efficiency and absence of database connection pool contention.
+These results describe the reference environment and isolated workloads above; they are not a production capacity guarantee.
 
 ![SigNoz Benchmark Dashboard](https://github.com/user-attachments/assets/69236deb-2456-47a0-8d1b-e071ec059aab)
 
@@ -623,9 +403,13 @@ make loadtest-api-endpoint ENDPOINT=media TARGET_RPS=500 DURATION=60s MAX_VUS=90
 make loadtest-ws
 ```
 
-Before comparing write runs, verify that the outbox and Redis Stream consumer group have returned to zero backlog. Raw k6 summary files are intentionally excluded from version control because authentication data can be present in them. Deterministic database fixtures can be restored anytime before running benchmarks via `make loadtest-reset`.
+Before comparing write runs, wait for the outbox and Redis Stream consumer backlog to drain. Use `make loadtest-reset` to restore benchmark fixtures in a test database.
 
-## Development & Makefile
+## Contributing
+
+Bug reports and pull requests are welcome. Include reproduction steps for bugs and regression tests for behavior changes. Use Conventional Commits, such as `fix(auth): ...` or `feat(chat): ...`, and mark breaking changes with `!`.
+
+Run the relevant checks before opening a pull request:
 
 ```bash
 # Show available commands
@@ -653,42 +437,25 @@ cp deployments/integration/.env.example deployments/integration/.env.test
 make test-integration
 make test-env-down
 
-The local integration services are defined in `deployments/integration/docker-compose.yaml`.
-
-# Start full local application stack (API, Message Worker, WebSocket Gateway, Scheduler, DB, Redis, S3Mock, Mailpit)
-make local-up
-# Or run with SigNoz observability overlay:
-make local-observability-up
-make local-observability-down
-
-# Start standalone SigNoz observability stack (OpenTelemetry, ClickHouse, Dashboard)
-make observability-up
-# Open SigNoz UI at http://localhost:3301
-make observability-down
-
 # Build binaries and docker images
 make build-api
 make build-message-worker
+make build-push-worker
 make build-websocket-gateway
 make build-scheduler
 make docker-build
 ```
 
-## Tests
+Integration tests use the backing services in `deployments/integration/docker-compose.yaml`. FCM adapter tests use a local HTTP stub; testing delivery to a real device requires Firebase credentials and notification permission.
 
-```bash
-# Unit tests
-make test
+When changing infrastructure contracts, regenerate mocks with Mockery `2.53.6` using `make generate`. When changing HTTP contracts or Swagger annotations, regenerate the API specification:
 
-# Unit tests with race detector
-make test-race
-
-# Integration tests
-make test-env-up
-make test-integration
-make test-env-down
-
-# Static analysis
-make vet
-make lint
+```sh
+go run github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc5 init -g cmd/api/main.go --parseDependency --parseInternal
 ```
+
+### Push notifications
+
+See the [API guide](cmd/api/README.md#notification-clients) for client lifecycle,
+the [push worker guide](cmd/push_worker/README.md) for delivery and deployment,
+and [Swagger](docs/swagger.yaml) for endpoint contracts.

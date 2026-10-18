@@ -20,6 +20,18 @@ func (f ChatFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChatMutation", m)
 }
 
+// The ChatNotificationPreferenceFunc type is an adapter to allow the use of ordinary
+// function as ChatNotificationPreference mutator.
+type ChatNotificationPreferenceFunc func(context.Context, *ent.ChatNotificationPreferenceMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChatNotificationPreferenceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChatNotificationPreferenceMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChatNotificationPreferenceMutation", m)
+}
+
 // The GroupChatFunc type is an adapter to allow the use of ordinary
 // function as GroupChat mutator.
 type GroupChatFunc func(context.Context, *ent.GroupChatMutation) (ent.Value, error)
@@ -90,6 +102,30 @@ func (f PrivateChatFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value,
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PrivateChatMutation", m)
+}
+
+// The PushDeliveryFunc type is an adapter to allow the use of ordinary
+// function as PushDelivery mutator.
+type PushDeliveryFunc func(context.Context, *ent.PushDeliveryMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PushDeliveryFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PushDeliveryMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PushDeliveryMutation", m)
+}
+
+// The PushDeviceFunc type is an adapter to allow the use of ordinary
+// function as PushDevice mutator.
+type PushDeviceFunc func(context.Context, *ent.PushDeviceMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PushDeviceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PushDeviceMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PushDeviceMutation", m)
 }
 
 // The ReportFunc type is an adapter to allow the use of ordinary

@@ -1,7 +1,9 @@
 {
     "swagger": "2.0",
     "info": {
-        "contact": {}
+        "title": "AtoiTalk API",
+        "contact": {},
+        "version": "1.0"
     },
     "paths": {
         "/api/account": {
@@ -29,7 +31,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.DeleteAccountRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.DeleteAccountRequest"
                         }
                     }
                 ],
@@ -37,37 +39,37 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -98,7 +100,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.ChangeEmailRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.ChangeEmailRequest"
                         }
                     }
                 ],
@@ -106,37 +108,37 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -167,7 +169,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.ChangePasswordRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.ChangePasswordRequest"
                         }
                     }
                 ],
@@ -175,37 +177,37 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -235,13 +237,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.DashboardStatsResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.DashboardStatsResponse"
                                         }
                                     }
                                 }
@@ -251,19 +253,19 @@
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -308,13 +310,13 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseWithPagination"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -348,13 +350,13 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -386,13 +388,13 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -449,7 +451,7 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseWithPagination"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination"
                                 },
                                 {
                                     "type": "object",
@@ -457,7 +459,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.GroupMemberDTO"
+                                                "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.GroupMemberDTO"
                                             }
                                         }
                                     }
@@ -468,19 +470,19 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -518,7 +520,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.ResetGroupInfoRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.ResetGroupInfoRequest"
                         }
                     }
                 ],
@@ -526,13 +528,13 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -588,7 +590,7 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseWithPagination"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination"
                                 },
                                 {
                                     "type": "object",
@@ -596,7 +598,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.ReportListResponse"
+                                                "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.ReportListResponse"
                                             }
                                         }
                                     }
@@ -607,25 +609,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -664,13 +666,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ReportDetailResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.ReportDetailResponse"
                                         }
                                     }
                                 }
@@ -680,31 +682,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -739,31 +741,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -801,7 +803,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.ResolveReportRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.ResolveReportRequest"
                         }
                     }
                 ],
@@ -809,37 +811,37 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -889,7 +891,7 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseWithPagination"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination"
                                 },
                                 {
                                     "type": "object",
@@ -897,7 +899,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.AdminUserListResponse"
+                                                "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.AdminUserListResponse"
                                             }
                                         }
                                     }
@@ -908,13 +910,13 @@
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -945,7 +947,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.BanUserRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.BanUserRequest"
                         }
                     }
                 ],
@@ -953,37 +955,37 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -1022,13 +1024,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AdminUserDetailResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.AdminUserDetailResponse"
                                         }
                                     }
                                 }
@@ -1038,13 +1040,13 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -1082,7 +1084,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.ResetUserInfoRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.ResetUserInfoRequest"
                         }
                     }
                 ],
@@ -1090,19 +1092,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -1139,37 +1141,37 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -1195,7 +1197,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.GoogleLoginRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.GoogleLoginRequest"
                         }
                     }
                 ],
@@ -1205,13 +1207,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AuthResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.AuthResponse"
                                         }
                                     }
                                 }
@@ -1221,19 +1223,19 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -1258,13 +1260,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.GoogleAuthInitResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.GoogleAuthInitResponse"
                                         }
                                     }
                                 }
@@ -1274,13 +1276,13 @@
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -1306,7 +1308,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.LoginRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.LoginRequest"
                         }
                     }
                 ],
@@ -1316,13 +1318,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AuthResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.AuthResponse"
                                         }
                                     }
                                 }
@@ -1332,25 +1334,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -1378,25 +1380,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -1422,7 +1424,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.RegisterUserRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.RegisterUserRequest"
                         }
                     }
                 ],
@@ -1432,13 +1434,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AuthResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.AuthResponse"
                                         }
                                     }
                                 }
@@ -1448,25 +1450,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -1492,7 +1494,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.ResetPasswordRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.ResetPasswordRequest"
                         }
                     }
                 ],
@@ -1500,31 +1502,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -1574,7 +1576,7 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseWithPagination"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination"
                                 },
                                 {
                                     "type": "object",
@@ -1582,7 +1584,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.ChatListResponse"
+                                                "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.ChatListResponse"
                                             }
                                         }
                                     }
@@ -1593,25 +1595,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -1642,7 +1644,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateGroupChatRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.CreateGroupChatRequest"
                         }
                     }
                 ],
@@ -1652,13 +1654,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ChatListResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.ChatListResponse"
                                         }
                                     }
                                 }
@@ -1668,31 +1670,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -1726,13 +1728,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.GroupPreviewDTO"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.GroupPreviewDTO"
                                         }
                                     }
                                 }
@@ -1742,25 +1744,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -1791,7 +1793,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.JoinGroupByInviteRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.JoinGroupByInviteRequest"
                         }
                     }
                 ],
@@ -1801,13 +1803,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ChatListResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.ChatListResponse"
                                         }
                                     }
                                 }
@@ -1817,31 +1819,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -1897,7 +1899,7 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseWithPagination"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination"
                                 },
                                 {
                                     "type": "object",
@@ -1905,7 +1907,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.PublicGroupDTO"
+                                                "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.PublicGroupDTO"
                                             }
                                         }
                                     }
@@ -1916,25 +1918,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -1972,7 +1974,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateGroupChatRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.UpdateGroupChatRequest"
                         }
                     }
                 ],
@@ -1982,13 +1984,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ChatListResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.ChatListResponse"
                                         }
                                     }
                                 }
@@ -1998,37 +2000,37 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -2063,43 +2065,43 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -2138,13 +2140,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.GroupInviteResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.GroupInviteResponse"
                                         }
                                     }
                                 }
@@ -2154,37 +2156,37 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -2223,13 +2225,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ChatListResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.ChatListResponse"
                                         }
                                     }
                                 }
@@ -2239,43 +2241,43 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -2314,13 +2316,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.MessageResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse"
                                         }
                                     }
                                 }
@@ -2330,31 +2332,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -2411,7 +2413,7 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseWithPagination"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination"
                                 },
                                 {
                                     "type": "object",
@@ -2419,7 +2421,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.GroupMemberDTO"
+                                                "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.GroupMemberDTO"
                                             }
                                         }
                                     }
@@ -2430,37 +2432,37 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -2496,7 +2498,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.AddGroupMemberRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.AddGroupMemberRequest"
                         }
                     }
                 ],
@@ -2506,7 +2508,7 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
@@ -2514,7 +2516,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.MessageResponse"
+                                                "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse"
                                             }
                                         }
                                     }
@@ -2525,43 +2527,43 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -2607,13 +2609,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.MessageResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse"
                                         }
                                     }
                                 }
@@ -2623,37 +2625,37 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -2698,7 +2700,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateGroupMemberRoleRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.UpdateGroupMemberRoleRequest"
                         }
                     }
                 ],
@@ -2708,13 +2710,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.MessageResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse"
                                         }
                                     }
                                 }
@@ -2724,37 +2726,37 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -2792,7 +2794,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.TransferGroupOwnershipRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.TransferGroupOwnershipRequest"
                         }
                     }
                 ],
@@ -2802,13 +2804,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.MessageResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse"
                                         }
                                     }
                                 }
@@ -2818,37 +2820,37 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -2879,7 +2881,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreatePrivateChatRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.CreatePrivateChatRequest"
                         }
                     }
                 ],
@@ -2889,13 +2891,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ChatResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.ChatResponse"
                                         }
                                     }
                                 }
@@ -2905,31 +2907,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -2992,7 +2994,7 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseWithPagination"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination"
                                 },
                                 {
                                     "type": "object",
@@ -3000,7 +3002,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.MessageResponse"
+                                                "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse"
                                             }
                                         }
                                     }
@@ -3011,31 +3013,107 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/chats/{chatID}/notifications": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Set muted_forever or a future muted_until within 365 days; an empty object unmutes. Requires current membership.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Mute or unmute a conversation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Chat UUID",
+                        "name": "chatID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Mute preference",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_application_push.MuteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -3074,13 +3152,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ChatListResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.ChatListResponse"
                                         }
                                     }
                                 }
@@ -3090,31 +3168,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -3151,37 +3229,37 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -3218,37 +3296,37 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -3279,7 +3357,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UploadMediaRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.UploadMediaRequest"
                         }
                     }
                 ],
@@ -3289,13 +3367,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UploadMediaResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.UploadMediaResponse"
                                         }
                                     }
                                 }
@@ -3305,25 +3383,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -3362,13 +3440,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.MediaDTO"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.MediaDTO"
                                         }
                                     }
                                 }
@@ -3378,31 +3456,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -3441,13 +3519,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.MediaURLResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.MediaURLResponse"
                                         }
                                     }
                                 }
@@ -3457,31 +3535,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -3512,7 +3590,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.SendMessageRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.SendMessageRequest"
                         }
                     }
                 ],
@@ -3522,13 +3600,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.MessageResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse"
                                         }
                                     }
                                 }
@@ -3538,31 +3616,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -3600,7 +3678,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.EditMessageRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.EditMessageRequest"
                         }
                     }
                 ],
@@ -3610,13 +3688,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.MessageResponse"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse"
                                         }
                                     }
                                 }
@@ -3626,37 +3704,37 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -3691,43 +3769,248 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/notifications": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "GET returns message_notifications_enabled. PUT requires that boolean field and preserves chat mutes.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Read or update account notification preferences",
+                "parameters": [
+                    {
+                        "description": "Required for PUT only",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_application_push.Preferences"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_application_push.Preferences"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "GET returns message_notifications_enabled. PUT requires that boolean field and preserves chat mutes.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Read or update account notification preferences",
+                "parameters": [
+                    {
+                        "description": "Required for PUT only",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_application_push.Preferences"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_application_push.Preferences"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/notifications/muted-chats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "List active muted conversations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Pagination cursor",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 20, maximum 50)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/AtoiTalkAPI_internal_api_application_push.ChatPreference"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -3753,7 +4036,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.SendOTPRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.SendOTPRequest"
                         }
                     }
                 ],
@@ -3761,37 +4044,197 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/push/devices/{installationID}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "PUT registers a device with an installation secret; DELETE disables the current session binding.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Register or disable a push device",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Installation UUID",
+                        "name": "installationID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Required for PUT only",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.PushDeviceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "PUT registers a device with an installation secret; DELETE disables the current session binding.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Register or disable a push device",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Installation UUID",
+                        "name": "installationID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Required for PUT only",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.PushDeviceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -3822,7 +4265,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateReportRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.CreateReportRequest"
                         }
                     }
                 ],
@@ -3830,37 +4273,37 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -3890,13 +4333,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserDTO"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.UserDTO"
                                         }
                                     }
                                 }
@@ -3906,19 +4349,19 @@
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -3949,7 +4392,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateProfileRequest"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.UpdateProfileRequest"
                         }
                     }
                 ],
@@ -3959,13 +4402,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserDTO"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.UserDTO"
                                         }
                                     }
                                 }
@@ -3975,31 +4418,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -4061,7 +4504,7 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseWithPagination"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination"
                                 },
                                 {
                                     "type": "object",
@@ -4069,7 +4512,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.UserDTO"
+                                                "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.UserDTO"
                                             }
                                         }
                                     }
@@ -4080,25 +4523,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -4148,7 +4591,7 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseWithPagination"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseWithPagination"
                                 },
                                 {
                                     "type": "object",
@@ -4156,7 +4599,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.UserDTO"
+                                                "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.UserDTO"
                                             }
                                         }
                                     }
@@ -4167,25 +4610,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -4224,13 +4667,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/helper.ResponseSuccess"
+                                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserDTO"
+                                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.UserDTO"
                                         }
                                     }
                                 }
@@ -4240,31 +4683,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -4301,37 +4744,37 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -4368,31 +4811,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseSuccess"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseSuccess"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/helper.ResponseError"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.ResponseError"
                         }
                     }
                 }
@@ -4400,7 +4843,43 @@
         }
     },
     "definitions": {
-        "helper.PaginationMeta": {
+        "AtoiTalkAPI_internal_api_application_push.ChatPreference": {
+            "type": "object",
+            "properties": {
+                "chat_id": {
+                    "type": "string"
+                },
+                "muted_forever": {
+                    "type": "boolean"
+                },
+                "muted_until": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "AtoiTalkAPI_internal_api_application_push.MuteRequest": {
+            "type": "object",
+            "properties": {
+                "muted_forever": {
+                    "type": "boolean"
+                },
+                "muted_until": {
+                    "type": "string"
+                }
+            }
+        },
+        "AtoiTalkAPI_internal_api_application_push.Preferences": {
+            "type": "object",
+            "properties": {
+                "message_notifications_enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "AtoiTalkAPI_internal_api_http_response.PaginationMeta": {
             "type": "object",
             "properties": {
                 "has_next": {
@@ -4417,7 +4896,7 @@
                 }
             }
         },
-        "helper.ResponseError": {
+        "AtoiTalkAPI_internal_api_http_response.ResponseError": {
             "type": "object",
             "properties": {
                 "error": {
@@ -4425,22 +4904,22 @@
                 }
             }
         },
-        "helper.ResponseSuccess": {
+        "AtoiTalkAPI_internal_api_http_response.ResponseSuccess": {
             "type": "object",
             "properties": {
                 "data": {}
             }
         },
-        "helper.ResponseWithPagination": {
+        "AtoiTalkAPI_internal_api_http_response.ResponseWithPagination": {
             "type": "object",
             "properties": {
                 "data": {},
                 "meta": {
-                    "$ref": "#/definitions/helper.PaginationMeta"
+                    "$ref": "#/definitions/AtoiTalkAPI_internal_api_http_response.PaginationMeta"
                 }
             }
         },
-        "model.AddGroupMemberRequest": {
+        "AtoiTalkAPI_internal_domain_model.AddGroupMemberRequest": {
             "type": "object",
             "required": [
                 "user_ids"
@@ -4448,6 +4927,7 @@
             "properties": {
                 "user_ids": {
                     "type": "array",
+                    "maxItems": 100,
                     "minItems": 1,
                     "items": {
                         "type": "string"
@@ -4455,7 +4935,7 @@
                 }
             }
         },
-        "model.AdminUserDetailResponse": {
+        "AtoiTalkAPI_internal_domain_model.AdminUserDetailResponse": {
             "type": "object",
             "properties": {
                 "avatar": {
@@ -4502,7 +4982,7 @@
                 }
             }
         },
-        "model.AdminUserListResponse": {
+        "AtoiTalkAPI_internal_domain_model.AdminUserListResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -4528,18 +5008,18 @@
                 }
             }
         },
-        "model.AuthResponse": {
+        "AtoiTalkAPI_internal_domain_model.AuthResponse": {
             "type": "object",
             "properties": {
                 "token": {
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/model.UserDTO"
+                    "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.UserDTO"
                 }
             }
         },
-        "model.BanUserRequest": {
+        "AtoiTalkAPI_internal_domain_model.BanUserRequest": {
             "type": "object",
             "required": [
                 "reason",
@@ -4558,7 +5038,7 @@
                 }
             }
         },
-        "model.ChangeEmailRequest": {
+        "AtoiTalkAPI_internal_domain_model.ChangeEmailRequest": {
             "type": "object",
             "required": [
                 "code",
@@ -4573,7 +5053,7 @@
                 }
             }
         },
-        "model.ChangePasswordRequest": {
+        "AtoiTalkAPI_internal_domain_model.ChangePasswordRequest": {
             "type": "object",
             "required": [
                 "confirm_password",
@@ -4593,98 +5073,81 @@
                 }
             }
         },
-        "model.ChatListResponse": {
+        "AtoiTalkAPI_internal_domain_model.ChatListResponse": {
             "type": "object",
             "properties": {
                 "avatar": {
-                    "description": "Avatar URL of the group or the other user",
                     "type": "string"
                 },
                 "description": {
-                    "description": "Description of the group",
                     "type": "string"
                 },
                 "hidden_at": {
-                    "description": "Timestamp when the current user hid the chat",
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
                 "invite_code": {
-                    "description": "Invite code for the group, available if public or for admins",
                     "type": "string"
                 },
                 "invite_expires_at": {
-                    "description": "Expiration timestamp for the invite code",
                     "type": "string"
                 },
                 "is_blocked_by_me": {
-                    "description": "Indicates if the current user has blocked the other user",
                     "type": "boolean"
                 },
                 "is_blocked_by_other": {
-                    "description": "Indicates if the other user has blocked the current user",
                     "type": "boolean"
                 },
                 "is_online": {
-                    "description": "Indicates if the other user is currently online",
                     "type": "boolean"
                 },
                 "is_public": {
-                    "description": "Indicates if the group is public",
                     "type": "boolean"
                 },
                 "last_message": {
-                    "description": "Preview of the last message in the chat",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.MessageResponse"
-                        }
-                    ]
+                    "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.MessageResponse"
                 },
                 "last_read_at": {
-                    "description": "Timestamp when the current user last read the chat",
                     "type": "string"
                 },
                 "member_count": {
-                    "description": "Total number of members in the group",
                     "type": "integer"
                 },
+                "muted_forever": {
+                    "type": "boolean"
+                },
+                "muted_until": {
+                    "type": "string"
+                },
                 "my_role": {
-                    "description": "Role of the current user in the group (owner, admin, member)",
                     "type": "string"
                 },
                 "name": {
-                    "description": "Name of the group or the other user in a private chat",
                     "type": "string"
                 },
                 "other_last_read_at": {
-                    "description": "Timestamp when the other user last read the chat",
                     "type": "string"
                 },
                 "other_user_id": {
-                    "description": "ID of the other user in a private chat",
                     "type": "string"
                 },
                 "other_user_is_banned": {
-                    "description": "Indicates if the other user is currently banned",
                     "type": "boolean"
                 },
                 "other_user_is_deleted": {
-                    "description": "Indicates if the other user's account has been deleted",
                     "type": "boolean"
                 },
                 "type": {
                     "type": "string"
                 },
                 "unread_count": {
-                    "description": "Number of unread messages for the current user",
                     "type": "integer"
                 }
             }
         },
-        "model.ChatResponse": {
+        "AtoiTalkAPI_internal_domain_model.ChatResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -4698,7 +5161,7 @@
                 }
             }
         },
-        "model.CreateGroupChatRequest": {
+        "AtoiTalkAPI_internal_domain_model.CreateGroupChatRequest": {
             "type": "object",
             "required": [
                 "member_ids",
@@ -4717,6 +5180,7 @@
                 },
                 "member_ids": {
                     "type": "array",
+                    "maxItems": 100,
                     "minItems": 1,
                     "items": {
                         "type": "string"
@@ -4729,7 +5193,7 @@
                 }
             }
         },
-        "model.CreatePrivateChatRequest": {
+        "AtoiTalkAPI_internal_domain_model.CreatePrivateChatRequest": {
             "type": "object",
             "required": [
                 "target_user_id"
@@ -4740,7 +5204,7 @@
                 }
             }
         },
-        "model.CreateReportRequest": {
+        "AtoiTalkAPI_internal_domain_model.CreateReportRequest": {
             "type": "object",
             "required": [
                 "reason",
@@ -4773,7 +5237,7 @@
                 }
             }
         },
-        "model.DashboardStatsResponse": {
+        "AtoiTalkAPI_internal_domain_model.DashboardStatsResponse": {
             "type": "object",
             "properties": {
                 "active_reports": {
@@ -4790,7 +5254,7 @@
                 }
             }
         },
-        "model.DeleteAccountRequest": {
+        "AtoiTalkAPI_internal_domain_model.DeleteAccountRequest": {
             "type": "object",
             "properties": {
                 "password": {
@@ -4798,11 +5262,12 @@
                 }
             }
         },
-        "model.EditMessageRequest": {
+        "AtoiTalkAPI_internal_domain_model.EditMessageRequest": {
             "type": "object",
             "properties": {
                 "attachment_ids": {
                     "type": "array",
+                    "maxItems": 20,
                     "items": {
                         "type": "string"
                     }
@@ -4813,7 +5278,7 @@
                 }
             }
         },
-        "model.GoogleAuthInitResponse": {
+        "AtoiTalkAPI_internal_domain_model.GoogleAuthInitResponse": {
             "type": "object",
             "properties": {
                 "auth_url": {
@@ -4827,7 +5292,7 @@
                 }
             }
         },
-        "model.GoogleLoginRequest": {
+        "AtoiTalkAPI_internal_domain_model.GoogleLoginRequest": {
             "type": "object",
             "required": [
                 "code",
@@ -4844,7 +5309,7 @@
                 }
             }
         },
-        "model.GroupInviteResponse": {
+        "AtoiTalkAPI_internal_domain_model.GroupInviteResponse": {
             "type": "object",
             "properties": {
                 "expires_at": {
@@ -4855,7 +5320,7 @@
                 }
             }
         },
-        "model.GroupMemberDTO": {
+        "AtoiTalkAPI_internal_domain_model.GroupMemberDTO": {
             "type": "object",
             "properties": {
                 "avatar": {
@@ -4884,7 +5349,7 @@
                 }
             }
         },
-        "model.GroupPreviewDTO": {
+        "AtoiTalkAPI_internal_domain_model.GroupPreviewDTO": {
             "type": "object",
             "properties": {
                 "avatar": {
@@ -4907,7 +5372,7 @@
                 }
             }
         },
-        "model.JoinGroupByInviteRequest": {
+        "AtoiTalkAPI_internal_domain_model.JoinGroupByInviteRequest": {
             "type": "object",
             "required": [
                 "invite_code"
@@ -4918,7 +5383,7 @@
                 }
             }
         },
-        "model.LoginRequest": {
+        "AtoiTalkAPI_internal_domain_model.LoginRequest": {
             "type": "object",
             "required": [
                 "captcha_token",
@@ -4939,7 +5404,7 @@
                 }
             }
         },
-        "model.MediaDTO": {
+        "AtoiTalkAPI_internal_domain_model.MediaDTO": {
             "type": "object",
             "properties": {
                 "category": {
@@ -4968,7 +5433,7 @@
                 }
             }
         },
-        "model.MediaURLResponse": {
+        "AtoiTalkAPI_internal_domain_model.MediaURLResponse": {
             "type": "object",
             "properties": {
                 "url": {
@@ -4976,7 +5441,7 @@
                 }
             }
         },
-        "model.MessageResponse": {
+        "AtoiTalkAPI_internal_domain_model.MessageResponse": {
             "type": "object",
             "properties": {
                 "action_data": {
@@ -4987,7 +5452,7 @@
                 "attachments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.MediaDTO"
+                        "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.MediaDTO"
                     }
                 },
                 "chat_id": {
@@ -5016,7 +5481,7 @@
                     "description": "Preview of the message this message is replying to",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/model.ReplyPreviewDTO"
+                            "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.ReplyPreviewDTO"
                         }
                     ]
                 },
@@ -5041,7 +5506,7 @@
                 }
             }
         },
-        "model.PublicGroupDTO": {
+        "AtoiTalkAPI_internal_domain_model.PublicGroupDTO": {
             "type": "object",
             "properties": {
                 "avatar": {
@@ -5067,7 +5532,21 @@
                 }
             }
         },
-        "model.RegisterUserRequest": {
+        "AtoiTalkAPI_internal_domain_model.PushDeviceRequest": {
+            "type": "object",
+            "properties": {
+                "device_secret": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "AtoiTalkAPI_internal_domain_model.RegisterUserRequest": {
             "type": "object",
             "required": [
                 "captcha_token",
@@ -5104,7 +5583,7 @@
                 }
             }
         },
-        "model.ReplyPreviewDTO": {
+        "AtoiTalkAPI_internal_domain_model.ReplyPreviewDTO": {
             "type": "object",
             "properties": {
                 "action_data": {
@@ -5135,7 +5614,7 @@
                 }
             }
         },
-        "model.ReportDetailResponse": {
+        "AtoiTalkAPI_internal_domain_model.ReportDetailResponse": {
             "type": "object",
             "properties": {
                 "admin_notes": {
@@ -5198,7 +5677,7 @@
                 }
             }
         },
-        "model.ReportListResponse": {
+        "AtoiTalkAPI_internal_domain_model.ReportListResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -5221,7 +5700,7 @@
                 }
             }
         },
-        "model.ResetGroupInfoRequest": {
+        "AtoiTalkAPI_internal_domain_model.ResetGroupInfoRequest": {
             "type": "object",
             "properties": {
                 "reset_avatar": {
@@ -5235,7 +5714,7 @@
                 }
             }
         },
-        "model.ResetPasswordRequest": {
+        "AtoiTalkAPI_internal_domain_model.ResetPasswordRequest": {
             "type": "object",
             "required": [
                 "captcha_token",
@@ -5264,7 +5743,7 @@
                 }
             }
         },
-        "model.ResetUserInfoRequest": {
+        "AtoiTalkAPI_internal_domain_model.ResetUserInfoRequest": {
             "type": "object",
             "required": [
                 "target_user_id"
@@ -5284,7 +5763,7 @@
                 }
             }
         },
-        "model.ResolveReportRequest": {
+        "AtoiTalkAPI_internal_domain_model.ResolveReportRequest": {
             "type": "object",
             "required": [
                 "status"
@@ -5302,7 +5781,7 @@
                 }
             }
         },
-        "model.SendMessageRequest": {
+        "AtoiTalkAPI_internal_domain_model.SendMessageRequest": {
             "type": "object",
             "required": [
                 "chat_id"
@@ -5310,6 +5789,7 @@
             "properties": {
                 "attachment_ids": {
                     "type": "array",
+                    "maxItems": 20,
                     "items": {
                         "type": "string"
                     }
@@ -5326,7 +5806,7 @@
                 }
             }
         },
-        "model.SendOTPRequest": {
+        "AtoiTalkAPI_internal_domain_model.SendOTPRequest": {
             "type": "object",
             "required": [
                 "captcha_token",
@@ -5350,7 +5830,7 @@
                 }
             }
         },
-        "model.TransferGroupOwnershipRequest": {
+        "AtoiTalkAPI_internal_domain_model.TransferGroupOwnershipRequest": {
             "type": "object",
             "required": [
                 "new_owner_id"
@@ -5361,7 +5841,7 @@
                 }
             }
         },
-        "model.UpdateGroupChatRequest": {
+        "AtoiTalkAPI_internal_domain_model.UpdateGroupChatRequest": {
             "type": "object",
             "properties": {
                 "avatar_media_id": {
@@ -5384,7 +5864,7 @@
                 }
             }
         },
-        "model.UpdateGroupMemberRoleRequest": {
+        "AtoiTalkAPI_internal_domain_model.UpdateGroupMemberRoleRequest": {
             "type": "object",
             "required": [
                 "role"
@@ -5399,7 +5879,7 @@
                 }
             }
         },
-        "model.UpdateProfileRequest": {
+        "AtoiTalkAPI_internal_domain_model.UpdateProfileRequest": {
             "type": "object",
             "required": [
                 "full_name"
@@ -5427,7 +5907,7 @@
                 }
             }
         },
-        "model.UploadMediaRequest": {
+        "AtoiTalkAPI_internal_domain_model.UploadMediaRequest": {
             "type": "object",
             "required": [
                 "captcha_token",
@@ -5461,14 +5941,14 @@
                 }
             }
         },
-        "model.UploadMediaResponse": {
+        "AtoiTalkAPI_internal_domain_model.UploadMediaResponse": {
             "type": "object",
             "properties": {
                 "expires_at": {
                     "type": "string"
                 },
                 "media": {
-                    "$ref": "#/definitions/model.MediaDTO"
+                    "$ref": "#/definitions/AtoiTalkAPI_internal_domain_model.MediaDTO"
                 },
                 "upload_headers": {
                     "type": "object",
@@ -5484,7 +5964,7 @@
                 }
             }
         },
-        "model.UserDTO": {
+        "AtoiTalkAPI_internal_domain_model.UserDTO": {
             "type": "object",
             "properties": {
                 "avatar": {
@@ -5530,6 +6010,13 @@
                     "type": "string"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }

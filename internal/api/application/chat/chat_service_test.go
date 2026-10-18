@@ -14,7 +14,7 @@ import (
 	adaptermocks "AtoiTalkAPI/internal/infrastructure/mocks"
 	websocket "AtoiTalkAPI/internal/messaging/events"
 	websocketmocks "AtoiTalkAPI/internal/messaging/events/mocks"
-	messageworker "AtoiTalkAPI/internal/messaging/message_worker"
+	messageworker "AtoiTalkAPI/internal/message_worker"
 	"context"
 	"errors"
 	"testing"

@@ -9,6 +9,7 @@ import (
 	groupapp "AtoiTalkAPI/internal/api/application/group"
 	mediaapp "AtoiTalkAPI/internal/api/application/media"
 	messageapp "AtoiTalkAPI/internal/api/application/message"
+	pushapp "AtoiTalkAPI/internal/api/application/push"
 	userapp "AtoiTalkAPI/internal/api/application/user"
 	"AtoiTalkAPI/internal/api/http/controller"
 	"AtoiTalkAPI/internal/api/http/middleware"
@@ -83,5 +84,5 @@ func Init(appConfig *config.AppConfig, client *ent.Client, validator *validator.
 	}
 
 	route := routes.NewRoute(appConfig, chiMux, authController, otpController, userController, accountController, chatController, privateChatController, groupChatController, messageController, mediaController, reportController, adminController, authMiddleware, rateLimitMiddleware, dbCheck, redisCheck)
-	route.Register()
+	route.WithNotifications(controller.NewNotificationController(pushapp.NewService(client, appConfig))).WithPush(controller.NewPushController(pushapp.NewService(client, appConfig))).Register()
 }

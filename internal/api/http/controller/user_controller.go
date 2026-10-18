@@ -31,10 +31,10 @@ func NewUserController(userService service.UserServicePort) *UserController {
 // @Tags         user
 // @Accept       json
 // @Produce      json
-// @Success      200  {object}  helper.ResponseSuccess{data=model.UserDTO}
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.UserDTO}
+// @Failure      401  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/user/current [get]
 func (c *UserController) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
@@ -60,12 +60,12 @@ func (c *UserController) GetCurrentUser(w http.ResponseWriter, r *http.Request) 
 // @Accept       json
 // @Produce      json
 // @Param        id path string true "User ID (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.UserDTO}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.UserDTO}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/users/{id} [get]
 func (c *UserController) GetUserProfile(w http.ResponseWriter, r *http.Request) {
@@ -98,12 +98,12 @@ func (c *UserController) GetUserProfile(w http.ResponseWriter, r *http.Request) 
 // @Accept       json
 // @Produce      json
 // @Param        request body model.UpdateProfileRequest true "Profile update"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.UserDTO}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.UserDTO}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/user/profile [put]
 func (c *UserController) UpdateProfile(w http.ResponseWriter, r *http.Request) {
@@ -140,11 +140,11 @@ func (c *UserController) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 // @Param        limit query int false "Number of items per page (default 10, max 50)"
 // @Param        include_chat_id query boolean false "Include private chat ID if exists"
 // @Param        exclude_chat_id query string false "Exclude users who are members of this group chat ID"
-// @Success      200  {object}  helper.ResponseWithPagination{data=[]model.UserDTO}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseWithPagination{data=[]model.UserDTO}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/users [get]
 func (c *UserController) SearchUsers(w http.ResponseWriter, r *http.Request) {
@@ -216,11 +216,11 @@ func (c *UserController) SearchUsers(w http.ResponseWriter, r *http.Request) {
 // @Param        query query string false "Search query (name or username)"
 // @Param        cursor query string false "Pagination cursor"
 // @Param        limit query int false "Number of items per page (default 10, max 50)"
-// @Success      200  {object}  helper.ResponseWithPagination{data=[]model.UserDTO}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseWithPagination{data=[]model.UserDTO}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/users/blocked [get]
 func (c *UserController) GetBlockedUsers(w http.ResponseWriter, r *http.Request) {
@@ -266,12 +266,12 @@ func (c *UserController) GetBlockedUsers(w http.ResponseWriter, r *http.Request)
 // @Accept       json
 // @Produce      json
 // @Param        id path string true "User ID to block (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/users/{id}/block [post]
 func (c *UserController) BlockUser(w http.ResponseWriter, r *http.Request) {
@@ -303,11 +303,11 @@ func (c *UserController) BlockUser(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Param        id path string true "User ID to unblock (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/users/{id}/unblock [post]
 func (c *UserController) UnblockUser(w http.ResponseWriter, r *http.Request) {

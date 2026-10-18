@@ -17,6 +17,7 @@ import (
 	groupapp "AtoiTalkAPI/internal/api/application/group"
 	mediaapp "AtoiTalkAPI/internal/api/application/media"
 	messageapp "AtoiTalkAPI/internal/api/application/message"
+	pushapp "AtoiTalkAPI/internal/api/application/push"
 	userapp "AtoiTalkAPI/internal/api/application/user"
 	"AtoiTalkAPI/internal/api/http/controller"
 	"AtoiTalkAPI/internal/api/http/middleware"
@@ -28,7 +29,7 @@ import (
 	"AtoiTalkAPI/internal/infrastructure/email"
 	objectstorage "AtoiTalkAPI/internal/infrastructure/object_storage"
 	redisinfra "AtoiTalkAPI/internal/infrastructure/redis"
-	messageworker "AtoiTalkAPI/internal/messaging/message_worker"
+	messageworker "AtoiTalkAPI/internal/message_worker"
 	messagingpubsub "AtoiTalkAPI/internal/messaging/pubsub"
 	"AtoiTalkAPI/internal/websocket_gateway/auth"
 	"AtoiTalkAPI/internal/websocket_gateway/connection"
@@ -202,6 +203,8 @@ func TestMain(m *testing.M) {
 	}
 
 	route := routes.NewRoute(testConfig, testRouter, authController, otpController, userController, accountController, chatController, privateChatController, groupChatController, messageController, mediaController, reportController, adminController, authMiddleware, rateLimitMiddleware, dbCheck, redisCheck)
+	route.WithPush(controller.NewPushController(pushapp.NewService(testClient, testConfig)))
+	route.WithNotifications(controller.NewNotificationController(pushapp.NewService(testClient, testConfig)))
 	route.Register()
 
 	code := m.Run()
@@ -240,6 +243,9 @@ func executeRequest(req *http.Request) *httptest.ResponseRecorder {
 
 func clearDatabase(ctx context.Context) {
 
+	testClient.ChatNotificationPreference.Delete().ExecX(ctx)
+	testClient.PushDelivery.Delete().Exec(ctx)
+	testClient.PushDevice.Delete().Exec(ctx)
 	testClient.Report.Delete().Exec(ctx)
 	testClient.MessageOutbox.Delete().Exec(ctx)
 	testClient.Message.Delete().Exec(ctx)

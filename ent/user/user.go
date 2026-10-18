@@ -40,6 +40,8 @@ const (
 	FieldRole = "role"
 	// FieldIsBanned holds the string denoting the is_banned field in the database.
 	FieldIsBanned = "is_banned"
+	// FieldMessageNotificationsEnabled holds the string denoting the message_notifications_enabled field in the database.
+	FieldMessageNotificationsEnabled = "message_notifications_enabled"
 	// FieldBannedUntil holds the string denoting the banned_until field in the database.
 	FieldBannedUntil = "banned_until"
 	// FieldBanReason holds the string denoting the ban_reason field in the database.
@@ -171,6 +173,7 @@ var Columns = []string{
 	FieldDeletedAt,
 	FieldRole,
 	FieldIsBanned,
+	FieldMessageNotificationsEnabled,
 	FieldBannedUntil,
 	FieldBanReason,
 }
@@ -204,6 +207,8 @@ var (
 	BioValidator func(string) error
 	// DefaultIsBanned holds the default value on creation for the "is_banned" field.
 	DefaultIsBanned bool
+	// DefaultMessageNotificationsEnabled holds the default value on creation for the "message_notifications_enabled" field.
+	DefaultMessageNotificationsEnabled bool
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
@@ -300,6 +305,11 @@ func ByRole(opts ...sql.OrderTermOption) OrderOption {
 // ByIsBanned orders the results by the is_banned field.
 func ByIsBanned(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIsBanned, opts...).ToFunc()
+}
+
+// ByMessageNotificationsEnabled orders the results by the message_notifications_enabled field.
+func ByMessageNotificationsEnabled(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMessageNotificationsEnabled, opts...).ToFunc()
 }
 
 // ByBannedUntil orders the results by the banned_until field.

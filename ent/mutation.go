@@ -4,6 +4,7 @@ package ent
 
 import (
 	"AtoiTalkAPI/ent/chat"
+	"AtoiTalkAPI/ent/chatnotificationpreference"
 	"AtoiTalkAPI/ent/groupchat"
 	"AtoiTalkAPI/ent/groupmember"
 	"AtoiTalkAPI/ent/media"
@@ -11,6 +12,8 @@ import (
 	"AtoiTalkAPI/ent/messageoutbox"
 	"AtoiTalkAPI/ent/predicate"
 	"AtoiTalkAPI/ent/privatechat"
+	"AtoiTalkAPI/ent/pushdelivery"
+	"AtoiTalkAPI/ent/pushdevice"
 	"AtoiTalkAPI/ent/report"
 	"AtoiTalkAPI/ent/user"
 	"AtoiTalkAPI/ent/userblock"
@@ -35,17 +38,20 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeChat          = "Chat"
-	TypeGroupChat     = "GroupChat"
-	TypeGroupMember   = "GroupMember"
-	TypeMedia         = "Media"
-	TypeMessage       = "Message"
-	TypeMessageOutbox = "MessageOutbox"
-	TypePrivateChat   = "PrivateChat"
-	TypeReport        = "Report"
-	TypeUser          = "User"
-	TypeUserBlock     = "UserBlock"
-	TypeUserIdentity  = "UserIdentity"
+	TypeChat                       = "Chat"
+	TypeChatNotificationPreference = "ChatNotificationPreference"
+	TypeGroupChat                  = "GroupChat"
+	TypeGroupMember                = "GroupMember"
+	TypeMedia                      = "Media"
+	TypeMessage                    = "Message"
+	TypeMessageOutbox              = "MessageOutbox"
+	TypePrivateChat                = "PrivateChat"
+	TypePushDelivery               = "PushDelivery"
+	TypePushDevice                 = "PushDevice"
+	TypeReport                     = "Report"
+	TypeUser                       = "User"
+	TypeUserBlock                  = "UserBlock"
+	TypeUserIdentity               = "UserIdentity"
 )
 
 // ChatMutation represents an operation that mutates the Chat nodes in the graph.
@@ -965,6 +971,630 @@ func (m *ChatMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Chat edge %s", name)
+}
+
+// ChatNotificationPreferenceMutation represents an operation that mutates the ChatNotificationPreference nodes in the graph.
+type ChatNotificationPreferenceMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	created_at    *time.Time
+	updated_at    *time.Time
+	user_id       *uuid.UUID
+	chat_id       *uuid.UUID
+	muted_forever *bool
+	muted_until   *time.Time
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*ChatNotificationPreference, error)
+	predicates    []predicate.ChatNotificationPreference
+}
+
+var _ ent.Mutation = (*ChatNotificationPreferenceMutation)(nil)
+
+// chatnotificationpreferenceOption allows management of the mutation configuration using functional options.
+type chatnotificationpreferenceOption func(*ChatNotificationPreferenceMutation)
+
+// newChatNotificationPreferenceMutation creates new mutation for the ChatNotificationPreference entity.
+func newChatNotificationPreferenceMutation(c config, op Op, opts ...chatnotificationpreferenceOption) *ChatNotificationPreferenceMutation {
+	m := &ChatNotificationPreferenceMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeChatNotificationPreference,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withChatNotificationPreferenceID sets the ID field of the mutation.
+func withChatNotificationPreferenceID(id uuid.UUID) chatnotificationpreferenceOption {
+	return func(m *ChatNotificationPreferenceMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ChatNotificationPreference
+		)
+		m.oldValue = func(ctx context.Context) (*ChatNotificationPreference, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ChatNotificationPreference.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withChatNotificationPreference sets the old ChatNotificationPreference of the mutation.
+func withChatNotificationPreference(node *ChatNotificationPreference) chatnotificationpreferenceOption {
+	return func(m *ChatNotificationPreferenceMutation) {
+		m.oldValue = func(context.Context) (*ChatNotificationPreference, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ChatNotificationPreferenceMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ChatNotificationPreferenceMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of ChatNotificationPreference entities.
+func (m *ChatNotificationPreferenceMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ChatNotificationPreferenceMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ChatNotificationPreferenceMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ChatNotificationPreference.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *ChatNotificationPreferenceMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *ChatNotificationPreferenceMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the ChatNotificationPreference entity.
+// If the ChatNotificationPreference object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatNotificationPreferenceMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *ChatNotificationPreferenceMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *ChatNotificationPreferenceMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *ChatNotificationPreferenceMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the ChatNotificationPreference entity.
+// If the ChatNotificationPreference object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatNotificationPreferenceMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *ChatNotificationPreferenceMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *ChatNotificationPreferenceMutation) SetUserID(u uuid.UUID) {
+	m.user_id = &u
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *ChatNotificationPreferenceMutation) UserID() (r uuid.UUID, exists bool) {
+	v := m.user_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the ChatNotificationPreference entity.
+// If the ChatNotificationPreference object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatNotificationPreferenceMutation) OldUserID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *ChatNotificationPreferenceMutation) ResetUserID() {
+	m.user_id = nil
+}
+
+// SetChatID sets the "chat_id" field.
+func (m *ChatNotificationPreferenceMutation) SetChatID(u uuid.UUID) {
+	m.chat_id = &u
+}
+
+// ChatID returns the value of the "chat_id" field in the mutation.
+func (m *ChatNotificationPreferenceMutation) ChatID() (r uuid.UUID, exists bool) {
+	v := m.chat_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChatID returns the old "chat_id" field's value of the ChatNotificationPreference entity.
+// If the ChatNotificationPreference object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatNotificationPreferenceMutation) OldChatID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChatID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChatID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChatID: %w", err)
+	}
+	return oldValue.ChatID, nil
+}
+
+// ResetChatID resets all changes to the "chat_id" field.
+func (m *ChatNotificationPreferenceMutation) ResetChatID() {
+	m.chat_id = nil
+}
+
+// SetMutedForever sets the "muted_forever" field.
+func (m *ChatNotificationPreferenceMutation) SetMutedForever(b bool) {
+	m.muted_forever = &b
+}
+
+// MutedForever returns the value of the "muted_forever" field in the mutation.
+func (m *ChatNotificationPreferenceMutation) MutedForever() (r bool, exists bool) {
+	v := m.muted_forever
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMutedForever returns the old "muted_forever" field's value of the ChatNotificationPreference entity.
+// If the ChatNotificationPreference object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatNotificationPreferenceMutation) OldMutedForever(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMutedForever is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMutedForever requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMutedForever: %w", err)
+	}
+	return oldValue.MutedForever, nil
+}
+
+// ResetMutedForever resets all changes to the "muted_forever" field.
+func (m *ChatNotificationPreferenceMutation) ResetMutedForever() {
+	m.muted_forever = nil
+}
+
+// SetMutedUntil sets the "muted_until" field.
+func (m *ChatNotificationPreferenceMutation) SetMutedUntil(t time.Time) {
+	m.muted_until = &t
+}
+
+// MutedUntil returns the value of the "muted_until" field in the mutation.
+func (m *ChatNotificationPreferenceMutation) MutedUntil() (r time.Time, exists bool) {
+	v := m.muted_until
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMutedUntil returns the old "muted_until" field's value of the ChatNotificationPreference entity.
+// If the ChatNotificationPreference object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatNotificationPreferenceMutation) OldMutedUntil(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMutedUntil is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMutedUntil requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMutedUntil: %w", err)
+	}
+	return oldValue.MutedUntil, nil
+}
+
+// ClearMutedUntil clears the value of the "muted_until" field.
+func (m *ChatNotificationPreferenceMutation) ClearMutedUntil() {
+	m.muted_until = nil
+	m.clearedFields[chatnotificationpreference.FieldMutedUntil] = struct{}{}
+}
+
+// MutedUntilCleared returns if the "muted_until" field was cleared in this mutation.
+func (m *ChatNotificationPreferenceMutation) MutedUntilCleared() bool {
+	_, ok := m.clearedFields[chatnotificationpreference.FieldMutedUntil]
+	return ok
+}
+
+// ResetMutedUntil resets all changes to the "muted_until" field.
+func (m *ChatNotificationPreferenceMutation) ResetMutedUntil() {
+	m.muted_until = nil
+	delete(m.clearedFields, chatnotificationpreference.FieldMutedUntil)
+}
+
+// Where appends a list predicates to the ChatNotificationPreferenceMutation builder.
+func (m *ChatNotificationPreferenceMutation) Where(ps ...predicate.ChatNotificationPreference) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ChatNotificationPreferenceMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ChatNotificationPreferenceMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ChatNotificationPreference, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ChatNotificationPreferenceMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ChatNotificationPreferenceMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ChatNotificationPreference).
+func (m *ChatNotificationPreferenceMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ChatNotificationPreferenceMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.created_at != nil {
+		fields = append(fields, chatnotificationpreference.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, chatnotificationpreference.FieldUpdatedAt)
+	}
+	if m.user_id != nil {
+		fields = append(fields, chatnotificationpreference.FieldUserID)
+	}
+	if m.chat_id != nil {
+		fields = append(fields, chatnotificationpreference.FieldChatID)
+	}
+	if m.muted_forever != nil {
+		fields = append(fields, chatnotificationpreference.FieldMutedForever)
+	}
+	if m.muted_until != nil {
+		fields = append(fields, chatnotificationpreference.FieldMutedUntil)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ChatNotificationPreferenceMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case chatnotificationpreference.FieldCreatedAt:
+		return m.CreatedAt()
+	case chatnotificationpreference.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case chatnotificationpreference.FieldUserID:
+		return m.UserID()
+	case chatnotificationpreference.FieldChatID:
+		return m.ChatID()
+	case chatnotificationpreference.FieldMutedForever:
+		return m.MutedForever()
+	case chatnotificationpreference.FieldMutedUntil:
+		return m.MutedUntil()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ChatNotificationPreferenceMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case chatnotificationpreference.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case chatnotificationpreference.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case chatnotificationpreference.FieldUserID:
+		return m.OldUserID(ctx)
+	case chatnotificationpreference.FieldChatID:
+		return m.OldChatID(ctx)
+	case chatnotificationpreference.FieldMutedForever:
+		return m.OldMutedForever(ctx)
+	case chatnotificationpreference.FieldMutedUntil:
+		return m.OldMutedUntil(ctx)
+	}
+	return nil, fmt.Errorf("unknown ChatNotificationPreference field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChatNotificationPreferenceMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case chatnotificationpreference.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case chatnotificationpreference.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case chatnotificationpreference.FieldUserID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case chatnotificationpreference.FieldChatID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChatID(v)
+		return nil
+	case chatnotificationpreference.FieldMutedForever:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMutedForever(v)
+		return nil
+	case chatnotificationpreference.FieldMutedUntil:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMutedUntil(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChatNotificationPreference field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ChatNotificationPreferenceMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ChatNotificationPreferenceMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChatNotificationPreferenceMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown ChatNotificationPreference numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ChatNotificationPreferenceMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(chatnotificationpreference.FieldMutedUntil) {
+		fields = append(fields, chatnotificationpreference.FieldMutedUntil)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ChatNotificationPreferenceMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ChatNotificationPreferenceMutation) ClearField(name string) error {
+	switch name {
+	case chatnotificationpreference.FieldMutedUntil:
+		m.ClearMutedUntil()
+		return nil
+	}
+	return fmt.Errorf("unknown ChatNotificationPreference nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ChatNotificationPreferenceMutation) ResetField(name string) error {
+	switch name {
+	case chatnotificationpreference.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case chatnotificationpreference.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case chatnotificationpreference.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case chatnotificationpreference.FieldChatID:
+		m.ResetChatID()
+		return nil
+	case chatnotificationpreference.FieldMutedForever:
+		m.ResetMutedForever()
+		return nil
+	case chatnotificationpreference.FieldMutedUntil:
+		m.ResetMutedUntil()
+		return nil
+	}
+	return fmt.Errorf("unknown ChatNotificationPreference field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ChatNotificationPreferenceMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ChatNotificationPreferenceMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ChatNotificationPreferenceMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ChatNotificationPreferenceMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ChatNotificationPreferenceMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ChatNotificationPreferenceMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ChatNotificationPreferenceMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown ChatNotificationPreference unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ChatNotificationPreferenceMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown ChatNotificationPreference edge %s", name)
 }
 
 // GroupChatMutation represents an operation that mutates the GroupChat nodes in the graph.
@@ -7907,6 +8537,2320 @@ func (m *PrivateChatMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown PrivateChat edge %s", name)
 }
 
+// PushDeliveryMutation represents an operation that mutates the PushDelivery nodes in the graph.
+type PushDeliveryMutation struct {
+	config
+	op               Op
+	typ              string
+	id               *uuid.UUID
+	created_at       *time.Time
+	updated_at       *time.Time
+	event_id         *uuid.UUID
+	device_id        *uuid.UUID
+	binding_id       *uuid.UUID
+	user_id          *uuid.UUID
+	message_id       *uuid.UUID
+	chat_id          *uuid.UUID
+	available_at     *time.Time
+	expires_at       *time.Time
+	attempt_count    *int
+	addattempt_count *int
+	locked_at        *time.Time
+	lock_token       *uuid.UUID
+	sent_at          *time.Time
+	finished_at      *time.Time
+	outcome          *string
+	last_error       *string
+	clearedFields    map[string]struct{}
+	done             bool
+	oldValue         func(context.Context) (*PushDelivery, error)
+	predicates       []predicate.PushDelivery
+}
+
+var _ ent.Mutation = (*PushDeliveryMutation)(nil)
+
+// pushdeliveryOption allows management of the mutation configuration using functional options.
+type pushdeliveryOption func(*PushDeliveryMutation)
+
+// newPushDeliveryMutation creates new mutation for the PushDelivery entity.
+func newPushDeliveryMutation(c config, op Op, opts ...pushdeliveryOption) *PushDeliveryMutation {
+	m := &PushDeliveryMutation{
+		config:        c,
+		op:            op,
+		typ:           TypePushDelivery,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withPushDeliveryID sets the ID field of the mutation.
+func withPushDeliveryID(id uuid.UUID) pushdeliveryOption {
+	return func(m *PushDeliveryMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *PushDelivery
+		)
+		m.oldValue = func(ctx context.Context) (*PushDelivery, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().PushDelivery.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withPushDelivery sets the old PushDelivery of the mutation.
+func withPushDelivery(node *PushDelivery) pushdeliveryOption {
+	return func(m *PushDeliveryMutation) {
+		m.oldValue = func(context.Context) (*PushDelivery, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m PushDeliveryMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m PushDeliveryMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of PushDelivery entities.
+func (m *PushDeliveryMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *PushDeliveryMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *PushDeliveryMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().PushDelivery.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *PushDeliveryMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *PushDeliveryMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *PushDeliveryMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *PushDeliveryMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *PushDeliveryMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *PushDeliveryMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetEventID sets the "event_id" field.
+func (m *PushDeliveryMutation) SetEventID(u uuid.UUID) {
+	m.event_id = &u
+}
+
+// EventID returns the value of the "event_id" field in the mutation.
+func (m *PushDeliveryMutation) EventID() (r uuid.UUID, exists bool) {
+	v := m.event_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEventID returns the old "event_id" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldEventID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEventID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEventID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEventID: %w", err)
+	}
+	return oldValue.EventID, nil
+}
+
+// ResetEventID resets all changes to the "event_id" field.
+func (m *PushDeliveryMutation) ResetEventID() {
+	m.event_id = nil
+}
+
+// SetDeviceID sets the "device_id" field.
+func (m *PushDeliveryMutation) SetDeviceID(u uuid.UUID) {
+	m.device_id = &u
+}
+
+// DeviceID returns the value of the "device_id" field in the mutation.
+func (m *PushDeliveryMutation) DeviceID() (r uuid.UUID, exists bool) {
+	v := m.device_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeviceID returns the old "device_id" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldDeviceID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeviceID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeviceID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeviceID: %w", err)
+	}
+	return oldValue.DeviceID, nil
+}
+
+// ResetDeviceID resets all changes to the "device_id" field.
+func (m *PushDeliveryMutation) ResetDeviceID() {
+	m.device_id = nil
+}
+
+// SetBindingID sets the "binding_id" field.
+func (m *PushDeliveryMutation) SetBindingID(u uuid.UUID) {
+	m.binding_id = &u
+}
+
+// BindingID returns the value of the "binding_id" field in the mutation.
+func (m *PushDeliveryMutation) BindingID() (r uuid.UUID, exists bool) {
+	v := m.binding_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBindingID returns the old "binding_id" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldBindingID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBindingID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBindingID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBindingID: %w", err)
+	}
+	return oldValue.BindingID, nil
+}
+
+// ResetBindingID resets all changes to the "binding_id" field.
+func (m *PushDeliveryMutation) ResetBindingID() {
+	m.binding_id = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *PushDeliveryMutation) SetUserID(u uuid.UUID) {
+	m.user_id = &u
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *PushDeliveryMutation) UserID() (r uuid.UUID, exists bool) {
+	v := m.user_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldUserID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *PushDeliveryMutation) ResetUserID() {
+	m.user_id = nil
+}
+
+// SetMessageID sets the "message_id" field.
+func (m *PushDeliveryMutation) SetMessageID(u uuid.UUID) {
+	m.message_id = &u
+}
+
+// MessageID returns the value of the "message_id" field in the mutation.
+func (m *PushDeliveryMutation) MessageID() (r uuid.UUID, exists bool) {
+	v := m.message_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMessageID returns the old "message_id" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldMessageID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMessageID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMessageID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMessageID: %w", err)
+	}
+	return oldValue.MessageID, nil
+}
+
+// ResetMessageID resets all changes to the "message_id" field.
+func (m *PushDeliveryMutation) ResetMessageID() {
+	m.message_id = nil
+}
+
+// SetChatID sets the "chat_id" field.
+func (m *PushDeliveryMutation) SetChatID(u uuid.UUID) {
+	m.chat_id = &u
+}
+
+// ChatID returns the value of the "chat_id" field in the mutation.
+func (m *PushDeliveryMutation) ChatID() (r uuid.UUID, exists bool) {
+	v := m.chat_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChatID returns the old "chat_id" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldChatID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChatID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChatID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChatID: %w", err)
+	}
+	return oldValue.ChatID, nil
+}
+
+// ResetChatID resets all changes to the "chat_id" field.
+func (m *PushDeliveryMutation) ResetChatID() {
+	m.chat_id = nil
+}
+
+// SetAvailableAt sets the "available_at" field.
+func (m *PushDeliveryMutation) SetAvailableAt(t time.Time) {
+	m.available_at = &t
+}
+
+// AvailableAt returns the value of the "available_at" field in the mutation.
+func (m *PushDeliveryMutation) AvailableAt() (r time.Time, exists bool) {
+	v := m.available_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAvailableAt returns the old "available_at" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldAvailableAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAvailableAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAvailableAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAvailableAt: %w", err)
+	}
+	return oldValue.AvailableAt, nil
+}
+
+// ResetAvailableAt resets all changes to the "available_at" field.
+func (m *PushDeliveryMutation) ResetAvailableAt() {
+	m.available_at = nil
+}
+
+// SetExpiresAt sets the "expires_at" field.
+func (m *PushDeliveryMutation) SetExpiresAt(t time.Time) {
+	m.expires_at = &t
+}
+
+// ExpiresAt returns the value of the "expires_at" field in the mutation.
+func (m *PushDeliveryMutation) ExpiresAt() (r time.Time, exists bool) {
+	v := m.expires_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExpiresAt returns the old "expires_at" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldExpiresAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExpiresAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExpiresAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExpiresAt: %w", err)
+	}
+	return oldValue.ExpiresAt, nil
+}
+
+// ResetExpiresAt resets all changes to the "expires_at" field.
+func (m *PushDeliveryMutation) ResetExpiresAt() {
+	m.expires_at = nil
+}
+
+// SetAttemptCount sets the "attempt_count" field.
+func (m *PushDeliveryMutation) SetAttemptCount(i int) {
+	m.attempt_count = &i
+	m.addattempt_count = nil
+}
+
+// AttemptCount returns the value of the "attempt_count" field in the mutation.
+func (m *PushDeliveryMutation) AttemptCount() (r int, exists bool) {
+	v := m.attempt_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAttemptCount returns the old "attempt_count" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldAttemptCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAttemptCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAttemptCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAttemptCount: %w", err)
+	}
+	return oldValue.AttemptCount, nil
+}
+
+// AddAttemptCount adds i to the "attempt_count" field.
+func (m *PushDeliveryMutation) AddAttemptCount(i int) {
+	if m.addattempt_count != nil {
+		*m.addattempt_count += i
+	} else {
+		m.addattempt_count = &i
+	}
+}
+
+// AddedAttemptCount returns the value that was added to the "attempt_count" field in this mutation.
+func (m *PushDeliveryMutation) AddedAttemptCount() (r int, exists bool) {
+	v := m.addattempt_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAttemptCount resets all changes to the "attempt_count" field.
+func (m *PushDeliveryMutation) ResetAttemptCount() {
+	m.attempt_count = nil
+	m.addattempt_count = nil
+}
+
+// SetLockedAt sets the "locked_at" field.
+func (m *PushDeliveryMutation) SetLockedAt(t time.Time) {
+	m.locked_at = &t
+}
+
+// LockedAt returns the value of the "locked_at" field in the mutation.
+func (m *PushDeliveryMutation) LockedAt() (r time.Time, exists bool) {
+	v := m.locked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLockedAt returns the old "locked_at" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldLockedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLockedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLockedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLockedAt: %w", err)
+	}
+	return oldValue.LockedAt, nil
+}
+
+// ClearLockedAt clears the value of the "locked_at" field.
+func (m *PushDeliveryMutation) ClearLockedAt() {
+	m.locked_at = nil
+	m.clearedFields[pushdelivery.FieldLockedAt] = struct{}{}
+}
+
+// LockedAtCleared returns if the "locked_at" field was cleared in this mutation.
+func (m *PushDeliveryMutation) LockedAtCleared() bool {
+	_, ok := m.clearedFields[pushdelivery.FieldLockedAt]
+	return ok
+}
+
+// ResetLockedAt resets all changes to the "locked_at" field.
+func (m *PushDeliveryMutation) ResetLockedAt() {
+	m.locked_at = nil
+	delete(m.clearedFields, pushdelivery.FieldLockedAt)
+}
+
+// SetLockToken sets the "lock_token" field.
+func (m *PushDeliveryMutation) SetLockToken(u uuid.UUID) {
+	m.lock_token = &u
+}
+
+// LockToken returns the value of the "lock_token" field in the mutation.
+func (m *PushDeliveryMutation) LockToken() (r uuid.UUID, exists bool) {
+	v := m.lock_token
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLockToken returns the old "lock_token" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldLockToken(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLockToken is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLockToken requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLockToken: %w", err)
+	}
+	return oldValue.LockToken, nil
+}
+
+// ClearLockToken clears the value of the "lock_token" field.
+func (m *PushDeliveryMutation) ClearLockToken() {
+	m.lock_token = nil
+	m.clearedFields[pushdelivery.FieldLockToken] = struct{}{}
+}
+
+// LockTokenCleared returns if the "lock_token" field was cleared in this mutation.
+func (m *PushDeliveryMutation) LockTokenCleared() bool {
+	_, ok := m.clearedFields[pushdelivery.FieldLockToken]
+	return ok
+}
+
+// ResetLockToken resets all changes to the "lock_token" field.
+func (m *PushDeliveryMutation) ResetLockToken() {
+	m.lock_token = nil
+	delete(m.clearedFields, pushdelivery.FieldLockToken)
+}
+
+// SetSentAt sets the "sent_at" field.
+func (m *PushDeliveryMutation) SetSentAt(t time.Time) {
+	m.sent_at = &t
+}
+
+// SentAt returns the value of the "sent_at" field in the mutation.
+func (m *PushDeliveryMutation) SentAt() (r time.Time, exists bool) {
+	v := m.sent_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSentAt returns the old "sent_at" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldSentAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSentAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSentAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSentAt: %w", err)
+	}
+	return oldValue.SentAt, nil
+}
+
+// ClearSentAt clears the value of the "sent_at" field.
+func (m *PushDeliveryMutation) ClearSentAt() {
+	m.sent_at = nil
+	m.clearedFields[pushdelivery.FieldSentAt] = struct{}{}
+}
+
+// SentAtCleared returns if the "sent_at" field was cleared in this mutation.
+func (m *PushDeliveryMutation) SentAtCleared() bool {
+	_, ok := m.clearedFields[pushdelivery.FieldSentAt]
+	return ok
+}
+
+// ResetSentAt resets all changes to the "sent_at" field.
+func (m *PushDeliveryMutation) ResetSentAt() {
+	m.sent_at = nil
+	delete(m.clearedFields, pushdelivery.FieldSentAt)
+}
+
+// SetFinishedAt sets the "finished_at" field.
+func (m *PushDeliveryMutation) SetFinishedAt(t time.Time) {
+	m.finished_at = &t
+}
+
+// FinishedAt returns the value of the "finished_at" field in the mutation.
+func (m *PushDeliveryMutation) FinishedAt() (r time.Time, exists bool) {
+	v := m.finished_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFinishedAt returns the old "finished_at" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldFinishedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFinishedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFinishedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFinishedAt: %w", err)
+	}
+	return oldValue.FinishedAt, nil
+}
+
+// ClearFinishedAt clears the value of the "finished_at" field.
+func (m *PushDeliveryMutation) ClearFinishedAt() {
+	m.finished_at = nil
+	m.clearedFields[pushdelivery.FieldFinishedAt] = struct{}{}
+}
+
+// FinishedAtCleared returns if the "finished_at" field was cleared in this mutation.
+func (m *PushDeliveryMutation) FinishedAtCleared() bool {
+	_, ok := m.clearedFields[pushdelivery.FieldFinishedAt]
+	return ok
+}
+
+// ResetFinishedAt resets all changes to the "finished_at" field.
+func (m *PushDeliveryMutation) ResetFinishedAt() {
+	m.finished_at = nil
+	delete(m.clearedFields, pushdelivery.FieldFinishedAt)
+}
+
+// SetOutcome sets the "outcome" field.
+func (m *PushDeliveryMutation) SetOutcome(s string) {
+	m.outcome = &s
+}
+
+// Outcome returns the value of the "outcome" field in the mutation.
+func (m *PushDeliveryMutation) Outcome() (r string, exists bool) {
+	v := m.outcome
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOutcome returns the old "outcome" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldOutcome(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOutcome is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOutcome requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOutcome: %w", err)
+	}
+	return oldValue.Outcome, nil
+}
+
+// ResetOutcome resets all changes to the "outcome" field.
+func (m *PushDeliveryMutation) ResetOutcome() {
+	m.outcome = nil
+}
+
+// SetLastError sets the "last_error" field.
+func (m *PushDeliveryMutation) SetLastError(s string) {
+	m.last_error = &s
+}
+
+// LastError returns the value of the "last_error" field in the mutation.
+func (m *PushDeliveryMutation) LastError() (r string, exists bool) {
+	v := m.last_error
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastError returns the old "last_error" field's value of the PushDelivery entity.
+// If the PushDelivery object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeliveryMutation) OldLastError(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastError is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastError requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastError: %w", err)
+	}
+	return oldValue.LastError, nil
+}
+
+// ClearLastError clears the value of the "last_error" field.
+func (m *PushDeliveryMutation) ClearLastError() {
+	m.last_error = nil
+	m.clearedFields[pushdelivery.FieldLastError] = struct{}{}
+}
+
+// LastErrorCleared returns if the "last_error" field was cleared in this mutation.
+func (m *PushDeliveryMutation) LastErrorCleared() bool {
+	_, ok := m.clearedFields[pushdelivery.FieldLastError]
+	return ok
+}
+
+// ResetLastError resets all changes to the "last_error" field.
+func (m *PushDeliveryMutation) ResetLastError() {
+	m.last_error = nil
+	delete(m.clearedFields, pushdelivery.FieldLastError)
+}
+
+// Where appends a list predicates to the PushDeliveryMutation builder.
+func (m *PushDeliveryMutation) Where(ps ...predicate.PushDelivery) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the PushDeliveryMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *PushDeliveryMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.PushDelivery, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *PushDeliveryMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *PushDeliveryMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (PushDelivery).
+func (m *PushDeliveryMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *PushDeliveryMutation) Fields() []string {
+	fields := make([]string, 0, 17)
+	if m.created_at != nil {
+		fields = append(fields, pushdelivery.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, pushdelivery.FieldUpdatedAt)
+	}
+	if m.event_id != nil {
+		fields = append(fields, pushdelivery.FieldEventID)
+	}
+	if m.device_id != nil {
+		fields = append(fields, pushdelivery.FieldDeviceID)
+	}
+	if m.binding_id != nil {
+		fields = append(fields, pushdelivery.FieldBindingID)
+	}
+	if m.user_id != nil {
+		fields = append(fields, pushdelivery.FieldUserID)
+	}
+	if m.message_id != nil {
+		fields = append(fields, pushdelivery.FieldMessageID)
+	}
+	if m.chat_id != nil {
+		fields = append(fields, pushdelivery.FieldChatID)
+	}
+	if m.available_at != nil {
+		fields = append(fields, pushdelivery.FieldAvailableAt)
+	}
+	if m.expires_at != nil {
+		fields = append(fields, pushdelivery.FieldExpiresAt)
+	}
+	if m.attempt_count != nil {
+		fields = append(fields, pushdelivery.FieldAttemptCount)
+	}
+	if m.locked_at != nil {
+		fields = append(fields, pushdelivery.FieldLockedAt)
+	}
+	if m.lock_token != nil {
+		fields = append(fields, pushdelivery.FieldLockToken)
+	}
+	if m.sent_at != nil {
+		fields = append(fields, pushdelivery.FieldSentAt)
+	}
+	if m.finished_at != nil {
+		fields = append(fields, pushdelivery.FieldFinishedAt)
+	}
+	if m.outcome != nil {
+		fields = append(fields, pushdelivery.FieldOutcome)
+	}
+	if m.last_error != nil {
+		fields = append(fields, pushdelivery.FieldLastError)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *PushDeliveryMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case pushdelivery.FieldCreatedAt:
+		return m.CreatedAt()
+	case pushdelivery.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case pushdelivery.FieldEventID:
+		return m.EventID()
+	case pushdelivery.FieldDeviceID:
+		return m.DeviceID()
+	case pushdelivery.FieldBindingID:
+		return m.BindingID()
+	case pushdelivery.FieldUserID:
+		return m.UserID()
+	case pushdelivery.FieldMessageID:
+		return m.MessageID()
+	case pushdelivery.FieldChatID:
+		return m.ChatID()
+	case pushdelivery.FieldAvailableAt:
+		return m.AvailableAt()
+	case pushdelivery.FieldExpiresAt:
+		return m.ExpiresAt()
+	case pushdelivery.FieldAttemptCount:
+		return m.AttemptCount()
+	case pushdelivery.FieldLockedAt:
+		return m.LockedAt()
+	case pushdelivery.FieldLockToken:
+		return m.LockToken()
+	case pushdelivery.FieldSentAt:
+		return m.SentAt()
+	case pushdelivery.FieldFinishedAt:
+		return m.FinishedAt()
+	case pushdelivery.FieldOutcome:
+		return m.Outcome()
+	case pushdelivery.FieldLastError:
+		return m.LastError()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *PushDeliveryMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case pushdelivery.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case pushdelivery.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case pushdelivery.FieldEventID:
+		return m.OldEventID(ctx)
+	case pushdelivery.FieldDeviceID:
+		return m.OldDeviceID(ctx)
+	case pushdelivery.FieldBindingID:
+		return m.OldBindingID(ctx)
+	case pushdelivery.FieldUserID:
+		return m.OldUserID(ctx)
+	case pushdelivery.FieldMessageID:
+		return m.OldMessageID(ctx)
+	case pushdelivery.FieldChatID:
+		return m.OldChatID(ctx)
+	case pushdelivery.FieldAvailableAt:
+		return m.OldAvailableAt(ctx)
+	case pushdelivery.FieldExpiresAt:
+		return m.OldExpiresAt(ctx)
+	case pushdelivery.FieldAttemptCount:
+		return m.OldAttemptCount(ctx)
+	case pushdelivery.FieldLockedAt:
+		return m.OldLockedAt(ctx)
+	case pushdelivery.FieldLockToken:
+		return m.OldLockToken(ctx)
+	case pushdelivery.FieldSentAt:
+		return m.OldSentAt(ctx)
+	case pushdelivery.FieldFinishedAt:
+		return m.OldFinishedAt(ctx)
+	case pushdelivery.FieldOutcome:
+		return m.OldOutcome(ctx)
+	case pushdelivery.FieldLastError:
+		return m.OldLastError(ctx)
+	}
+	return nil, fmt.Errorf("unknown PushDelivery field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PushDeliveryMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case pushdelivery.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case pushdelivery.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case pushdelivery.FieldEventID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEventID(v)
+		return nil
+	case pushdelivery.FieldDeviceID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeviceID(v)
+		return nil
+	case pushdelivery.FieldBindingID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBindingID(v)
+		return nil
+	case pushdelivery.FieldUserID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case pushdelivery.FieldMessageID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMessageID(v)
+		return nil
+	case pushdelivery.FieldChatID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChatID(v)
+		return nil
+	case pushdelivery.FieldAvailableAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAvailableAt(v)
+		return nil
+	case pushdelivery.FieldExpiresAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExpiresAt(v)
+		return nil
+	case pushdelivery.FieldAttemptCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAttemptCount(v)
+		return nil
+	case pushdelivery.FieldLockedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLockedAt(v)
+		return nil
+	case pushdelivery.FieldLockToken:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLockToken(v)
+		return nil
+	case pushdelivery.FieldSentAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSentAt(v)
+		return nil
+	case pushdelivery.FieldFinishedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFinishedAt(v)
+		return nil
+	case pushdelivery.FieldOutcome:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOutcome(v)
+		return nil
+	case pushdelivery.FieldLastError:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastError(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PushDelivery field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *PushDeliveryMutation) AddedFields() []string {
+	var fields []string
+	if m.addattempt_count != nil {
+		fields = append(fields, pushdelivery.FieldAttemptCount)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *PushDeliveryMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case pushdelivery.FieldAttemptCount:
+		return m.AddedAttemptCount()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PushDeliveryMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case pushdelivery.FieldAttemptCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAttemptCount(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PushDelivery numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *PushDeliveryMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(pushdelivery.FieldLockedAt) {
+		fields = append(fields, pushdelivery.FieldLockedAt)
+	}
+	if m.FieldCleared(pushdelivery.FieldLockToken) {
+		fields = append(fields, pushdelivery.FieldLockToken)
+	}
+	if m.FieldCleared(pushdelivery.FieldSentAt) {
+		fields = append(fields, pushdelivery.FieldSentAt)
+	}
+	if m.FieldCleared(pushdelivery.FieldFinishedAt) {
+		fields = append(fields, pushdelivery.FieldFinishedAt)
+	}
+	if m.FieldCleared(pushdelivery.FieldLastError) {
+		fields = append(fields, pushdelivery.FieldLastError)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *PushDeliveryMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *PushDeliveryMutation) ClearField(name string) error {
+	switch name {
+	case pushdelivery.FieldLockedAt:
+		m.ClearLockedAt()
+		return nil
+	case pushdelivery.FieldLockToken:
+		m.ClearLockToken()
+		return nil
+	case pushdelivery.FieldSentAt:
+		m.ClearSentAt()
+		return nil
+	case pushdelivery.FieldFinishedAt:
+		m.ClearFinishedAt()
+		return nil
+	case pushdelivery.FieldLastError:
+		m.ClearLastError()
+		return nil
+	}
+	return fmt.Errorf("unknown PushDelivery nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *PushDeliveryMutation) ResetField(name string) error {
+	switch name {
+	case pushdelivery.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case pushdelivery.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case pushdelivery.FieldEventID:
+		m.ResetEventID()
+		return nil
+	case pushdelivery.FieldDeviceID:
+		m.ResetDeviceID()
+		return nil
+	case pushdelivery.FieldBindingID:
+		m.ResetBindingID()
+		return nil
+	case pushdelivery.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case pushdelivery.FieldMessageID:
+		m.ResetMessageID()
+		return nil
+	case pushdelivery.FieldChatID:
+		m.ResetChatID()
+		return nil
+	case pushdelivery.FieldAvailableAt:
+		m.ResetAvailableAt()
+		return nil
+	case pushdelivery.FieldExpiresAt:
+		m.ResetExpiresAt()
+		return nil
+	case pushdelivery.FieldAttemptCount:
+		m.ResetAttemptCount()
+		return nil
+	case pushdelivery.FieldLockedAt:
+		m.ResetLockedAt()
+		return nil
+	case pushdelivery.FieldLockToken:
+		m.ResetLockToken()
+		return nil
+	case pushdelivery.FieldSentAt:
+		m.ResetSentAt()
+		return nil
+	case pushdelivery.FieldFinishedAt:
+		m.ResetFinishedAt()
+		return nil
+	case pushdelivery.FieldOutcome:
+		m.ResetOutcome()
+		return nil
+	case pushdelivery.FieldLastError:
+		m.ResetLastError()
+		return nil
+	}
+	return fmt.Errorf("unknown PushDelivery field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *PushDeliveryMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *PushDeliveryMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *PushDeliveryMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *PushDeliveryMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *PushDeliveryMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *PushDeliveryMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *PushDeliveryMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown PushDelivery unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *PushDeliveryMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown PushDelivery edge %s", name)
+}
+
+// PushDeviceMutation represents an operation that mutates the PushDevice nodes in the graph.
+type PushDeviceMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *uuid.UUID
+	created_at      *time.Time
+	updated_at      *time.Time
+	installation_id *uuid.UUID
+	user_id         *uuid.UUID
+	token           *string
+	platform        *pushdevice.Platform
+	session_hash    *string
+	secret_hash     *string
+	issued_at       *int64
+	addissued_at    *int64
+	expires_at      *time.Time
+	binding_id      *uuid.UUID
+	disabled_at     *time.Time
+	clearedFields   map[string]struct{}
+	done            bool
+	oldValue        func(context.Context) (*PushDevice, error)
+	predicates      []predicate.PushDevice
+}
+
+var _ ent.Mutation = (*PushDeviceMutation)(nil)
+
+// pushdeviceOption allows management of the mutation configuration using functional options.
+type pushdeviceOption func(*PushDeviceMutation)
+
+// newPushDeviceMutation creates new mutation for the PushDevice entity.
+func newPushDeviceMutation(c config, op Op, opts ...pushdeviceOption) *PushDeviceMutation {
+	m := &PushDeviceMutation{
+		config:        c,
+		op:            op,
+		typ:           TypePushDevice,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withPushDeviceID sets the ID field of the mutation.
+func withPushDeviceID(id uuid.UUID) pushdeviceOption {
+	return func(m *PushDeviceMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *PushDevice
+		)
+		m.oldValue = func(ctx context.Context) (*PushDevice, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().PushDevice.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withPushDevice sets the old PushDevice of the mutation.
+func withPushDevice(node *PushDevice) pushdeviceOption {
+	return func(m *PushDeviceMutation) {
+		m.oldValue = func(context.Context) (*PushDevice, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m PushDeviceMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m PushDeviceMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of PushDevice entities.
+func (m *PushDeviceMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *PushDeviceMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *PushDeviceMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().PushDevice.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *PushDeviceMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *PushDeviceMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the PushDevice entity.
+// If the PushDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeviceMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *PushDeviceMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *PushDeviceMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *PushDeviceMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the PushDevice entity.
+// If the PushDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeviceMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *PushDeviceMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetInstallationID sets the "installation_id" field.
+func (m *PushDeviceMutation) SetInstallationID(u uuid.UUID) {
+	m.installation_id = &u
+}
+
+// InstallationID returns the value of the "installation_id" field in the mutation.
+func (m *PushDeviceMutation) InstallationID() (r uuid.UUID, exists bool) {
+	v := m.installation_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInstallationID returns the old "installation_id" field's value of the PushDevice entity.
+// If the PushDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeviceMutation) OldInstallationID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInstallationID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInstallationID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInstallationID: %w", err)
+	}
+	return oldValue.InstallationID, nil
+}
+
+// ResetInstallationID resets all changes to the "installation_id" field.
+func (m *PushDeviceMutation) ResetInstallationID() {
+	m.installation_id = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *PushDeviceMutation) SetUserID(u uuid.UUID) {
+	m.user_id = &u
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *PushDeviceMutation) UserID() (r uuid.UUID, exists bool) {
+	v := m.user_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the PushDevice entity.
+// If the PushDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeviceMutation) OldUserID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *PushDeviceMutation) ResetUserID() {
+	m.user_id = nil
+}
+
+// SetToken sets the "token" field.
+func (m *PushDeviceMutation) SetToken(s string) {
+	m.token = &s
+}
+
+// Token returns the value of the "token" field in the mutation.
+func (m *PushDeviceMutation) Token() (r string, exists bool) {
+	v := m.token
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldToken returns the old "token" field's value of the PushDevice entity.
+// If the PushDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeviceMutation) OldToken(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldToken is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldToken requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldToken: %w", err)
+	}
+	return oldValue.Token, nil
+}
+
+// ResetToken resets all changes to the "token" field.
+func (m *PushDeviceMutation) ResetToken() {
+	m.token = nil
+}
+
+// SetPlatform sets the "platform" field.
+func (m *PushDeviceMutation) SetPlatform(pu pushdevice.Platform) {
+	m.platform = &pu
+}
+
+// Platform returns the value of the "platform" field in the mutation.
+func (m *PushDeviceMutation) Platform() (r pushdevice.Platform, exists bool) {
+	v := m.platform
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPlatform returns the old "platform" field's value of the PushDevice entity.
+// If the PushDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeviceMutation) OldPlatform(ctx context.Context) (v pushdevice.Platform, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPlatform is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPlatform requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPlatform: %w", err)
+	}
+	return oldValue.Platform, nil
+}
+
+// ResetPlatform resets all changes to the "platform" field.
+func (m *PushDeviceMutation) ResetPlatform() {
+	m.platform = nil
+}
+
+// SetSessionHash sets the "session_hash" field.
+func (m *PushDeviceMutation) SetSessionHash(s string) {
+	m.session_hash = &s
+}
+
+// SessionHash returns the value of the "session_hash" field in the mutation.
+func (m *PushDeviceMutation) SessionHash() (r string, exists bool) {
+	v := m.session_hash
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSessionHash returns the old "session_hash" field's value of the PushDevice entity.
+// If the PushDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeviceMutation) OldSessionHash(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSessionHash is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSessionHash requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSessionHash: %w", err)
+	}
+	return oldValue.SessionHash, nil
+}
+
+// ResetSessionHash resets all changes to the "session_hash" field.
+func (m *PushDeviceMutation) ResetSessionHash() {
+	m.session_hash = nil
+}
+
+// SetSecretHash sets the "secret_hash" field.
+func (m *PushDeviceMutation) SetSecretHash(s string) {
+	m.secret_hash = &s
+}
+
+// SecretHash returns the value of the "secret_hash" field in the mutation.
+func (m *PushDeviceMutation) SecretHash() (r string, exists bool) {
+	v := m.secret_hash
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSecretHash returns the old "secret_hash" field's value of the PushDevice entity.
+// If the PushDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeviceMutation) OldSecretHash(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSecretHash is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSecretHash requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSecretHash: %w", err)
+	}
+	return oldValue.SecretHash, nil
+}
+
+// ResetSecretHash resets all changes to the "secret_hash" field.
+func (m *PushDeviceMutation) ResetSecretHash() {
+	m.secret_hash = nil
+}
+
+// SetIssuedAt sets the "issued_at" field.
+func (m *PushDeviceMutation) SetIssuedAt(i int64) {
+	m.issued_at = &i
+	m.addissued_at = nil
+}
+
+// IssuedAt returns the value of the "issued_at" field in the mutation.
+func (m *PushDeviceMutation) IssuedAt() (r int64, exists bool) {
+	v := m.issued_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIssuedAt returns the old "issued_at" field's value of the PushDevice entity.
+// If the PushDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeviceMutation) OldIssuedAt(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIssuedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIssuedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIssuedAt: %w", err)
+	}
+	return oldValue.IssuedAt, nil
+}
+
+// AddIssuedAt adds i to the "issued_at" field.
+func (m *PushDeviceMutation) AddIssuedAt(i int64) {
+	if m.addissued_at != nil {
+		*m.addissued_at += i
+	} else {
+		m.addissued_at = &i
+	}
+}
+
+// AddedIssuedAt returns the value that was added to the "issued_at" field in this mutation.
+func (m *PushDeviceMutation) AddedIssuedAt() (r int64, exists bool) {
+	v := m.addissued_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetIssuedAt resets all changes to the "issued_at" field.
+func (m *PushDeviceMutation) ResetIssuedAt() {
+	m.issued_at = nil
+	m.addissued_at = nil
+}
+
+// SetExpiresAt sets the "expires_at" field.
+func (m *PushDeviceMutation) SetExpiresAt(t time.Time) {
+	m.expires_at = &t
+}
+
+// ExpiresAt returns the value of the "expires_at" field in the mutation.
+func (m *PushDeviceMutation) ExpiresAt() (r time.Time, exists bool) {
+	v := m.expires_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExpiresAt returns the old "expires_at" field's value of the PushDevice entity.
+// If the PushDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeviceMutation) OldExpiresAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExpiresAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExpiresAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExpiresAt: %w", err)
+	}
+	return oldValue.ExpiresAt, nil
+}
+
+// ResetExpiresAt resets all changes to the "expires_at" field.
+func (m *PushDeviceMutation) ResetExpiresAt() {
+	m.expires_at = nil
+}
+
+// SetBindingID sets the "binding_id" field.
+func (m *PushDeviceMutation) SetBindingID(u uuid.UUID) {
+	m.binding_id = &u
+}
+
+// BindingID returns the value of the "binding_id" field in the mutation.
+func (m *PushDeviceMutation) BindingID() (r uuid.UUID, exists bool) {
+	v := m.binding_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBindingID returns the old "binding_id" field's value of the PushDevice entity.
+// If the PushDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeviceMutation) OldBindingID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBindingID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBindingID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBindingID: %w", err)
+	}
+	return oldValue.BindingID, nil
+}
+
+// ResetBindingID resets all changes to the "binding_id" field.
+func (m *PushDeviceMutation) ResetBindingID() {
+	m.binding_id = nil
+}
+
+// SetDisabledAt sets the "disabled_at" field.
+func (m *PushDeviceMutation) SetDisabledAt(t time.Time) {
+	m.disabled_at = &t
+}
+
+// DisabledAt returns the value of the "disabled_at" field in the mutation.
+func (m *PushDeviceMutation) DisabledAt() (r time.Time, exists bool) {
+	v := m.disabled_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDisabledAt returns the old "disabled_at" field's value of the PushDevice entity.
+// If the PushDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PushDeviceMutation) OldDisabledAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDisabledAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDisabledAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDisabledAt: %w", err)
+	}
+	return oldValue.DisabledAt, nil
+}
+
+// ClearDisabledAt clears the value of the "disabled_at" field.
+func (m *PushDeviceMutation) ClearDisabledAt() {
+	m.disabled_at = nil
+	m.clearedFields[pushdevice.FieldDisabledAt] = struct{}{}
+}
+
+// DisabledAtCleared returns if the "disabled_at" field was cleared in this mutation.
+func (m *PushDeviceMutation) DisabledAtCleared() bool {
+	_, ok := m.clearedFields[pushdevice.FieldDisabledAt]
+	return ok
+}
+
+// ResetDisabledAt resets all changes to the "disabled_at" field.
+func (m *PushDeviceMutation) ResetDisabledAt() {
+	m.disabled_at = nil
+	delete(m.clearedFields, pushdevice.FieldDisabledAt)
+}
+
+// Where appends a list predicates to the PushDeviceMutation builder.
+func (m *PushDeviceMutation) Where(ps ...predicate.PushDevice) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the PushDeviceMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *PushDeviceMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.PushDevice, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *PushDeviceMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *PushDeviceMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (PushDevice).
+func (m *PushDeviceMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *PushDeviceMutation) Fields() []string {
+	fields := make([]string, 0, 12)
+	if m.created_at != nil {
+		fields = append(fields, pushdevice.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, pushdevice.FieldUpdatedAt)
+	}
+	if m.installation_id != nil {
+		fields = append(fields, pushdevice.FieldInstallationID)
+	}
+	if m.user_id != nil {
+		fields = append(fields, pushdevice.FieldUserID)
+	}
+	if m.token != nil {
+		fields = append(fields, pushdevice.FieldToken)
+	}
+	if m.platform != nil {
+		fields = append(fields, pushdevice.FieldPlatform)
+	}
+	if m.session_hash != nil {
+		fields = append(fields, pushdevice.FieldSessionHash)
+	}
+	if m.secret_hash != nil {
+		fields = append(fields, pushdevice.FieldSecretHash)
+	}
+	if m.issued_at != nil {
+		fields = append(fields, pushdevice.FieldIssuedAt)
+	}
+	if m.expires_at != nil {
+		fields = append(fields, pushdevice.FieldExpiresAt)
+	}
+	if m.binding_id != nil {
+		fields = append(fields, pushdevice.FieldBindingID)
+	}
+	if m.disabled_at != nil {
+		fields = append(fields, pushdevice.FieldDisabledAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *PushDeviceMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case pushdevice.FieldCreatedAt:
+		return m.CreatedAt()
+	case pushdevice.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case pushdevice.FieldInstallationID:
+		return m.InstallationID()
+	case pushdevice.FieldUserID:
+		return m.UserID()
+	case pushdevice.FieldToken:
+		return m.Token()
+	case pushdevice.FieldPlatform:
+		return m.Platform()
+	case pushdevice.FieldSessionHash:
+		return m.SessionHash()
+	case pushdevice.FieldSecretHash:
+		return m.SecretHash()
+	case pushdevice.FieldIssuedAt:
+		return m.IssuedAt()
+	case pushdevice.FieldExpiresAt:
+		return m.ExpiresAt()
+	case pushdevice.FieldBindingID:
+		return m.BindingID()
+	case pushdevice.FieldDisabledAt:
+		return m.DisabledAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *PushDeviceMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case pushdevice.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case pushdevice.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case pushdevice.FieldInstallationID:
+		return m.OldInstallationID(ctx)
+	case pushdevice.FieldUserID:
+		return m.OldUserID(ctx)
+	case pushdevice.FieldToken:
+		return m.OldToken(ctx)
+	case pushdevice.FieldPlatform:
+		return m.OldPlatform(ctx)
+	case pushdevice.FieldSessionHash:
+		return m.OldSessionHash(ctx)
+	case pushdevice.FieldSecretHash:
+		return m.OldSecretHash(ctx)
+	case pushdevice.FieldIssuedAt:
+		return m.OldIssuedAt(ctx)
+	case pushdevice.FieldExpiresAt:
+		return m.OldExpiresAt(ctx)
+	case pushdevice.FieldBindingID:
+		return m.OldBindingID(ctx)
+	case pushdevice.FieldDisabledAt:
+		return m.OldDisabledAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown PushDevice field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PushDeviceMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case pushdevice.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case pushdevice.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case pushdevice.FieldInstallationID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInstallationID(v)
+		return nil
+	case pushdevice.FieldUserID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case pushdevice.FieldToken:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetToken(v)
+		return nil
+	case pushdevice.FieldPlatform:
+		v, ok := value.(pushdevice.Platform)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPlatform(v)
+		return nil
+	case pushdevice.FieldSessionHash:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSessionHash(v)
+		return nil
+	case pushdevice.FieldSecretHash:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSecretHash(v)
+		return nil
+	case pushdevice.FieldIssuedAt:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIssuedAt(v)
+		return nil
+	case pushdevice.FieldExpiresAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExpiresAt(v)
+		return nil
+	case pushdevice.FieldBindingID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBindingID(v)
+		return nil
+	case pushdevice.FieldDisabledAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDisabledAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PushDevice field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *PushDeviceMutation) AddedFields() []string {
+	var fields []string
+	if m.addissued_at != nil {
+		fields = append(fields, pushdevice.FieldIssuedAt)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *PushDeviceMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case pushdevice.FieldIssuedAt:
+		return m.AddedIssuedAt()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PushDeviceMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case pushdevice.FieldIssuedAt:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddIssuedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PushDevice numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *PushDeviceMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(pushdevice.FieldDisabledAt) {
+		fields = append(fields, pushdevice.FieldDisabledAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *PushDeviceMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *PushDeviceMutation) ClearField(name string) error {
+	switch name {
+	case pushdevice.FieldDisabledAt:
+		m.ClearDisabledAt()
+		return nil
+	}
+	return fmt.Errorf("unknown PushDevice nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *PushDeviceMutation) ResetField(name string) error {
+	switch name {
+	case pushdevice.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case pushdevice.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case pushdevice.FieldInstallationID:
+		m.ResetInstallationID()
+		return nil
+	case pushdevice.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case pushdevice.FieldToken:
+		m.ResetToken()
+		return nil
+	case pushdevice.FieldPlatform:
+		m.ResetPlatform()
+		return nil
+	case pushdevice.FieldSessionHash:
+		m.ResetSessionHash()
+		return nil
+	case pushdevice.FieldSecretHash:
+		m.ResetSecretHash()
+		return nil
+	case pushdevice.FieldIssuedAt:
+		m.ResetIssuedAt()
+		return nil
+	case pushdevice.FieldExpiresAt:
+		m.ResetExpiresAt()
+		return nil
+	case pushdevice.FieldBindingID:
+		m.ResetBindingID()
+		return nil
+	case pushdevice.FieldDisabledAt:
+		m.ResetDisabledAt()
+		return nil
+	}
+	return fmt.Errorf("unknown PushDevice field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *PushDeviceMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *PushDeviceMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *PushDeviceMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *PushDeviceMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *PushDeviceMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *PushDeviceMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *PushDeviceMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown PushDevice unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *PushDeviceMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown PushDevice edge %s", name)
+}
+
 // ReportMutation represents an operation that mutates the Report nodes in the graph.
 type ReportMutation struct {
 	config
@@ -9455,6 +12399,7 @@ type UserMutation struct {
 	deleted_at                    *time.Time
 	role                          *user.Role
 	is_banned                     *bool
+	message_notifications_enabled *bool
 	banned_until                  *time.Time
 	ban_reason                    *string
 	clearedFields                 map[string]struct{}
@@ -10136,6 +13081,42 @@ func (m *UserMutation) OldIsBanned(ctx context.Context) (v bool, err error) {
 // ResetIsBanned resets all changes to the "is_banned" field.
 func (m *UserMutation) ResetIsBanned() {
 	m.is_banned = nil
+}
+
+// SetMessageNotificationsEnabled sets the "message_notifications_enabled" field.
+func (m *UserMutation) SetMessageNotificationsEnabled(b bool) {
+	m.message_notifications_enabled = &b
+}
+
+// MessageNotificationsEnabled returns the value of the "message_notifications_enabled" field in the mutation.
+func (m *UserMutation) MessageNotificationsEnabled() (r bool, exists bool) {
+	v := m.message_notifications_enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMessageNotificationsEnabled returns the old "message_notifications_enabled" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldMessageNotificationsEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMessageNotificationsEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMessageNotificationsEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMessageNotificationsEnabled: %w", err)
+	}
+	return oldValue.MessageNotificationsEnabled, nil
+}
+
+// ResetMessageNotificationsEnabled resets all changes to the "message_notifications_enabled" field.
+func (m *UserMutation) ResetMessageNotificationsEnabled() {
+	m.message_notifications_enabled = nil
 }
 
 // SetBannedUntil sets the "banned_until" field.
@@ -10891,7 +13872,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 15)
 	if m.created_at != nil {
 		fields = append(fields, user.FieldCreatedAt)
 	}
@@ -10927,6 +13908,9 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.is_banned != nil {
 		fields = append(fields, user.FieldIsBanned)
+	}
+	if m.message_notifications_enabled != nil {
+		fields = append(fields, user.FieldMessageNotificationsEnabled)
 	}
 	if m.banned_until != nil {
 		fields = append(fields, user.FieldBannedUntil)
@@ -10966,6 +13950,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.Role()
 	case user.FieldIsBanned:
 		return m.IsBanned()
+	case user.FieldMessageNotificationsEnabled:
+		return m.MessageNotificationsEnabled()
 	case user.FieldBannedUntil:
 		return m.BannedUntil()
 	case user.FieldBanReason:
@@ -11003,6 +13989,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldRole(ctx)
 	case user.FieldIsBanned:
 		return m.OldIsBanned(ctx)
+	case user.FieldMessageNotificationsEnabled:
+		return m.OldMessageNotificationsEnabled(ctx)
 	case user.FieldBannedUntil:
 		return m.OldBannedUntil(ctx)
 	case user.FieldBanReason:
@@ -11099,6 +14087,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetIsBanned(v)
+		return nil
+	case user.FieldMessageNotificationsEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMessageNotificationsEnabled(v)
 		return nil
 	case user.FieldBannedUntil:
 		v, ok := value.(time.Time)
@@ -11261,6 +14256,9 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldIsBanned:
 		m.ResetIsBanned()
+		return nil
+	case user.FieldMessageNotificationsEnabled:
+		m.ResetMessageNotificationsEnabled()
 		return nil
 	case user.FieldBannedUntil:
 		m.ResetBannedUntil()

@@ -9,6 +9,9 @@ import (
 // Chat is the predicate function for chat builders.
 type Chat func(*sql.Selector)
 
+// ChatNotificationPreference is the predicate function for chatnotificationpreference builders.
+type ChatNotificationPreference func(*sql.Selector)
+
 // GroupChat is the predicate function for groupchat builders.
 type GroupChat func(*sql.Selector)
 
@@ -26,6 +29,12 @@ type MessageOutbox func(*sql.Selector)
 
 // PrivateChat is the predicate function for privatechat builders.
 type PrivateChat func(*sql.Selector)
+
+// PushDelivery is the predicate function for pushdelivery builders.
+type PushDelivery func(*sql.Selector)
+
+// PushDevice is the predicate function for pushdevice builders.
+type PushDevice func(*sql.Selector)
 
 // Report is the predicate function for report builders.
 type Report func(*sql.Selector)

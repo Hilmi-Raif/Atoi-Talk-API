@@ -197,6 +197,11 @@ build-message-worker: ## build message worker binary
 	mkdir -p $(BIN_DIR)
 	CGO_ENABLED=0 $(GO) build -o $(BIN_DIR)/$(APP_NAME_WORKER) ./cmd/message_worker
 
+.PHONY: build-push-worker
+build-push-worker: ## build push notification worker binary
+	mkdir -p $(BIN_DIR)
+	CGO_ENABLED=0 $(GO) build -o $(BIN_DIR)/atoitalk-push-worker ./cmd/push_worker
+
 .PHONY: build-websocket-gateway
 build-websocket-gateway: ## build websocket gateway binary
 	mkdir -p $(BIN_DIR)
@@ -210,6 +215,7 @@ seed: ## insert initial development seed data
 docker-build: ## build docker images for api, worker, gateway, and scheduler
 	docker build -f build/package/api/Dockerfile -t $(APP_NAME_API):latest .
 	docker build -f build/package/message_worker/Dockerfile -t $(APP_NAME_WORKER):latest .
+	docker build -f build/package/push_worker/Dockerfile -t atoitalk-push-worker:latest .
 	docker build -f build/package/websocket_gateway/Dockerfile -t $(APP_NAME_GATEWAY):latest .
 	docker build -f build/package/scheduler/Dockerfile -t $(APP_NAME_SCHEDULER):latest .
 

@@ -5,7 +5,7 @@ import (
 	"AtoiTalkAPI/internal/infrastructure/config"
 	"AtoiTalkAPI/internal/infrastructure/object_storage"
 	"AtoiTalkAPI/internal/infrastructure/redis"
-	"AtoiTalkAPI/internal/messaging/message_worker"
+	"AtoiTalkAPI/internal/message_worker"
 	"context"
 	"log/slog"
 	"os"
@@ -49,6 +49,7 @@ func main() {
 	storageAdapter := objectstorage.NewStorageAdapter(cfg, s3Client, config.NewHTTPClient())
 
 	store := messageworker.NewEntOutboxStoreWithURLGenerator(entClient, storageAdapter)
+	store.EnablePush(cfg.PushEnabled)
 	publisher := redis.NewRedisStreamPublisherWithDedupeTTL(
 		redisAdapter.Client(),
 		cfg.MessageEventStream,

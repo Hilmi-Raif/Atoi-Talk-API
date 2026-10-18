@@ -30,11 +30,11 @@ func NewMediaController(mediaService service.MediaServicePort) *MediaController 
 // @Accept       json
 // @Produce      json
 // @Param        request body model.UploadMediaRequest true "Upload request"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.UploadMediaResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      429  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.UploadMediaResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      429  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/media/upload [post]
 func (c *MediaController) UploadMedia(w http.ResponseWriter, r *http.Request) {
@@ -66,12 +66,12 @@ func (c *MediaController) UploadMedia(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Param        mediaID path string true "Media ID (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.MediaDTO}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.MediaDTO}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/media/{mediaID}/complete [post]
 func (c *MediaController) CompleteUpload(w http.ResponseWriter, r *http.Request) {
@@ -104,12 +104,12 @@ func (c *MediaController) CompleteUpload(w http.ResponseWriter, r *http.Request)
 // @Accept       json
 // @Produce      json
 // @Param        mediaID path string true "Media ID (UUID)"
-// @Success      200  {object}  helper.ResponseSuccess{data=model.MediaURLResponse}
-// @Failure      400  {object}  helper.ResponseError
-// @Failure      401  {object}  helper.ResponseError
-// @Failure      403  {object}  helper.ResponseError
-// @Failure      404  {object}  helper.ResponseError
-// @Failure      500  {object}  helper.ResponseError
+// @Success      200  {object}  response.ResponseSuccess{data=model.MediaURLResponse}
+// @Failure      400  {object}  response.ResponseError
+// @Failure      401  {object}  response.ResponseError
+// @Failure      403  {object}  response.ResponseError
+// @Failure      404  {object}  response.ResponseError
+// @Failure      500  {object}  response.ResponseError
 // @Security     BearerAuth
 // @Router       /api/media/{mediaID}/url [get]
 func (c *MediaController) GetMediaURL(w http.ResponseWriter, r *http.Request) {
