@@ -35,7 +35,8 @@ func New(cfg *config.AppConfig, client *ent.Client, s3Client *s3.Client) *Schedu
 
 	c := cron.New(
 		cron.WithLocation(location),
-		cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)),
+		cron.WithLogger(cronLogger{}),
+		cron.WithChain(cron.SkipIfStillRunning(cronLogger{})),
 	)
 
 	return &Scheduler{
@@ -45,6 +46,16 @@ func New(cfg *config.AppConfig, client *ent.Client, s3Client *s3.Client) *Schedu
 		storageAdapter: storageAdapter,
 		jobMetrics:     observability.NewJobMetrics(),
 	}
+}
+
+type cronLogger struct{}
+
+func (cronLogger) Info(message string, fields ...interface{}) {
+	slog.Info(message, fields...)
+}
+
+func (cronLogger) Error(err error, message string, fields ...interface{}) {
+	slog.Error(message, append(fields, "error", err)...)
 }
 
 func (s *Scheduler) Start() {

@@ -76,7 +76,7 @@ func privateChatToResponse(pc *ent.PrivateChat) *model.ChatResponse {
 
 func (s *PrivateChatService) CreatePrivateChat(ctx context.Context, userID uuid.UUID, req model.CreatePrivateChatRequest) (*model.ChatResponse, error) {
 	if err := s.validator.Struct(req); err != nil {
-		slog.Warn("Validation failed", "error", err, "userID", userID)
+		slog.WarnContext(ctx, "Validation failed", "error", err, "userID", userID)
 		return nil, helper.NewBadRequestError("")
 	}
 
@@ -93,7 +93,7 @@ func (s *PrivateChatService) CreatePrivateChat(ctx context.Context, userID uuid.
 		Select(user.FieldID, user.FieldFullName, user.FieldIsBanned, user.FieldBannedUntil, user.FieldAvatarID).
 		All(ctx)
 	if err != nil {
-		slog.Error("Failed to query users for private chat", "error", err)
+		slog.ErrorContext(ctx, "Failed to query users for private chat", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	if len(users) != 2 {
@@ -135,7 +135,7 @@ func (s *PrivateChatService) CreatePrivateChat(ctx context.Context, userID uuid.
 		).
 		Exist(ctx)
 	if err != nil {
-		slog.Error("Failed to check block status", "error", err)
+		slog.ErrorContext(ctx, "Failed to check block status", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	if isBlocked {
@@ -147,13 +147,13 @@ func (s *PrivateChatService) CreatePrivateChat(ctx context.Context, userID uuid.
 	if err == nil {
 		return privateChatToResponse(existingChat), nil
 	} else if !ent.IsNotFound(err) {
-		slog.Error("Failed to check existing private chat", "error", err)
+		slog.ErrorContext(ctx, "Failed to check existing private chat", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -168,7 +168,7 @@ func (s *PrivateChatService) CreatePrivateChat(ctx context.Context, userID uuid.
 		SetType(chat.TypePrivate).
 		Save(ctx)
 	if err != nil {
-		slog.Error("Failed to create chat", "error", err)
+		slog.ErrorContext(ctx, "Failed to create chat", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -188,12 +188,12 @@ func (s *PrivateChatService) CreatePrivateChat(ctx context.Context, userID uuid.
 			}
 			return nil, helper.NewConflictError("Private chat already exists")
 		}
-		slog.Error("Failed to create private chat", "error", err)
+		slog.ErrorContext(ctx, "Failed to create private chat", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 

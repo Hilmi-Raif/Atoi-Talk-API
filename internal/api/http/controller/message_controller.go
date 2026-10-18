@@ -49,7 +49,7 @@ func (c *MessageController) SendMessage(w http.ResponseWriter, r *http.Request) 
 
 	var req model.SendMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("Invalid request body", "error", err)
+		slog.WarnContext(r.Context(), "Invalid request body", "error", err)
 		response.WriteError(w, helper.NewBadRequestError(""))
 		return
 	}
@@ -96,7 +96,7 @@ func (c *MessageController) EditMessage(w http.ResponseWriter, r *http.Request) 
 
 	var req model.EditMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("Invalid request body", "error", err)
+		slog.WarnContext(r.Context(), "Invalid request body", "error", err)
 		response.WriteError(w, helper.NewBadRequestError(""))
 		return
 	}

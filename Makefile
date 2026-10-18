@@ -185,27 +185,27 @@ observability-down: ## stop and remove local signoz observability stack
 .PHONY: build-api
 build-api: ## build api server binary
 	mkdir -p $(BIN_DIR)
-	CGO_ENABLED=0 $(GO) build -o $(BIN_DIR)/$(APP_NAME_API) ./cmd/api
+	CGO_ENABLED=0 $(GO) build -trimpath -o $(BIN_DIR)/$(APP_NAME_API) ./cmd/api
 
 .PHONY: build-scheduler
 build-scheduler: ## build scheduler binary
 	mkdir -p $(BIN_DIR)
-	CGO_ENABLED=0 $(GO) build -o $(BIN_DIR)/$(APP_NAME_SCHEDULER) ./cmd/scheduler
+	CGO_ENABLED=0 $(GO) build -trimpath -o $(BIN_DIR)/$(APP_NAME_SCHEDULER) ./cmd/scheduler
 
 .PHONY: build-message-worker
 build-message-worker: ## build message worker binary
 	mkdir -p $(BIN_DIR)
-	CGO_ENABLED=0 $(GO) build -o $(BIN_DIR)/$(APP_NAME_WORKER) ./cmd/message_worker
+	CGO_ENABLED=0 $(GO) build -trimpath -o $(BIN_DIR)/$(APP_NAME_WORKER) ./cmd/message_worker
 
 .PHONY: build-push-worker
 build-push-worker: ## build push notification worker binary
 	mkdir -p $(BIN_DIR)
-	CGO_ENABLED=0 $(GO) build -o $(BIN_DIR)/atoitalk-push-worker ./cmd/push_worker
+	CGO_ENABLED=0 $(GO) build -trimpath -o $(BIN_DIR)/atoitalk-push-worker ./cmd/push_worker
 
 .PHONY: build-websocket-gateway
 build-websocket-gateway: ## build websocket gateway binary
 	mkdir -p $(BIN_DIR)
-	CGO_ENABLED=0 $(GO) build -o $(BIN_DIR)/$(APP_NAME_GATEWAY) ./cmd/websocket_gateway
+	CGO_ENABLED=0 $(GO) build -trimpath -o $(BIN_DIR)/$(APP_NAME_GATEWAY) ./cmd/websocket_gateway
 
 .PHONY: seed
 seed: ## insert initial development seed data

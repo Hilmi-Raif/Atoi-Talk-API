@@ -37,7 +37,7 @@ func NewOTPController(otpService service.OTPServicePort) *OTPController {
 func (c *OTPController) SendOTP(w http.ResponseWriter, r *http.Request) {
 	var req model.SendOTPRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("Invalid request body", "error", err)
+		slog.WarnContext(r.Context(), "Invalid request body", "error", err)
 		response.WriteError(w, helper.NewBadRequestError(""))
 		return
 	}

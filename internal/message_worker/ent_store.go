@@ -131,6 +131,7 @@ func (s *EntOutboxStore) BuildEvents(ctx context.Context, record OutboxRecord) (
 		built = append(built, events.MessageEvent{
 			ID:           uuid.NewSHA1(uuid.Nil, []byte(record.ID.String()+":"+target.String())),
 			OutboxID:     record.ID,
+			TraceParent:  observability.TraceParent(ctx),
 			Type:         record.EventType,
 			MessageID:    record.MessageID,
 			ChatID:       record.ChatID,

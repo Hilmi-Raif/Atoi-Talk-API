@@ -37,7 +37,7 @@ func NewAuthController(authService service.AuthServicePort) *AuthController {
 func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	var req model.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("Invalid request body", "error", err)
+		slog.WarnContext(r.Context(), "Invalid request body", "error", err)
 		response.WriteError(w, helper.NewBadRequestError(""))
 		return
 	}
@@ -120,7 +120,7 @@ func (c *AuthController) GoogleAuthInit(w http.ResponseWriter, r *http.Request) 
 func (c *AuthController) GoogleExchange(w http.ResponseWriter, r *http.Request) {
 	var req model.GoogleLoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("Invalid request body", "error", err)
+		slog.WarnContext(r.Context(), "Invalid request body", "error", err)
 		response.WriteError(w, helper.NewBadRequestError(""))
 		return
 	}
@@ -150,7 +150,7 @@ func (c *AuthController) GoogleExchange(w http.ResponseWriter, r *http.Request) 
 func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 	var req model.RegisterUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("Invalid request body", "error", err)
+		slog.WarnContext(r.Context(), "Invalid request body", "error", err)
 		response.WriteError(w, helper.NewBadRequestError(""))
 		return
 	}
@@ -180,7 +180,7 @@ func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 func (c *AuthController) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	var req model.ResetPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("Invalid request body", "error", err)
+		slog.WarnContext(r.Context(), "Invalid request body", "error", err)
 		response.WriteError(w, helper.NewBadRequestError(""))
 		return
 	}

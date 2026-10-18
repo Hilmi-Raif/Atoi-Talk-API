@@ -3,6 +3,7 @@ package main
 import (
 	"AtoiTalkAPI/internal/bootstrap"
 	"AtoiTalkAPI/internal/infrastructure/config"
+	"AtoiTalkAPI/internal/infrastructure/observability"
 	"context"
 	"fmt"
 	"log/slog"
@@ -17,7 +18,7 @@ import (
 // @in header
 // @name Authorization
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger := observability.NewLogger(os.Stdout, "production", "api", "unknown")
 	slog.SetDefault(logger)
 
 	cfg := config.LoadAppConfig()

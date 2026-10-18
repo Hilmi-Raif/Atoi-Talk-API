@@ -13,6 +13,7 @@ type StreamMessage struct {
 }
 
 type MessageEvent struct {
+	TraceParent  string    `json:"traceparent,omitempty"`
 	ID           uuid.UUID `json:"id"`
 	OutboxID     uuid.UUID `json:"outbox_id"`
 	Type         string    `json:"type"`

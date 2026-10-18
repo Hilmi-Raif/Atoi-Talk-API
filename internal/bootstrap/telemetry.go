@@ -5,10 +5,12 @@ import (
 	"AtoiTalkAPI/internal/infrastructure/observability"
 	"context"
 	"log/slog"
+	"os"
 	"time"
 )
 
 func InitTelemetry(ctx context.Context, cfg *config.AppConfig, serviceName string) func() {
+	slog.SetDefault(observability.NewLogger(os.Stdout, cfg.AppEnv, serviceName, cfg.OTelServiceVersion))
 	shutdownTelemetry, err := observability.InitTelemetry(ctx, observability.Config{
 		Enabled:              cfg.OTelEnabled,
 		ServiceName:          serviceName,
@@ -20,7 +22,7 @@ func InitTelemetry(ctx context.Context, cfg *config.AppConfig, serviceName strin
 		MetricExportInterval: cfg.OTelMetricExportInterval,
 	})
 	if err != nil {
-		slog.Error("Failed to initialize OpenTelemetry", "service", serviceName, "error", err)
+		slog.ErrorContext(ctx, "Failed to initialize OpenTelemetry", "service", serviceName, "error", err)
 		return func() {}
 	}
 
@@ -28,7 +30,7 @@ func InitTelemetry(ctx context.Context, cfg *config.AppConfig, serviceName strin
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := shutdownTelemetry(shutdownCtx); err != nil {
-			slog.Error("Error shutting down OpenTelemetry", "service", serviceName, "error", err)
+			slog.ErrorContext(ctx, "Error shutting down OpenTelemetry", "service", serviceName, "error", err)
 		}
 	}
 }

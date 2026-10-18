@@ -4,6 +4,7 @@ import (
 	"AtoiTalkAPI/internal/bootstrap"
 	"AtoiTalkAPI/internal/infrastructure/config"
 	"AtoiTalkAPI/internal/infrastructure/database/realtimequery"
+	"AtoiTalkAPI/internal/infrastructure/observability"
 	"AtoiTalkAPI/internal/infrastructure/redis"
 	messagingpubsub "AtoiTalkAPI/internal/messaging/pubsub"
 	"AtoiTalkAPI/internal/websocket_gateway/auth"
@@ -25,7 +26,7 @@ import (
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger := observability.NewLogger(os.Stdout, "production", "websocket-gateway", "unknown")
 	slog.SetDefault(logger)
 
 	cfg := config.LoadAppConfig()
@@ -54,6 +55,7 @@ func main() {
 	instanceID := connection.ResolveRealtimeInstanceID(cfg.RealtimeInstanceID)
 	groupPrefix := connection.RealtimeConsumerGroupPrefix(cfg.RealtimeConsumerGroup)
 	group := connection.RealtimeConsumerGroup(groupPrefix, instanceID)
+	slog.SetDefault(slog.Default().With("instance_id", instanceID, "consumer_group", group))
 	redisStream := redis.NewRedisStreamConsumerFrom(redisAdapter.Client(), cfg.MessageEventStream, group, instanceID, "$")
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

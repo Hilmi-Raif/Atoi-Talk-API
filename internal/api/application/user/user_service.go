@@ -63,7 +63,7 @@ func (s *UserService) GetCurrentUser(ctx context.Context, userID uuid.UUID) (*mo
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("")
 		}
-		slog.Error("Failed to query user", "error", err, "userID", userID)
+		slog.ErrorContext(ctx, "Failed to query user", "error", err, "userID", userID)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -124,7 +124,7 @@ func (s *UserService) GetUserProfile(ctx context.Context, currentUserID uuid.UUI
 		All(ctx)
 
 	if err != nil {
-		slog.Error("Failed to check block status", "error", err)
+		slog.ErrorContext(ctx, "Failed to check block status", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -153,7 +153,7 @@ func (s *UserService) GetUserProfile(ctx context.Context, currentUserID uuid.UUI
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("User not found")
 		}
-		slog.Error("Failed to query user profile", "error", err, "targetUserID", targetUserID)
+		slog.ErrorContext(ctx, "Failed to query user profile", "error", err, "targetUserID", targetUserID)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -221,13 +221,13 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID uuid.UUID, req m
 	}
 
 	if err := s.validator.Struct(&req); err != nil {
-		slog.Warn("Validation failed", "error", err, "userID", userID)
+		slog.WarnContext(ctx, "Validation failed", "error", err, "userID", userID)
 		return nil, helper.NewBadRequestError("")
 	}
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -250,7 +250,7 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID uuid.UUID, req m
 			return nil, helper.NewNotFoundError("")
 		}
 
-		slog.Error("Failed to query user", "error", err, "userID", userID)
+		slog.ErrorContext(ctx, "Failed to query user", "error", err, "userID", userID)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -290,7 +290,7 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID uuid.UUID, req m
 				).
 				Exist(ctx)
 			if err != nil {
-				slog.Error("Failed to check username existence", "error", err)
+				slog.ErrorContext(ctx, "Failed to check username existence", "error", err)
 				return nil, helper.NewInternalServerError("")
 			}
 			if exists {
@@ -373,7 +373,7 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID uuid.UUID, req m
 			if ent.IsNotFound(err) {
 				return nil, helper.NewBadRequestError("Invalid avatar media")
 			}
-			slog.Error("Failed to query avatar media", "error", err, "userID", userID, "mediaID", *req.AvatarMediaID)
+			slog.ErrorContext(ctx, "Failed to query avatar media", "error", err, "userID", userID, "mediaID", *req.AvatarMediaID)
 			return nil, helper.NewInternalServerError("")
 		}
 
@@ -387,12 +387,12 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID uuid.UUID, req m
 		if ent.IsConstraintError(err) {
 			return nil, helper.NewConflictError("Username already taken")
 		}
-		slog.Error("Failed to save user profile update", "error", err, "userID", userID)
+		slog.ErrorContext(ctx, "Failed to save user profile update", "error", err, "userID", userID)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -495,10 +495,10 @@ func (s *UserService) SearchUsers(ctx context.Context, currentUserID uuid.UUID, 
 		repositorySpan.End()
 		observability.RecordError(span, err)
 		if strings.Contains(err.Error(), "invalid cursor format") {
-			slog.Warn("Invalid cursor format in SearchUsers", "error", err)
+			slog.WarnContext(ctx, "Invalid cursor format in SearchUsers", "error", err)
 			return nil, "", false, helper.NewBadRequestError("")
 		}
-		slog.Error("Failed to search users", "error", err)
+		slog.ErrorContext(ctx, "Failed to search users", "error", err)
 		return nil, "", false, helper.NewInternalServerError("")
 	}
 	repositorySpan.End()
@@ -531,7 +531,7 @@ func (s *UserService) SearchUsers(ctx context.Context, currentUserID uuid.UUID, 
 			observability.RecordError(privateChatSpan, err)
 			privateChatSpan.End()
 			observability.RecordError(span, err)
-			slog.Error("Failed to fetch private chats for search results", "error", err)
+			slog.ErrorContext(ctx, "Failed to fetch private chats for search results", "error", err)
 		} else {
 			privateChatSpan.End()
 			for _, pc := range chats {
@@ -605,10 +605,10 @@ func (s *UserService) GetBlockedUsers(ctx context.Context, currentUserID uuid.UU
 	users, nextCursor, hasNext, err := s.userRepo.GetBlockedUsers(ctx, currentUserID, req.Query, req.Cursor, req.Limit)
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid cursor format") {
-			slog.Warn("Invalid cursor format in GetBlockedUsers", "error", err)
+			slog.WarnContext(ctx, "Invalid cursor format in GetBlockedUsers", "error", err)
 			return nil, "", false, helper.NewBadRequestError("")
 		}
-		slog.Error("Failed to get blocked users", "error", err)
+		slog.ErrorContext(ctx, "Failed to get blocked users", "error", err)
 		return nil, "", false, helper.NewInternalServerError("")
 	}
 
@@ -660,7 +660,7 @@ func (s *UserService) BlockUser(ctx context.Context, blockerID uuid.UUID, blocke
 		).
 		Exist(ctx)
 	if err != nil {
-		slog.Error("Failed to check user existence", "error", err)
+		slog.ErrorContext(ctx, "Failed to check user existence", "error", err)
 		return helper.NewInternalServerError("")
 	}
 	if !exists {
@@ -676,7 +676,7 @@ func (s *UserService) BlockUser(ctx context.Context, blockerID uuid.UUID, blocke
 		if ent.IsConstraintError(err) {
 			return nil
 		}
-		slog.Error("Failed to block user", "error", err)
+		slog.ErrorContext(ctx, "Failed to block user", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -712,7 +712,7 @@ func (s *UserService) UnblockUser(ctx context.Context, blockerID uuid.UUID, bloc
 		Exec(ctx)
 
 	if err != nil {
-		slog.Error("Failed to unblock user", "error", err)
+		slog.ErrorContext(ctx, "Failed to unblock user", "error", err)
 		return helper.NewInternalServerError("")
 	}
 

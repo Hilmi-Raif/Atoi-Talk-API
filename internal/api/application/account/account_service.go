@@ -47,13 +47,13 @@ func NewAccountService(client *ent.Client, cfg *config.AppConfig, validator *val
 
 func (s *AccountService) ChangePassword(ctx context.Context, userID uuid.UUID, req model.ChangePasswordRequest) error {
 	if err := s.validator.Struct(req); err != nil {
-		slog.Warn("Validation failed", "error", err, "userID", userID)
+		slog.WarnContext(ctx, "Validation failed", "error", err, "userID", userID)
 		return helper.NewBadRequestError("")
 	}
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -72,7 +72,7 @@ func (s *AccountService) ChangePassword(ctx context.Context, userID uuid.UUID, r
 		if ent.IsNotFound(err) {
 			return helper.NewNotFoundError("")
 		}
-		slog.Error("Failed to query user", "error", err, "userID", userID)
+		slog.ErrorContext(ctx, "Failed to query user", "error", err, "userID", userID)
 		return helper.NewInternalServerError("")
 	}
 
@@ -88,24 +88,24 @@ func (s *AccountService) ChangePassword(ctx context.Context, userID uuid.UUID, r
 
 	hashedPassword, err := helper.HashPassword(req.NewPassword)
 	if err != nil {
-		slog.Error("Failed to hash password", "error", err, "userID", userID)
+		slog.ErrorContext(ctx, "Failed to hash password", "error", err, "userID", userID)
 		return helper.NewInternalServerError("")
 	}
 
 	err = tx.User.UpdateOneID(userID).SetPasswordHash(hashedPassword).Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to update password", "error", err, "userID", userID)
+		slog.ErrorContext(ctx, "Failed to update password", "error", err, "userID", userID)
 		return helper.NewInternalServerError("")
 	}
 
 	revokeExpected, revokeSnapshot, err := helper.RevokeSessionsForTransaction(ctx, s.sessionStore, userID)
 	if err != nil {
-		slog.Error("Failed to revoke sessions after password change", "error", err, "userID", userID)
+		slog.ErrorContext(ctx, "Failed to revoke sessions after password change", "error", err, "userID", userID)
 		return helper.NewServiceUnavailableError("Session service unavailable")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err, "userID", userID)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err, "userID", userID)
 		helper.RollbackSessionRevokeIfNeeded(s.sessionStore, userID, revokeExpected, revokeSnapshot)
 		return helper.NewInternalServerError("")
 	}
@@ -121,7 +121,7 @@ func (s *AccountService) ChangeEmail(ctx context.Context, userID uuid.UUID, req 
 	req.Email = helper.NormalizeEmail(req.Email)
 
 	if err := s.validator.Struct(req); err != nil {
-		slog.Warn("Validation failed", "error", err, "userID", userID)
+		slog.WarnContext(ctx, "Validation failed", "error", err, "userID", userID)
 		return helper.NewBadRequestError("")
 	}
 
@@ -133,7 +133,7 @@ func (s *AccountService) ChangeEmail(ctx context.Context, userID uuid.UUID, req 
 		if ent.IsNotFound(err) {
 			return helper.NewNotFoundError("")
 		}
-		slog.Error("Failed to query user", "error", err, "userID", userID)
+		slog.ErrorContext(ctx, "Failed to query user", "error", err, "userID", userID)
 		return helper.NewInternalServerError("")
 	}
 
@@ -151,7 +151,7 @@ func (s *AccountService) ChangeEmail(ctx context.Context, userID uuid.UUID, req 
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -166,7 +166,7 @@ func (s *AccountService) ChangeEmail(ctx context.Context, userID uuid.UUID, req 
 		Where(user.Email(req.Email)).
 		Exist(ctx)
 	if err != nil {
-		slog.Error("Failed to check user existence", "error", err)
+		slog.ErrorContext(ctx, "Failed to check user existence", "error", err)
 		return helper.NewInternalServerError("")
 	}
 	if exists {
@@ -175,7 +175,7 @@ func (s *AccountService) ChangeEmail(ctx context.Context, userID uuid.UUID, req 
 
 	err = tx.User.UpdateOneID(userID).SetEmail(req.Email).Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to update email", "error", err, "userID", userID)
+		slog.ErrorContext(ctx, "Failed to update email", "error", err, "userID", userID)
 		return helper.NewInternalServerError("")
 	}
 
@@ -183,18 +183,18 @@ func (s *AccountService) ChangeEmail(ctx context.Context, userID uuid.UUID, req 
 		Where(useridentity.UserID(userID)).
 		Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to unlink user identities", "error", err, "userID", userID)
+		slog.ErrorContext(ctx, "Failed to unlink user identities", "error", err, "userID", userID)
 		return helper.NewInternalServerError("")
 	}
 
 	revokeExpected, revokeSnapshot, err := helper.RevokeSessionsForTransaction(ctx, s.sessionStore, userID)
 	if err != nil {
-		slog.Error("Failed to revoke sessions after email change", "error", err, "userID", userID)
+		slog.ErrorContext(ctx, "Failed to revoke sessions after email change", "error", err, "userID", userID)
 		return helper.NewServiceUnavailableError("Session service unavailable")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		helper.RollbackSessionRevokeIfNeeded(s.sessionStore, userID, revokeExpected, revokeSnapshot)
 		return helper.NewInternalServerError("")
 	}
@@ -215,7 +215,7 @@ func (s *AccountService) DeleteAccount(ctx context.Context, userID uuid.UUID, re
 		if ent.IsNotFound(err) {
 			return helper.NewNotFoundError("")
 		}
-		slog.Error("Failed to query user", "error", err, "userID", userID)
+		slog.ErrorContext(ctx, "Failed to query user", "error", err, "userID", userID)
 		return helper.NewInternalServerError("")
 	}
 
@@ -239,7 +239,7 @@ func (s *AccountService) DeleteAccount(ctx context.Context, userID uuid.UUID, re
 		Count(ctx)
 
 	if err != nil {
-		slog.Error("Failed to check group ownership", "error", err)
+		slog.ErrorContext(ctx, "Failed to check group ownership", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -249,7 +249,7 @@ func (s *AccountService) DeleteAccount(ctx context.Context, userID uuid.UUID, re
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -264,7 +264,7 @@ func (s *AccountService) DeleteAccount(ctx context.Context, userID uuid.UUID, re
 		Where(useridentity.UserID(userID)).
 		Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to delete user identities", "error", err)
+		slog.ErrorContext(ctx, "Failed to delete user identities", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -279,18 +279,18 @@ func (s *AccountService) DeleteAccount(ctx context.Context, userID uuid.UUID, re
 		Exec(ctx)
 
 	if err != nil {
-		slog.Error("Failed to anonymize user", "error", err)
+		slog.ErrorContext(ctx, "Failed to anonymize user", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
 	revokeExpected, revokeSnapshot, err := helper.RevokeSessionsForTransaction(ctx, s.sessionStore, userID)
 	if err != nil {
-		slog.Error("Failed to revoke sessions after account deletion", "error", err, "userID", userID)
+		slog.ErrorContext(ctx, "Failed to revoke sessions after account deletion", "error", err, "userID", userID)
 		return helper.NewServiceUnavailableError("Session service unavailable")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		helper.RollbackSessionRevokeIfNeeded(s.sessionStore, userID, revokeExpected, revokeSnapshot)
 		return helper.NewInternalServerError("")
 	}

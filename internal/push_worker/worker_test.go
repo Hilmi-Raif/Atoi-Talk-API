@@ -1,8 +1,13 @@
 package pushworker
 
 import (
+	"AtoiTalkAPI/internal/infrastructure/observability"
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"go.opentelemetry.io/otel/trace"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -198,4 +203,30 @@ func TestGroupPushRespectsMembershipHistory(t *testing.T) {
 	allowed, err = Eligible(ctx, c, msg, d.UserID)
 	require.NoError(t, err)
 	require.False(t, allowed)
+}
+
+func TestWorkerRetryLogCorrelatesOriginWithoutToken(t *testing.T) {
+	ctx := context.Background()
+	c, msg, _, r := pushFixture(t)
+	sc := trace.NewSpanContext(trace.SpanContextConfig{TraceID: trace.TraceID{7}, SpanID: trace.SpanID{8}})
+	parent := observability.TraceParent(trace.ContextWithSpanContext(ctx, sc))
+	origin := c.MessageOutbox.Create().SetEventType("message.new").SetMessageID(msg.ID).SetChatID(msg.ChatID).SetSenderID(*msg.SenderID).SetPayload(map[string]interface{}{observability.TraceParentKey: parent}).SaveX(ctx)
+	enqueue(t, c, msg, origin.ID)
+	var output bytes.Buffer
+	oldLogger := slog.Default()
+	slog.SetDefault(observability.NewLogger(&output, "production", "push-worker", "test"))
+	t.Cleanup(func() { slog.SetDefault(oldLogger) })
+	sender := mocks.NewMockFCMSender(t)
+	sender.On("Send", mock.Anything, "token", mock.Anything).Return(&fcm.SendError{Status: 429, Retry: true}).Once()
+	w := Worker{Store: &Store{Client: c, Dialect: dialect.SQLite}, Sender: sender, Redis: r}
+	_, err := w.ProcessOne(ctx)
+	require.NoError(t, err)
+	var log map[string]interface{}
+	require.NoError(t, json.Unmarshal(output.Bytes(), &log))
+	require.Equal(t, origin.ID.String(), log["event_id"])
+	require.Equal(t, sc.TraceID().String(), log["trace_id"])
+	require.Equal(t, "pending", log["outcome"])
+	require.Equal(t, float64(429), log["provider_status"])
+	require.NotContains(t, output.String(), `"token"`)
+	require.Contains(t, log["source"].(map[string]interface{})["function"], "finish")
 }

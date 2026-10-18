@@ -41,7 +41,7 @@ func NewReportService(client *ent.Client, cfg *config.AppConfig, validator *vali
 
 func (s *ReportService) CreateReport(ctx context.Context, reporterID uuid.UUID, req model.CreateReportRequest) error {
 	if err := s.validator.Struct(req); err != nil {
-		slog.Warn("Validation failed", "error", err)
+		slog.WarnContext(ctx, "Validation failed", "error", err)
 		return helper.NewBadRequestError("")
 	}
 
@@ -87,7 +87,7 @@ func (s *ReportService) CreateReport(ctx context.Context, reporterID uuid.UUID, 
 			Only(ctx)
 
 		if err != nil {
-			slog.Error("Failed to query chat info for report validation", "error", err)
+			slog.ErrorContext(ctx, "Failed to query chat info for report validation", "error", err)
 			return helper.NewInternalServerError("")
 		}
 
@@ -114,7 +114,7 @@ func (s *ReportService) CreateReport(ctx context.Context, reporterID uuid.UUID, 
 					groupmember.UserID(reporterID),
 				).Exist(ctx)
 			if err != nil {
-				slog.Error("Failed to check group membership for report", "error", err)
+				slog.ErrorContext(ctx, "Failed to check group membership for report", "error", err)
 				return helper.NewInternalServerError("")
 			}
 			if !isMember {
@@ -194,7 +194,7 @@ func (s *ReportService) CreateReport(ctx context.Context, reporterID uuid.UUID, 
 			Where(groupmember.GroupChatID(group.ID), groupmember.UserID(reporterID)).
 			Exist(ctx)
 		if err != nil {
-			slog.Error("Failed to check group membership for group report", "error", err, "groupID", group.ID, "reporterID", reporterID)
+			slog.ErrorContext(ctx, "Failed to check group membership for group report", "error", err, "groupID", group.ID, "reporterID", reporterID)
 			return helper.NewInternalServerError("")
 		}
 		if !isMember {
@@ -269,7 +269,7 @@ func (s *ReportService) CreateReport(ctx context.Context, reporterID uuid.UUID, 
 		if err == nil {
 			create.SetGroupID(gc.ID)
 		} else {
-			slog.Error("Failed to resolve GroupChat ID for report", "error", err)
+			slog.ErrorContext(ctx, "Failed to resolve GroupChat ID for report", "error", err)
 			return helper.NewInternalServerError("")
 		}
 	}
@@ -283,7 +283,7 @@ func (s *ReportService) CreateReport(ctx context.Context, reporterID uuid.UUID, 
 
 	_, err := create.Save(ctx)
 	if err != nil {
-		slog.Error("Failed to create report", "error", err)
+		slog.ErrorContext(ctx, "Failed to create report", "error", err)
 		return helper.NewInternalServerError("")
 	}
 

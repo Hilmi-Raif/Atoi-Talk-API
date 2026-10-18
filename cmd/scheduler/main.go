@@ -3,6 +3,7 @@ package main
 import (
 	"AtoiTalkAPI/internal/bootstrap"
 	"AtoiTalkAPI/internal/infrastructure/config"
+	"AtoiTalkAPI/internal/infrastructure/observability"
 	"AtoiTalkAPI/internal/scheduler"
 	"context"
 	"log/slog"
@@ -12,7 +13,7 @@ import (
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger := observability.NewLogger(os.Stdout, "production", "scheduler", "unknown")
 	slog.SetDefault(logger)
 
 	cfg := config.LoadAppConfig()

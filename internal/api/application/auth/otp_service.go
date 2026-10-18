@@ -59,12 +59,12 @@ func (s *OTPService) SendOTP(ctx context.Context, req model.SendOTPRequest) erro
 	req.Email = helper.NormalizeEmail(req.Email)
 
 	if err := s.validator.Struct(req); err != nil {
-		slog.Warn("Validation failed", "error", err)
+		slog.WarnContext(ctx, "Validation failed", "error", err)
 		return helper.NewBadRequestError("")
 	}
 
 	if err := s.captchaAdapter.Verify(req.CaptchaToken, ""); err != nil {
-		slog.Warn("Captcha verification failed", "error", err)
+		slog.WarnContext(ctx, "Captcha verification failed", "error", err)
 		return helper.NewBadRequestError("")
 	}
 
@@ -79,7 +79,7 @@ func (s *OTPService) SendOTP(ctx context.Context, req model.SendOTPRequest) erro
 
 	allowed, ttl, err := s.rateLimitRepo.Allow(ctx, rateLimitKey, limit, window)
 	if err != nil {
-		slog.Error("Failed to check rate limit", "error", err)
+		slog.ErrorContext(ctx, "Failed to check rate limit", "error", err)
 
 		return helper.NewInternalServerError("")
 	}
@@ -93,7 +93,7 @@ func (s *OTPService) SendOTP(ctx context.Context, req model.SendOTPRequest) erro
 		Where(user.Email(req.Email)).
 		Exist(ctx)
 	if err != nil {
-		slog.Error("Failed to check user existence", "error", err)
+		slog.ErrorContext(ctx, "Failed to check user existence", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -103,12 +103,12 @@ func (s *OTPService) SendOTP(ctx context.Context, req model.SendOTPRequest) erro
 
 	if (mode == constant.ModeRegister || mode == constant.ModeChangeEmail) && userExists {
 		shouldSend = false
-		slog.Info("OTP request suppressed: Email already registered", "email", req.Email, "mode", mode)
+		slog.InfoContext(ctx, "OTP request suppressed: Email already registered", "email", req.Email, "mode", mode)
 	}
 
 	if mode == constant.ModeReset && !userExists {
 		shouldSend = false
-		slog.Info("OTP request suppressed: Email not found for reset", "email", req.Email)
+		slog.InfoContext(ctx, "OTP request suppressed: Email not found for reset", "email", req.Email)
 	}
 
 	if !shouldSend {
@@ -117,7 +117,7 @@ func (s *OTPService) SendOTP(ctx context.Context, req model.SendOTPRequest) erro
 
 	n, err := rand.Int(rand.Reader, big.NewInt(1000000))
 	if err != nil {
-		slog.Error("Failed to generate random number", "error", err)
+		slog.ErrorContext(ctx, "Failed to generate random number", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -129,7 +129,7 @@ func (s *OTPService) SendOTP(ctx context.Context, req model.SendOTPRequest) erro
 
 	err = s.redisAdapter.Set(ctx, key, hashedCode, otpTTL)
 	if err != nil {
-		slog.Error("Failed to save OTP to Redis", "error", err)
+		slog.ErrorContext(ctx, "Failed to save OTP to Redis", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -146,13 +146,13 @@ func (s *OTPService) SendOTP(ctx context.Context, req model.SendOTPRequest) erro
 
 		emailBody, err := helper.GenerateEmailBody(templateFS, "template/verify_email.html", templateData)
 		if err != nil {
-			slog.Error("Failed to generate email body", "error", err)
+			slog.ErrorContext(ctx, "Failed to generate email body", "error", err)
 			return
 		}
 
 		err = s.emailAdapter.Send([]string{req.Email}, "Your OTP Code", emailBody)
 		if err != nil {
-			slog.Error("Failed to send OTP email", "error", err)
+			slog.ErrorContext(ctx, "Failed to send OTP email", "error", err)
 
 			_, _ = s.redisAdapter.ConsumeIfMatch(context.Background(), key, hashedCode)
 		}
@@ -179,7 +179,7 @@ func (s *OTPService) VerifyOTP(ctx context.Context, email, code, mode string) er
 
 	allowed, ttl, err := s.rateLimitRepo.Allow(ctx, verifyRateLimitKey, otpVerifyRateLimitCount, verifyWindow)
 	if err != nil {
-		slog.Error("Failed to check OTP verify rate limit", "error", err, "email", email, "mode", mode)
+		slog.ErrorContext(ctx, "Failed to check OTP verify rate limit", "error", err, "email", email, "mode", mode)
 		return helper.NewServiceUnavailableError("OTP service unavailable")
 	}
 	if !allowed {
@@ -191,7 +191,7 @@ func (s *OTPService) VerifyOTP(ctx context.Context, email, code, mode string) er
 
 	consumed, err := s.redisAdapter.ConsumeIfMatch(ctx, key, helper.HashOTP(code, s.cfg.OTPSecret))
 	if err != nil {
-		slog.Error("Failed to consume OTP in Redis", "error", err, "email", email, "mode", mode)
+		slog.ErrorContext(ctx, "Failed to consume OTP in Redis", "error", err, "email", email, "mode", mode)
 		return helper.NewServiceUnavailableError("OTP service unavailable")
 	}
 	if !consumed {

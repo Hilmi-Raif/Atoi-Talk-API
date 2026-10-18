@@ -22,7 +22,7 @@ func RunEntityCleanup(ctx context.Context, client *ent.Client, cfg *config.AppCo
 	}
 	cutoff := time.Now().UTC().AddDate(0, 0, -retentionDays)
 
-	slog.Info("Running Entity Cleanup", "cutoff", cutoff)
+	slog.InfoContext(ctx, "Running Entity Cleanup", "cutoff", cutoff)
 
 	for {
 		usersToDelete, err := client.User.Query().
@@ -32,7 +32,7 @@ func RunEntityCleanup(ctx context.Context, client *ent.Client, cfg *config.AppCo
 			Limit(cleanupBatchSize).
 			All(ctx)
 		if err != nil {
-			slog.Error("Failed to query users for cleanup", "error", err)
+			slog.ErrorContext(ctx, "Failed to query users for cleanup", "error", err)
 			return err
 		}
 		if len(usersToDelete) == 0 {
@@ -42,13 +42,13 @@ func RunEntityCleanup(ctx context.Context, client *ent.Client, cfg *config.AppCo
 		deleted := 0
 		for _, u := range usersToDelete {
 			if err := client.User.DeleteOneID(u.ID).Exec(ctx); err != nil {
-				slog.Error("Failed to delete user", "userID", u.ID, "error", err)
+				slog.ErrorContext(ctx, "Failed to delete user", "userID", u.ID, "error", err)
 				continue
 			}
 			deleted++
 		}
 		if deleted == 0 {
-			slog.Warn("Stopping user cleanup because the current batch made no progress")
+			slog.WarnContext(ctx, "Stopping user cleanup because the current batch made no progress")
 			break
 		}
 	}
@@ -61,7 +61,7 @@ func RunEntityCleanup(ctx context.Context, client *ent.Client, cfg *config.AppCo
 			Limit(cleanupBatchSize).
 			All(ctx)
 		if err != nil {
-			slog.Error("Failed to query chats for cleanup", "error", err)
+			slog.ErrorContext(ctx, "Failed to query chats for cleanup", "error", err)
 			return err
 		}
 		if len(chatsToDelete) == 0 {
@@ -71,13 +71,13 @@ func RunEntityCleanup(ctx context.Context, client *ent.Client, cfg *config.AppCo
 		deleted := 0
 		for _, c := range chatsToDelete {
 			if err := client.Chat.DeleteOneID(c.ID).Exec(ctx); err != nil {
-				slog.Error("Failed to delete chat", "chatID", c.ID, "error", err)
+				slog.ErrorContext(ctx, "Failed to delete chat", "chatID", c.ID, "error", err)
 				continue
 			}
 			deleted++
 		}
 		if deleted == 0 {
-			slog.Warn("Stopping chat cleanup because the current batch made no progress")
+			slog.WarnContext(ctx, "Stopping chat cleanup because the current batch made no progress")
 			break
 		}
 	}

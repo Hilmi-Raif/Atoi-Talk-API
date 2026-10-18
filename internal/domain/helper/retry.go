@@ -39,7 +39,7 @@ func RetryWithBackoffContext[T any](ctx context.Context, operation RetryableFunc
 		}
 
 		delay := BackoffDelay(i, baseDelay, 0)
-		slog.Warn("Operation failed, retrying...", "attempt", i+1, "delay", delay, "error", err)
+		slog.WarnContext(ctx, "Operation failed, retrying...", "attempt", i+1, "delay", delay, "error", err)
 		timer := time.NewTimer(delay)
 		select {
 		case <-ctx.Done():

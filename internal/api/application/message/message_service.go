@@ -63,7 +63,7 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 
 	if err := s.validator.Struct(req); err != nil {
 		observability.RecordError(span, err)
-		slog.Warn("Validation failed", "error", err, "userID", userID)
+		slog.WarnContext(ctx, "Validation failed", "error", err, "userID", userID)
 		return nil, helper.NewBadRequestError("")
 	}
 	if len(req.AttachmentIDs) > constant.MaxMessageAttachments {
@@ -91,7 +91,7 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 	if err != nil {
 		observability.RecordError(txSpan, err)
 		observability.RecordError(span, err)
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -115,7 +115,7 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("Chat not found or deleted")
 		}
-		slog.Error("Failed to query chat info", "error", err, "chatID", req.ChatID)
+		slog.ErrorContext(ctx, "Failed to query chat info", "error", err, "chatID", req.ChatID)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -147,7 +147,7 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("Chat not found or deleted")
 		}
-		slog.Error("Failed to query chat details", "error", err, "chatID", req.ChatID)
+		slog.ErrorContext(ctx, "Failed to query chat details", "error", err, "chatID", req.ChatID)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -201,7 +201,7 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 			).
 			Exist(txCtx)
 		if err != nil {
-			slog.Error("Failed to check block status", "error", err)
+			slog.ErrorContext(ctx, "Failed to check block status", "error", err)
 			return nil, helper.NewInternalServerError("")
 		}
 		if isBlocked {
@@ -228,7 +228,7 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 			Exist(txCtx)
 
 		if err != nil {
-			slog.Error("Failed to check reply message existence", "error", err)
+			slog.ErrorContext(ctx, "Failed to check reply message existence", "error", err)
 			return nil, helper.NewInternalServerError("")
 		}
 		if !replyMsgExists {
@@ -248,7 +248,7 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 			Count(txCtx)
 
 		if err != nil {
-			slog.Error("Failed to count valid media", "error", err)
+			slog.ErrorContext(ctx, "Failed to count valid media", "error", err)
 			return nil, helper.NewInternalServerError("")
 		}
 
@@ -274,13 +274,13 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 	msg, err = msgCreate.Save(txCtx)
 	if err != nil {
 		observability.RecordError(span, err)
-		slog.Error("Failed to save message", "error", err)
+		slog.ErrorContext(ctx, "Failed to save message", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	if err := outbox.PersistMessageOutbox(txCtx, tx, msg, events.EventMessageNew, userID); err != nil {
 		observability.RecordError(span, err)
-		slog.Error("Failed to persist message outbox event", "error", err)
+		slog.ErrorContext(ctx, "Failed to persist message outbox event", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -295,7 +295,7 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 			observability.RecordError(responseSpan, err)
 			observability.RecordError(span, err)
 			responseSpan.End()
-			slog.Error("Failed to fetch message sender for response", "error", err)
+			slog.ErrorContext(ctx, "Failed to fetch message sender for response", "error", err)
 			return nil, helper.NewInternalServerError("")
 		}
 		msg.Edges.Sender = sender
@@ -323,7 +323,7 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 			observability.RecordError(responseSpan, err)
 			observability.RecordError(span, err)
 			responseSpan.End()
-			slog.Error("Failed to fetch full message for response", "error", err)
+			slog.ErrorContext(ctx, "Failed to fetch full message for response", "error", err)
 			return nil, helper.NewInternalServerError("")
 		}
 	}
@@ -334,7 +334,7 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 		observability.RecordError(span, err)
 		txSpan.End()
 		txSpanEnded = true
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	txSpan.End()
@@ -347,7 +347,7 @@ func (s *MessageService) SendMessage(ctx context.Context, userID uuid.UUID, req 
 
 func (s *MessageService) EditMessage(ctx context.Context, userID uuid.UUID, messageID uuid.UUID, req model.EditMessageRequest) (*model.MessageResponse, error) {
 	if err := s.validator.Struct(req); err != nil {
-		slog.Warn("Validation failed", "error", err, "userID", userID)
+		slog.WarnContext(ctx, "Validation failed", "error", err, "userID", userID)
 		return nil, helper.NewBadRequestError("")
 	}
 	if len(req.AttachmentIDs) > constant.MaxMessageAttachments {
@@ -363,7 +363,7 @@ func (s *MessageService) EditMessage(ctx context.Context, userID uuid.UUID, mess
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -386,7 +386,7 @@ func (s *MessageService) EditMessage(ctx context.Context, userID uuid.UUID, mess
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("")
 		}
-		slog.Error("Failed to query message", "error", err, "messageID", messageID)
+		slog.ErrorContext(ctx, "Failed to query message", "error", err, "messageID", messageID)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -425,7 +425,7 @@ func (s *MessageService) EditMessage(ctx context.Context, userID uuid.UUID, mess
 			return nil, helper.NewForbiddenError("Not a member of this group")
 		}
 		if err != nil {
-			slog.Error("Failed to verify group membership for edit", "error", err)
+			slog.ErrorContext(ctx, "Failed to verify group membership for edit", "error", err)
 			return nil, helper.NewInternalServerError("")
 		}
 		senderRole = string(member.Role)
@@ -482,7 +482,7 @@ func (s *MessageService) EditMessage(ctx context.Context, userID uuid.UUID, mess
 			Only(ctx)
 
 		if err != nil {
-			slog.Error("Failed to fetch full message for response", "error", err)
+			slog.ErrorContext(ctx, "Failed to fetch full message for response", "error", err)
 			return nil, helper.NewInternalServerError("")
 		}
 
@@ -503,7 +503,7 @@ func (s *MessageService) EditMessage(ctx context.Context, userID uuid.UUID, mess
 			Count(ctx)
 
 		if err != nil {
-			slog.Error("Failed to validate new attachments", "error", err)
+			slog.ErrorContext(ctx, "Failed to validate new attachments", "error", err)
 			return nil, helper.NewInternalServerError("")
 		}
 
@@ -525,12 +525,12 @@ func (s *MessageService) EditMessage(ctx context.Context, userID uuid.UUID, mess
 
 	msg, err = update.Save(ctx)
 	if err != nil {
-		slog.Error("Failed to update message", "error", err)
+		slog.ErrorContext(ctx, "Failed to update message", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	if err := outbox.PersistMessageOutbox(ctx, tx, msg, events.EventMessageUpdate, userID); err != nil {
-		slog.Error("Failed to persist message update outbox event", "error", err)
+		slog.ErrorContext(ctx, "Failed to persist message update outbox event", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -551,12 +551,12 @@ func (s *MessageService) EditMessage(ctx context.Context, userID uuid.UUID, mess
 		Only(ctx)
 
 	if err != nil {
-		slog.Error("Failed to fetch full message for response", "error", err)
+		slog.ErrorContext(ctx, "Failed to fetch full message for response", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -593,7 +593,7 @@ func (s *MessageService) GetMessages(ctx context.Context, userID uuid.UUID, req 
 		if ent.IsNotFound(err) {
 			return nil, "", false, "", false, helper.NewNotFoundError("Chat not found or deleted")
 		}
-		slog.Error("Failed to query chat details", "error", err, "chatID", req.ChatID)
+		slog.ErrorContext(ctx, "Failed to query chat details", "error", err, "chatID", req.ChatID)
 		return nil, "", false, "", false, helper.NewInternalServerError("")
 	}
 
@@ -622,7 +622,7 @@ func (s *MessageService) GetMessages(ctx context.Context, userID uuid.UUID, req 
 			observability.RecordError(accessSpan, errGroup)
 			accessSpan.End()
 			observability.RecordError(span, errGroup)
-			slog.Error("Failed to query group details", "error", errGroup, "chatID", req.ChatID)
+			slog.ErrorContext(ctx, "Failed to query group details", "error", errGroup, "chatID", req.ChatID)
 			return nil, "", false, "", false, helper.NewInternalServerError("")
 		}
 		if len(groupChat.Edges.Members) > 0 {
@@ -671,7 +671,7 @@ func (s *MessageService) GetMessages(ctx context.Context, userID uuid.UUID, req 
 		if ent.IsNotFound(errRepo) || errors.Is(errRepo, repository.ErrMessageNotFound) {
 			return nil, "", false, "", false, helper.NewNotFoundError("Message not found")
 		}
-		slog.Error("Failed to get messages", "error", errRepo)
+		slog.ErrorContext(ctx, "Failed to get messages", "error", errRepo)
 		return nil, "", false, "", false, helper.NewInternalServerError("")
 	}
 	repositorySpan.End()
@@ -705,7 +705,7 @@ func (s *MessageService) GetMessages(ctx context.Context, userID uuid.UUID, req 
 			All(ctx)
 
 		if err != nil {
-			slog.Error("Failed to resolve users for system messages", "error", err)
+			slog.ErrorContext(ctx, "Failed to resolve users for system messages", "error", err)
 		} else {
 			for _, u := range users {
 				userMap[u.ID] = u
@@ -739,7 +739,7 @@ func (s *MessageService) GetMessages(ctx context.Context, userID uuid.UUID, req 
 					senderRoleMap[m.UserID] = string(m.Role)
 				}
 			} else {
-				slog.Error("Failed to batch fetch sender roles", "error", err)
+				slog.ErrorContext(ctx, "Failed to batch fetch sender roles", "error", err)
 			}
 		}
 	}
@@ -816,7 +816,7 @@ func (s *MessageService) GetMessages(ctx context.Context, userID uuid.UUID, req 
 				observability.RecordError(paginationSpan, err)
 				observability.RecordError(span, err)
 				paginationSpan.End()
-				slog.Error("Failed to evaluate message page availability", "error", err, "chatID", req.ChatID)
+				slog.ErrorContext(ctx, "Failed to evaluate message page availability", "error", err, "chatID", req.ChatID)
 				return nil, "", false, "", false, helper.NewInternalServerError("")
 			}
 		} else {
@@ -834,7 +834,7 @@ func (s *MessageService) GetMessages(ctx context.Context, userID uuid.UUID, req 
 					observability.RecordError(paginationSpan, err)
 					observability.RecordError(span, err)
 					paginationSpan.End()
-					slog.Error("Failed to evaluate next page availability", "error", err, "chatID", req.ChatID)
+					slog.ErrorContext(ctx, "Failed to evaluate next page availability", "error", err, "chatID", req.ChatID)
 					return nil, "", false, "", false, helper.NewInternalServerError("")
 				}
 			}
@@ -852,7 +852,7 @@ func (s *MessageService) GetMessages(ctx context.Context, userID uuid.UUID, req 
 					observability.RecordError(paginationSpan, err)
 					observability.RecordError(span, err)
 					paginationSpan.End()
-					slog.Error("Failed to evaluate previous page availability", "error", err, "chatID", req.ChatID)
+					slog.ErrorContext(ctx, "Failed to evaluate previous page availability", "error", err, "chatID", req.ChatID)
 					return nil, "", false, "", false, helper.NewInternalServerError("")
 				}
 			}
@@ -907,7 +907,7 @@ func (s *MessageService) GetMessages(ctx context.Context, userID uuid.UUID, req 
 func (s *MessageService) DeleteMessage(ctx context.Context, userID uuid.UUID, messageID uuid.UUID) error {
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -927,7 +927,7 @@ func (s *MessageService) DeleteMessage(ctx context.Context, userID uuid.UUID, me
 		if ent.IsNotFound(err) {
 			return helper.NewNotFoundError("")
 		}
-		slog.Error("Failed to query message", "error", err, "messageID", messageID)
+		slog.ErrorContext(ctx, "Failed to query message", "error", err, "messageID", messageID)
 		return helper.NewInternalServerError("")
 	}
 
@@ -944,7 +944,7 @@ func (s *MessageService) DeleteMessage(ctx context.Context, userID uuid.UUID, me
 			return helper.NewForbiddenError("Not a member of this group")
 		}
 		if err != nil {
-			slog.Error("Failed to verify group membership for deletion", "error", err)
+			slog.ErrorContext(ctx, "Failed to verify group membership for deletion", "error", err)
 			return helper.NewInternalServerError("")
 		}
 		canDelete = canDelete || member.Role == groupmember.RoleAdmin || member.Role == groupmember.RoleOwner
@@ -969,17 +969,17 @@ func (s *MessageService) DeleteMessage(ctx context.Context, userID uuid.UUID, me
 		Exec(ctx)
 
 	if err != nil {
-		slog.Error("Failed to delete message", "error", err, "messageID", messageID)
+		slog.ErrorContext(ctx, "Failed to delete message", "error", err, "messageID", messageID)
 		return helper.NewInternalServerError("")
 	}
 
 	if err := outbox.PersistMessageOutbox(ctx, tx, msg, events.EventMessageDelete, userID); err != nil {
-		slog.Error("Failed to persist message delete outbox event", "error", err)
+		slog.ErrorContext(ctx, "Failed to persist message delete outbox event", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		return helper.NewInternalServerError("")
 	}
 

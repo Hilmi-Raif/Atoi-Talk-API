@@ -86,7 +86,7 @@ func (s *AdminService) BanUser(ctx context.Context, adminID uuid.UUID, req model
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return helper.NewInternalServerError("")
 	}
 	defer func() { _ = tx.Rollback() }()
@@ -102,18 +102,18 @@ func (s *AdminService) BanUser(ctx context.Context, adminID uuid.UUID, req model
 	}
 
 	if err := update.Exec(ctx); err != nil {
-		slog.Error("Failed to ban user", "error", err)
+		slog.ErrorContext(ctx, "Failed to ban user", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
 	revokeExpected, revokeSnapshot, err := helper.RevokeSessionsForTransaction(ctx, s.sessionStore, req.TargetUserID)
 	if err != nil {
-		slog.Error("Failed to revoke sessions for banned user", "error", err, "userID", req.TargetUserID)
+		slog.ErrorContext(ctx, "Failed to revoke sessions for banned user", "error", err, "userID", req.TargetUserID)
 		return helper.NewServiceUnavailableError("Session service unavailable")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction for banning user", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction for banning user", "error", err)
 		helper.RollbackSessionRevokeIfNeeded(s.sessionStore, req.TargetUserID, revokeExpected, revokeSnapshot)
 		return helper.NewInternalServerError("")
 	}
@@ -163,7 +163,7 @@ func (s *AdminService) UnbanUser(ctx context.Context, adminID uuid.UUID, targetU
 		Exec(ctx)
 
 	if err != nil {
-		slog.Error("Failed to unban user", "error", err)
+		slog.ErrorContext(ctx, "Failed to unban user", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -236,7 +236,7 @@ func (s *AdminService) GetReports(ctx context.Context, req model.GetReportsReque
 		All(ctx)
 
 	if err != nil {
-		slog.Error("Failed to get reports", "error", err)
+		slog.ErrorContext(ctx, "Failed to get reports", "error", err)
 		return nil, "", false, helper.NewInternalServerError("")
 	}
 
@@ -284,7 +284,7 @@ func (s *AdminService) GetReportDetail(ctx context.Context, reportID uuid.UUID) 
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("Report not found")
 		}
-		slog.Error("Failed to get report detail", "error", err)
+		slog.ErrorContext(ctx, "Failed to get report detail", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -376,7 +376,7 @@ func (s *AdminService) GetReportDetail(ctx context.Context, reportID uuid.UUID) 
 				).
 				Exist(ctx)
 			if existsErr != nil {
-				slog.Error("Failed to check group existence for report detail", "error", existsErr, "groupID", *r.GroupID)
+				slog.ErrorContext(ctx, "Failed to check group existence for report detail", "error", existsErr, "groupID", *r.GroupID)
 			}
 			if exists {
 				targetIsDeleted = false
@@ -441,7 +441,7 @@ func (s *AdminService) ResolveReport(ctx context.Context, adminID uuid.UUID, rep
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start report resolution transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start report resolution transaction", "error", err)
 		return helper.NewInternalServerError("")
 	}
 	defer func() {
@@ -458,7 +458,7 @@ func (s *AdminService) ResolveReport(ctx context.Context, adminID uuid.UUID, rep
 		if ent.IsNotFound(err) {
 			return helper.NewNotFoundError("Report not found")
 		}
-		slog.Error("Failed to query report", "error", err)
+		slog.ErrorContext(ctx, "Failed to query report", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -478,7 +478,7 @@ func (s *AdminService) ResolveReport(ctx context.Context, adminID uuid.UUID, rep
 	err = update.Exec(ctx)
 
 	if err != nil {
-		slog.Error("Failed to resolve report", "error", err)
+		slog.ErrorContext(ctx, "Failed to resolve report", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -503,26 +503,26 @@ func (s *AdminService) ResolveReport(ctx context.Context, adminID uuid.UUID, rep
 				}
 
 				if err := updateMsg.Exec(ctx); err != nil {
-					slog.Error("Failed to delete reported message", "error", err, "messageID", msgID)
+					slog.ErrorContext(ctx, "Failed to delete reported message", "error", err, "messageID", msgID)
 					return helper.NewInternalServerError("")
 				}
 
 				if shouldPublishDelete {
 					if err := outbox.PersistMessageOutbox(ctx, tx, msg, events.EventMessageDelete, adminID); err != nil {
-						slog.Error("Failed to persist reported message delete outbox event", "error", err, "messageID", msgID)
+						slog.ErrorContext(ctx, "Failed to persist reported message delete outbox event", "error", err, "messageID", msgID)
 						return helper.NewInternalServerError("")
 					}
 				}
 			}
 			if err != nil && !ent.IsNotFound(err) {
-				slog.Error("Failed to query reported message", "error", err, "messageID", msgID)
+				slog.ErrorContext(ctx, "Failed to query reported message", "error", err, "messageID", msgID)
 				return helper.NewInternalServerError("")
 			}
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit report resolution", "error", err, "reportID", reportID)
+		slog.ErrorContext(ctx, "Failed to commit report resolution", "error", err, "reportID", reportID)
 		return helper.NewInternalServerError("")
 	}
 
@@ -535,7 +535,7 @@ func (s *AdminService) DeleteReport(ctx context.Context, reportID uuid.UUID) err
 		if ent.IsNotFound(err) {
 			return helper.NewNotFoundError("Report not found")
 		}
-		slog.Error("Failed to fetch report for deletion", "error", err)
+		slog.ErrorContext(ctx, "Failed to fetch report for deletion", "error", err)
 		return helper.NewInternalServerError("Failed to delete report")
 	}
 
@@ -545,7 +545,7 @@ func (s *AdminService) DeleteReport(ctx context.Context, reportID uuid.UUID) err
 
 	err = s.client.Report.DeleteOneID(reportID).Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to delete report", "error", err)
+		slog.ErrorContext(ctx, "Failed to delete report", "error", err)
 		return helper.NewInternalServerError("Failed to delete report")
 	}
 	return nil
@@ -558,7 +558,7 @@ func (s *AdminService) GetDashboardStats(ctx context.Context) (*model.DashboardS
 	g.Go(func() error {
 		count, err := s.client.User.Query().Count(gCtx)
 		if err != nil {
-			slog.Error("Failed to count users", "error", err)
+			slog.ErrorContext(ctx, "Failed to count users", "error", err)
 			return err
 		}
 		totalUsers = count
@@ -568,7 +568,7 @@ func (s *AdminService) GetDashboardStats(ctx context.Context) (*model.DashboardS
 	g.Go(func() error {
 		count, err := s.client.GroupChat.Query().Count(gCtx)
 		if err != nil {
-			slog.Error("Failed to count groups", "error", err)
+			slog.ErrorContext(ctx, "Failed to count groups", "error", err)
 			return err
 		}
 		totalGroups = count
@@ -578,7 +578,7 @@ func (s *AdminService) GetDashboardStats(ctx context.Context) (*model.DashboardS
 	g.Go(func() error {
 		count, err := s.client.Message.Query().Count(gCtx)
 		if err != nil {
-			slog.Error("Failed to count messages", "error", err)
+			slog.ErrorContext(ctx, "Failed to count messages", "error", err)
 			return err
 		}
 		totalMessages = count
@@ -590,7 +590,7 @@ func (s *AdminService) GetDashboardStats(ctx context.Context) (*model.DashboardS
 			Where(report.StatusEQ(report.StatusPending)).
 			Count(gCtx)
 		if err != nil {
-			slog.Error("Failed to count active reports", "error", err)
+			slog.ErrorContext(ctx, "Failed to count active reports", "error", err)
 			return err
 		}
 		activeReports = count
@@ -646,7 +646,7 @@ func (s *AdminService) GetUsers(ctx context.Context, req model.AdminGetUserListR
 
 	usersList, err := query.Limit(req.Limit + 1).All(ctx)
 	if err != nil {
-		slog.Error("Failed to fetch users", "error", err)
+		slog.ErrorContext(ctx, "Failed to fetch users", "error", err)
 		return nil, "", false, helper.NewInternalServerError("")
 	}
 
@@ -702,19 +702,19 @@ func (s *AdminService) GetUserDetail(ctx context.Context, userID uuid.UUID) (*mo
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("User not found")
 		}
-		slog.Error("Failed to fetching user detail", "error", err)
+		slog.ErrorContext(ctx, "Failed to fetching user detail", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	msgCount, err := s.client.Message.Query().Where(message.SenderID(u.ID)).Count(ctx)
 	if err != nil {
-		slog.Error("Failed to count user messages", "error", err, "userID", u.ID)
+		slog.ErrorContext(ctx, "Failed to count user messages", "error", err, "userID", u.ID)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	groupCount, err := s.client.GroupMember.Query().Where(groupmember.UserID(u.ID)).Count(ctx)
 	if err != nil {
-		slog.Error("Failed to count user groups", "error", err, "userID", u.ID)
+		slog.ErrorContext(ctx, "Failed to count user groups", "error", err, "userID", u.ID)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -805,7 +805,7 @@ func (s *AdminService) ResetUserInfo(ctx context.Context, req model.ResetUserInf
 	}
 
 	if err := update.Exec(ctx); err != nil {
-		slog.Error("Failed to reset user info", "error", err)
+		slog.ErrorContext(ctx, "Failed to reset user info", "error", err)
 		return helper.NewInternalServerError("Failed to reset info")
 	}
 
@@ -890,7 +890,7 @@ func (s *AdminService) GetGroups(ctx context.Context, req model.AdminGetGroupLis
 
 	groups, err := query.Limit(req.Limit + 1).All(ctx)
 	if err != nil {
-		slog.Error("Failed to fetch groups", "error", err)
+		slog.ErrorContext(ctx, "Failed to fetch groups", "error", err)
 		return nil, "", false, helper.NewInternalServerError("Failed to fetch groups")
 	}
 
@@ -912,7 +912,7 @@ func (s *AdminService) GetGroups(ctx context.Context, req model.AdminGetGroupLis
 	if len(groupIDs) > 0 {
 		memberCounts, err = s.groupMemberRepo.CountActiveMembersByGroupIDs(ctx, groupIDs...)
 		if err != nil {
-			slog.Error("Failed to count group members", "error", err)
+			slog.ErrorContext(ctx, "Failed to count group members", "error", err)
 			return nil, "", false, helper.NewInternalServerError("Failed to fetch groups")
 		}
 	}
@@ -947,7 +947,7 @@ func (s *AdminService) GetGroupDetail(ctx context.Context, groupID uuid.UUID) (*
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("Group not found")
 		}
-		slog.Error("Failed to get group detail", "error", err)
+		slog.ErrorContext(ctx, "Failed to get group detail", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -955,7 +955,7 @@ func (s *AdminService) GetGroupDetail(ctx context.Context, groupID uuid.UUID) (*
 		Where(groupmember.HasUserWith(user.DeletedAtIsNil())).
 		Count(ctx)
 	if err != nil {
-		slog.Error("Failed to count group members", "error", err, "groupID", g.ID)
+		slog.ErrorContext(ctx, "Failed to count group members", "error", err, "groupID", g.ID)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -965,7 +965,7 @@ func (s *AdminService) GetGroupDetail(ctx context.Context, groupID uuid.UUID) (*
 			Where(message.ChatID(g.Edges.Chat.ID)).
 			Count(ctx)
 		if err != nil {
-			slog.Error("Failed to count group messages", "error", err, "groupID", g.ID, "chatID", g.Edges.Chat.ID)
+			slog.ErrorContext(ctx, "Failed to count group messages", "error", err, "groupID", g.ID, "chatID", g.Edges.Chat.ID)
 			return nil, helper.NewInternalServerError("")
 		}
 	}

@@ -35,7 +35,7 @@ func (s *GroupChatService) AddMember(ctx context.Context, requestorID uuid.UUID,
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	defer func() { _ = tx.Rollback() }()
@@ -52,7 +52,7 @@ func (s *GroupChatService) AddMember(ctx context.Context, requestorID uuid.UUID,
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("Group chat not found")
 		}
-		slog.Error("Failed to query group chat", "error", err)
+		slog.ErrorContext(ctx, "Failed to query group chat", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -70,7 +70,7 @@ func (s *GroupChatService) AddMember(ctx context.Context, requestorID uuid.UUID,
 		if ent.IsNotFound(err) {
 			return nil, helper.NewForbiddenError("You are not a member of this group")
 		}
-		slog.Error("Failed to query requestor membership", "error", err)
+		slog.ErrorContext(ctx, "Failed to query requestor membership", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -86,7 +86,7 @@ func (s *GroupChatService) AddMember(ctx context.Context, requestorID uuid.UUID,
 		Select(user.FieldID, user.FieldIsBanned, user.FieldBannedUntil, user.FieldFullName).
 		All(ctx)
 	if err != nil {
-		slog.Error("Failed to query target users", "error", err)
+		slog.ErrorContext(ctx, "Failed to query target users", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	if len(targetUsers) != len(req.UserIDs) {
@@ -110,7 +110,7 @@ func (s *GroupChatService) AddMember(ctx context.Context, requestorID uuid.UUID,
 		).
 		All(ctx)
 	if err != nil {
-		slog.Error("Failed to check existing memberships", "error", err)
+		slog.ErrorContext(ctx, "Failed to check existing memberships", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -128,7 +128,7 @@ func (s *GroupChatService) AddMember(ctx context.Context, requestorID uuid.UUID,
 		).
 		Exist(ctx)
 	if err != nil {
-		slog.Error("Failed to check block status", "error", err)
+		slog.ErrorContext(ctx, "Failed to check block status", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	if blocked {
@@ -158,7 +158,7 @@ func (s *GroupChatService) AddMember(ctx context.Context, requestorID uuid.UUID,
 
 	_, err = tx.GroupMember.CreateBulk(memberCreates...).Save(ctx)
 	if err != nil {
-		slog.Error("Failed to add group members", "error", err)
+		slog.ErrorContext(ctx, "Failed to add group members", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -176,11 +176,11 @@ func (s *GroupChatService) AddMember(ctx context.Context, requestorID uuid.UUID,
 
 	msgs, err := tx.Message.CreateBulk(msgCreates...).Save(ctx)
 	if err != nil {
-		slog.Error("Failed to create system messages", "error", err)
+		slog.ErrorContext(ctx, "Failed to create system messages", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	if err := outbox.PersistMessageOutboxes(ctx, tx, msgs, events.EventMessageNew, requestorID); err != nil {
-		slog.Error("Failed to persist system message outbox events", "error", err)
+		slog.ErrorContext(ctx, "Failed to persist system message outbox events", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -191,12 +191,12 @@ func (s *GroupChatService) AddMember(ctx context.Context, requestorID uuid.UUID,
 		SetLastMessageAt(lastSystemMsg.CreatedAt).
 		Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to update chat with last message", "error", err)
+		slog.ErrorContext(ctx, "Failed to update chat with last message", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -209,7 +209,7 @@ func (s *GroupChatService) AddMember(ctx context.Context, requestorID uuid.UUID,
 		).
 		Count(ctx)
 	if err != nil {
-		slog.Error("Failed to count group members after add", "error", err)
+		slog.ErrorContext(ctx, "Failed to count group members after add", "error", err)
 	}
 
 	var responses []*model.MessageResponse
@@ -273,7 +273,7 @@ func (s *GroupChatService) AddMember(ctx context.Context, requestorID uuid.UUID,
 func (s *GroupChatService) LeaveGroup(ctx context.Context, userID uuid.UUID, groupID uuid.UUID) (*model.MessageResponse, error) {
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	defer func() { _ = tx.Rollback() }()
@@ -289,7 +289,7 @@ func (s *GroupChatService) LeaveGroup(ctx context.Context, userID uuid.UUID, gro
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("Group chat not found")
 		}
-		slog.Error("Failed to query group chat", "error", err)
+		slog.ErrorContext(ctx, "Failed to query group chat", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -307,7 +307,7 @@ func (s *GroupChatService) LeaveGroup(ctx context.Context, userID uuid.UUID, gro
 		if ent.IsNotFound(err) {
 			return nil, helper.NewBadRequestError("You are not a member of this group")
 		}
-		slog.Error("Failed to query membership", "error", err)
+		slog.ErrorContext(ctx, "Failed to query membership", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -317,7 +317,7 @@ func (s *GroupChatService) LeaveGroup(ctx context.Context, userID uuid.UUID, gro
 
 	err = tx.GroupMember.DeleteOne(member).Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to delete group member", "error", err)
+		slog.ErrorContext(ctx, "Failed to delete group member", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -327,11 +327,11 @@ func (s *GroupChatService) LeaveGroup(ctx context.Context, userID uuid.UUID, gro
 		SetType(message.TypeSystemLeave).
 		Save(ctx)
 	if err != nil {
-		slog.Error("Failed to create system message for leave", "error", err)
+		slog.ErrorContext(ctx, "Failed to create system message for leave", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	if err := outbox.PersistMessageOutbox(ctx, tx, systemMsg, events.EventMessageNew, userID); err != nil {
-		slog.Error("Failed to persist system message outbox event", "error", err)
+		slog.ErrorContext(ctx, "Failed to persist system message outbox event", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -340,12 +340,12 @@ func (s *GroupChatService) LeaveGroup(ctx context.Context, userID uuid.UUID, gro
 		SetLastMessageAt(systemMsg.CreatedAt).
 		Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to update chat with last message", "error", err)
+		slog.ErrorContext(ctx, "Failed to update chat with last message", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -358,7 +358,7 @@ func (s *GroupChatService) LeaveGroup(ctx context.Context, userID uuid.UUID, gro
 		).
 		Count(ctx)
 	if err != nil {
-		slog.Error("Failed to count group members after leave", "error", err)
+		slog.ErrorContext(ctx, "Failed to count group members after leave", "error", err)
 	}
 
 	fullMsg, err := s.client.Message.Query().
@@ -378,7 +378,7 @@ func (s *GroupChatService) LeaveGroup(ctx context.Context, userID uuid.UUID, gro
 func (s *GroupChatService) KickMember(ctx context.Context, requestorID uuid.UUID, groupID uuid.UUID, targetUserID uuid.UUID) (*model.MessageResponse, error) {
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	defer func() { _ = tx.Rollback() }()
@@ -394,7 +394,7 @@ func (s *GroupChatService) KickMember(ctx context.Context, requestorID uuid.UUID
 		if ent.IsNotFound(err) {
 			return nil, helper.NewNotFoundError("Group chat not found")
 		}
-		slog.Error("Failed to query group chat", "error", err)
+		slog.ErrorContext(ctx, "Failed to query group chat", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -441,7 +441,7 @@ func (s *GroupChatService) KickMember(ctx context.Context, requestorID uuid.UUID
 
 	err = tx.GroupMember.DeleteOne(targetMember).Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to delete group member", "error", err)
+		slog.ErrorContext(ctx, "Failed to delete group member", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -455,11 +455,11 @@ func (s *GroupChatService) KickMember(ctx context.Context, requestorID uuid.UUID
 		}).
 		Save(ctx)
 	if err != nil {
-		slog.Error("Failed to create system message for kick", "error", err)
+		slog.ErrorContext(ctx, "Failed to create system message for kick", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 	if err := outbox.PersistMessageOutbox(ctx, tx, systemMsg, events.EventMessageNew, requestorID); err != nil {
-		slog.Error("Failed to persist system message outbox event", "error", err)
+		slog.ErrorContext(ctx, "Failed to persist system message outbox event", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -468,12 +468,12 @@ func (s *GroupChatService) KickMember(ctx context.Context, requestorID uuid.UUID
 		SetLastMessageAt(systemMsg.CreatedAt).
 		Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to update chat with last message", "error", err)
+		slog.ErrorContext(ctx, "Failed to update chat with last message", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -486,7 +486,7 @@ func (s *GroupChatService) KickMember(ctx context.Context, requestorID uuid.UUID
 		).
 		Count(ctx)
 	if err != nil {
-		slog.Error("Failed to count group members after kick", "error", err)
+		slog.ErrorContext(ctx, "Failed to count group members after kick", "error", err)
 	}
 
 	fullMsg, err := s.client.Message.Query().

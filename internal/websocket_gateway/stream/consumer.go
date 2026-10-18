@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"AtoiTalkAPI/internal/infrastructure/observability"
 	"AtoiTalkAPI/internal/messaging/events"
 	"context"
 	"log/slog"
@@ -47,19 +48,28 @@ func (c *Consumer) Process(ctx context.Context) error {
 
 	event, err := events.UnmarshalMessageEvent(message.Data)
 	if err != nil {
-		slog.Warn("Ignoring malformed realtime message event", "message_id", message.ID, "error", err)
+		slog.WarnContext(ctx, "Ignoring malformed realtime message event", "stream_id", message.ID, "stage", "decode", "outcome", "discarded")
 		return c.stream.Ack(ctx, message.ID)
 	}
+	ctx, span := observability.StartServiceSpan(observability.WithTraceParent(ctx, event.TraceParent), "gateway.deliver")
+	defer span.End()
+	logger := slog.Default().With("event_id", event.ID, "outbox_id", event.OutboxID, "message_id", event.MessageID, "stream_id", message.ID)
 	if event.ID != uuid.Nil && c.wasDelivered(event.ID.String()) {
 		return c.stream.Ack(ctx, message.ID)
 	}
 	if err := c.delivery.Deliver(ctx, event.TargetUserID, event.Payload); err != nil {
+		logger.WarnContext(ctx, "Realtime delivery failed", "stage", "deliver", "outcome", "pending")
+		observability.RecordError(span, err)
 		return err
 	}
 	if event.ID != uuid.Nil {
 		c.rememberDelivered(event.ID.String())
 	}
-	return c.stream.Ack(ctx, message.ID)
+	err = c.stream.Ack(ctx, message.ID)
+	if err != nil {
+		logger.ErrorContext(ctx, "Realtime acknowledgement failed", "stage", "ack", "outcome", "pending")
+	}
+	return err
 }
 
 const maxRememberedRealtimeEvents = 10000

@@ -4,6 +4,7 @@ import (
 	"AtoiTalkAPI/internal/bootstrap"
 	"AtoiTalkAPI/internal/infrastructure/config"
 	"AtoiTalkAPI/internal/infrastructure/object_storage"
+	"AtoiTalkAPI/internal/infrastructure/observability"
 	"AtoiTalkAPI/internal/infrastructure/redis"
 	"AtoiTalkAPI/internal/message_worker"
 	"context"
@@ -15,7 +16,7 @@ import (
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger := observability.NewLogger(os.Stdout, "production", "message-worker", "unknown")
 	slog.SetDefault(logger)
 
 	cfg := config.LoadAppConfig()

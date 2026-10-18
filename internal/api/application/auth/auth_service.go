@@ -114,13 +114,13 @@ func codeChallengeS256(verifier string) string {
 func (s *AuthService) BeginGoogleAuth(ctx context.Context) (*model.GoogleAuthInitResponse, error) {
 	state, err := helper.GenerateRandomString(48)
 	if err != nil {
-		slog.Error("Failed to generate Google OAuth state", "error", err)
+		slog.ErrorContext(ctx, "Failed to generate Google OAuth state", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	codeVerifier, err := helper.GenerateRandomString(64)
 	if err != nil {
-		slog.Error("Failed to generate Google OAuth PKCE verifier", "error", err)
+		slog.ErrorContext(ctx, "Failed to generate Google OAuth PKCE verifier", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -131,13 +131,13 @@ func (s *AuthService) BeginGoogleAuth(ctx context.Context) (*model.GoogleAuthIni
 
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		slog.Error("Failed to marshal Google OAuth state payload", "error", err)
+		slog.ErrorContext(ctx, "Failed to marshal Google OAuth state payload", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	stateKey := fmt.Sprintf("%s%s", googleOAuthStateKeyPrefix, state)
 	if err := s.redisAdapter.Set(ctx, stateKey, payloadBytes, googleOAuthStateTTL); err != nil {
-		slog.Error("Failed to persist Google OAuth state", "error", err)
+		slog.ErrorContext(ctx, "Failed to persist Google OAuth state", "error", err)
 		return nil, helper.NewServiceUnavailableError("Session service unavailable")
 	}
 
@@ -163,7 +163,7 @@ func (s *AuthService) Logout(ctx context.Context, tokenString string) error {
 		return []byte(s.cfg.JWTSecret), nil
 	})
 	if err != nil {
-		slog.Warn("Failed to parse JWT token on logout, using default TTL", "error", err)
+		slog.WarnContext(ctx, "Failed to parse JWT token on logout, using default TTL", "error", err)
 	}
 
 	var ttl time.Duration
@@ -184,7 +184,7 @@ func (s *AuthService) Logout(ctx context.Context, tokenString string) error {
 
 	err = s.sessionStore.BlacklistToken(ctx, tokenString, ttl)
 	if err != nil {
-		slog.Error("Failed to blacklist token on logout", "error", err)
+		slog.ErrorContext(ctx, "Failed to blacklist token on logout", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -213,7 +213,7 @@ func (s *AuthService) VerifyUser(ctx context.Context, tokenString string) (*mode
 	parseSpan.End()
 
 	if err != nil {
-		slog.Warn("Failed to parse JWT token", "error", err)
+		slog.WarnContext(ctx, "Failed to parse JWT token", "error", err)
 		return nil, helper.NewUnauthorizedError("")
 	}
 
@@ -238,7 +238,7 @@ func (s *AuthService) VerifyUser(ctx context.Context, tokenString string) (*mode
 	}
 	revokeSpan.End()
 	if err != nil {
-		slog.Error("Failed to check user revoked session", "error", err, "userID", claims.UserID)
+		slog.ErrorContext(ctx, "Failed to check user revoked session", "error", err, "userID", claims.UserID)
 		return nil, helper.NewServiceUnavailableError("Session service unavailable")
 	}
 
@@ -275,7 +275,7 @@ func (s *AuthService) VerifyUser(ctx context.Context, tokenString string) (*mode
 			s.InvalidateUserCache(claims.UserID)
 			return nil, helper.NewUnauthorizedError("")
 		}
-		slog.Error("Failed to check user existence", "error", err)
+		slog.ErrorContext(ctx, "Failed to check user existence", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -292,7 +292,7 @@ func (s *AuthService) VerifyUser(ctx context.Context, tokenString string) (*mode
 				ClearBanReason().
 				Save(ctx)
 			if err != nil {
-				slog.Error("Failed to lift expired ban in VerifyUser", "error", err)
+				slog.ErrorContext(ctx, "Failed to lift expired ban in VerifyUser", "error", err)
 			}
 		} else {
 			return nil, helper.NewForbiddenError("Account is permanently banned")
@@ -318,12 +318,12 @@ func (s *AuthService) Login(ctx context.Context, req model.LoginRequest) (*model
 	req.Email = helper.NormalizeEmail(req.Email)
 
 	if err := s.validator.Struct(req); err != nil {
-		slog.Warn("Validation failed", "error", err)
+		slog.WarnContext(ctx, "Validation failed", "error", err)
 		return nil, helper.NewBadRequestError("")
 	}
 
 	if err := s.captchaAdapter.Verify(req.CaptchaToken, ""); err != nil {
-		slog.Warn("Captcha verification failed", "error", err)
+		slog.WarnContext(ctx, "Captcha verification failed", "error", err)
 		return nil, helper.NewBadRequestError("")
 	}
 
@@ -339,7 +339,7 @@ func (s *AuthService) Login(ctx context.Context, req model.LoginRequest) (*model
 		if ent.IsNotFound(err) {
 			return nil, helper.NewUnauthorizedError("")
 		}
-		slog.Error("Failed to query user", "error", err)
+		slog.ErrorContext(ctx, "Failed to query user", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -360,7 +360,7 @@ func (s *AuthService) Login(ctx context.Context, req model.LoginRequest) (*model
 				ClearBanReason().
 				Save(ctx)
 			if err != nil {
-				slog.Error("Failed to lift expired ban", "error", err)
+				slog.ErrorContext(ctx, "Failed to lift expired ban", "error", err)
 			}
 		} else {
 			return nil, helper.NewForbiddenError("Account is permanently banned")
@@ -369,7 +369,7 @@ func (s *AuthService) Login(ctx context.Context, req model.LoginRequest) (*model
 
 	token, err := helper.GenerateJWT(s.cfg.JWTSecret, s.cfg.JWTExp, u.ID)
 	if err != nil {
-		slog.Error("Failed to generate JWT token", "error", err)
+		slog.ErrorContext(ctx, "Failed to generate JWT token", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -403,7 +403,7 @@ func (s *AuthService) Login(ctx context.Context, req model.LoginRequest) (*model
 
 func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginRequest) (*model.AuthResponse, error) {
 	if err := s.validator.Struct(&req); err != nil {
-		slog.Warn("Validation failed", "error", err)
+		slog.WarnContext(ctx, "Validation failed", "error", err)
 		return nil, helper.NewBadRequestError("")
 	}
 
@@ -413,13 +413,13 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 		if err == redis.Nil {
 			return nil, helper.NewUnauthorizedError("Invalid or expired Google auth state")
 		}
-		slog.Error("Failed to load Google OAuth state", "error", err)
+		slog.ErrorContext(ctx, "Failed to load Google OAuth state", "error", err)
 		return nil, helper.NewServiceUnavailableError("Session service unavailable")
 	}
 
 	var statePayload googleOAuthStatePayload
 	if err := json.Unmarshal([]byte(payloadRaw), &statePayload); err != nil || statePayload.CodeVerifier == "" {
-		slog.Warn("Invalid Google OAuth state payload", "error", err)
+		slog.WarnContext(ctx, "Invalid Google OAuth state payload", "error", err)
 		return nil, helper.NewUnauthorizedError("Invalid or expired Google auth state")
 	}
 
@@ -434,30 +434,30 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 
 	oauthToken, err := conf.Exchange(ctx, req.Code, oauth2.SetAuthURLParam("code_verifier", statePayload.CodeVerifier))
 	if err != nil {
-		slog.Error("Failed to exchange authorization code", "error", err)
+		slog.ErrorContext(ctx, "Failed to exchange authorization code", "error", err)
 		return nil, helper.NewUnauthorizedError("Invalid authorization code")
 	}
 
 	oauth2Service, err := googleOAuth2.NewService(ctx, option.WithTokenSource(conf.TokenSource(ctx, oauthToken)), option.WithHTTPClient(oauth2.NewClient(ctx, conf.TokenSource(ctx, oauthToken))))
 	if err != nil {
-		slog.Error("Failed to create oauth2 service", "error", err)
+		slog.ErrorContext(ctx, "Failed to create oauth2 service", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	userInfo, err := oauth2Service.Userinfo.Get().Do()
 	if err != nil {
-		slog.Error("Failed to get user info from google", "error", err)
+		slog.ErrorContext(ctx, "Failed to get user info from google", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	email := userInfo.Email
 	if email == "" {
-		slog.Warn("Email not found in google user info")
+		slog.WarnContext(ctx, "Email not found in google user info")
 		return nil, helper.NewBadRequestError("Email not found")
 	}
 
 	if userInfo.VerifiedEmail == nil || !*userInfo.VerifiedEmail {
-		slog.Warn("Email from Google is not verified", "email", email)
+		slog.WarnContext(ctx, "Email from Google is not verified", "email", email)
 		return nil, helper.NewBadRequestError("Email from Google is not verified.")
 	}
 
@@ -473,7 +473,7 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 	sub := userInfo.Id
 
 	if sub == "" {
-		slog.Warn("Subject ID (Google ID) not found")
+		slog.WarnContext(ctx, "Subject ID (Google ID) not found")
 		return nil, helper.NewBadRequestError("Invalid Google ID")
 	}
 
@@ -486,7 +486,7 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 		Only(ctx)
 
 	if err != nil && !ent.IsNotFound(err) {
-		slog.Error("Failed to query user", "error", err)
+		slog.ErrorContext(ctx, "Failed to query user", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -503,7 +503,7 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 				ClearBanReason().
 				Save(ctx)
 			if err != nil {
-				slog.Error("Failed to lift expired ban", "error", err)
+				slog.ErrorContext(ctx, "Failed to lift expired ban", "error", err)
 			}
 		} else {
 			return nil, helper.NewForbiddenError("Account is permanently banned")
@@ -525,7 +525,7 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 		if picture != "" {
 			data, contentType, err := s.storageAdapter.Download(picture)
 			if err != nil {
-				slog.Error("Failed to download profile picture", "error", err)
+				slog.ErrorContext(ctx, "Failed to download profile picture", "error", err)
 			} else {
 				fileName := helper.GenerateUniqueFileName(picture)
 
@@ -546,7 +546,7 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 
 		tx, err := s.client.Tx(ctx)
 		if err != nil {
-			slog.Error("Failed to start transaction", "error", err)
+			slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 			return nil, helper.NewInternalServerError("")
 		}
 
@@ -570,14 +570,14 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 		for i := 0; i < 3; i++ {
 			randNum, randErr := crand.Int(crand.Reader, big.NewInt(10000))
 			if randErr != nil {
-				slog.Error("Failed to generate username suffix", "error", randErr)
+				slog.ErrorContext(ctx, "Failed to generate username suffix", "error", randErr)
 				return nil, helper.NewInternalServerError("")
 			}
 			candidate := fmt.Sprintf("%s%04d", baseUsername, randNum.Int64())
 
 			exists, existsErr := tx.User.Query().Where(user.UsernameEQ(candidate)).Exist(ctx)
 			if existsErr != nil {
-				slog.Error("Failed to check generated username availability", "error", existsErr)
+				slog.ErrorContext(ctx, "Failed to check generated username availability", "error", existsErr)
 				return nil, helper.NewInternalServerError("")
 			}
 			if !exists {
@@ -596,7 +596,7 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 			SetFullName(name).
 			Save(ctx)
 		if err != nil {
-			slog.Error("Failed to create user", "error", err)
+			slog.ErrorContext(ctx, "Failed to create user", "error", err)
 			return nil, helper.NewInternalServerError("")
 		}
 
@@ -611,13 +611,13 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 				Save(ctx)
 
 			if err != nil {
-				slog.Error("Failed to create media record for google avatar", "error", err)
+				slog.ErrorContext(ctx, "Failed to create media record for google avatar", "error", err)
 				fileData = nil
 				avatarFileName = ""
 			} else {
 				err = tx.User.UpdateOne(u).SetAvatar(media).Exec(ctx)
 				if err != nil {
-					slog.Error("Failed to link avatar to user", "error", err)
+					slog.ErrorContext(ctx, "Failed to link avatar to user", "error", err)
 					avatarFileName = ""
 				} else {
 					mediaID = media.ID
@@ -633,12 +633,12 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 			Save(ctx)
 
 		if err != nil {
-			slog.Error("Failed to create user identity", "error", err)
+			slog.ErrorContext(ctx, "Failed to create user identity", "error", err)
 			return nil, helper.NewInternalServerError("")
 		}
 
 		if err := tx.Commit(); err != nil {
-			slog.Error("Failed to commit transaction", "error", err)
+			slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 			return nil, helper.NewInternalServerError("")
 		}
 
@@ -647,11 +647,11 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 			err = s.storageAdapter.StoreFromReader(bytes.NewReader(fileData), fileContentType, fileUploadPath, true)
 			if err != nil {
 				avatarUploadSucceeded = false
-				slog.Error("Failed to store profile picture after db commit", "error", err)
+				slog.ErrorContext(ctx, "Failed to store profile picture after db commit", "error", err)
 
 				if mediaID != uuid.Nil {
 					if delErr := s.client.Media.DeleteOneID(mediaID).Exec(context.Background()); delErr != nil {
-						slog.Error("Failed to delete orphan media record after file upload failure", "error", delErr, "mediaID", mediaID)
+						slog.ErrorContext(ctx, "Failed to delete orphan media record after file upload failure", "error", delErr, "mediaID", mediaID)
 					}
 				}
 				avatarFileName = ""
@@ -669,7 +669,7 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 			Exist(ctx)
 
 		if err != nil {
-			slog.Error("Failed to check user identity", "error", err)
+			slog.ErrorContext(ctx, "Failed to check user identity", "error", err)
 		} else if !exists {
 			_, err = s.client.UserIdentity.Create().
 				SetUserID(u.ID).
@@ -679,7 +679,7 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 				Save(ctx)
 
 			if err != nil {
-				slog.Error("Failed to link google identity to existing user", "error", err)
+				slog.ErrorContext(ctx, "Failed to link google identity to existing user", "error", err)
 			}
 		}
 
@@ -690,7 +690,7 @@ func (s *AuthService) GoogleExchange(ctx context.Context, req model.GoogleLoginR
 
 	jwtToken, err := helper.GenerateJWT(s.cfg.JWTSecret, s.cfg.JWTExp, u.ID)
 	if err != nil {
-		slog.Error("Failed to generate JWT token", "error", err)
+		slog.ErrorContext(ctx, "Failed to generate JWT token", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -728,12 +728,12 @@ func (s *AuthService) Register(ctx context.Context, req model.RegisterUserReques
 	req.FullName = strings.TrimSpace(req.FullName)
 
 	if err := s.validator.Struct(&req); err != nil {
-		slog.Warn("Validation failed", "error", err)
+		slog.WarnContext(ctx, "Validation failed", "error", err)
 		return nil, helper.NewBadRequestError("")
 	}
 
 	if err := s.captchaAdapter.Verify(req.CaptchaToken, ""); err != nil {
-		slog.Warn("Captcha verification failed", "error", err)
+		slog.WarnContext(ctx, "Captcha verification failed", "error", err)
 		return nil, helper.NewBadRequestError("")
 	}
 
@@ -743,7 +743,7 @@ func (s *AuthService) Register(ctx context.Context, req model.RegisterUserReques
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -756,7 +756,7 @@ func (s *AuthService) Register(ctx context.Context, req model.RegisterUserReques
 
 	hashedPassword, err := helper.HashPassword(req.Password)
 	if err != nil {
-		slog.Error("Failed to hash password", "error", err)
+		slog.ErrorContext(ctx, "Failed to hash password", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -775,7 +775,7 @@ func (s *AuthService) Register(ctx context.Context, req model.RegisterUserReques
 				Where(user.Email(req.Email), user.DeletedAtIsNil()).
 				Exist(ctx)
 			if existsErr != nil {
-				slog.Error("Failed to check email existence after register constraint error", "error", existsErr)
+				slog.ErrorContext(ctx, "Failed to check email existence after register constraint error", "error", existsErr)
 				return nil, helper.NewInternalServerError("")
 			}
 			if emailExists {
@@ -786,7 +786,7 @@ func (s *AuthService) Register(ctx context.Context, req model.RegisterUserReques
 				Where(user.UsernameEQ(req.Username), user.DeletedAtIsNil()).
 				Exist(ctx)
 			if usernameExistsErr != nil {
-				slog.Error("Failed to check username existence after register constraint error", "error", usernameExistsErr)
+				slog.ErrorContext(ctx, "Failed to check username existence after register constraint error", "error", usernameExistsErr)
 				return nil, helper.NewInternalServerError("")
 			}
 			if usernameExists {
@@ -795,18 +795,18 @@ func (s *AuthService) Register(ctx context.Context, req model.RegisterUserReques
 
 			return nil, helper.NewConflictError("Email or Username already taken")
 		}
-		slog.Error("Failed to create user", "error", err)
+		slog.ErrorContext(ctx, "Failed to create user", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
 	token, err := helper.GenerateJWT(s.cfg.JWTSecret, s.cfg.JWTExp, newUser.ID)
 	if err != nil {
-		slog.Error("Failed to generate JWT token", "error", err)
+		slog.ErrorContext(ctx, "Failed to generate JWT token", "error", err)
 		return nil, helper.NewInternalServerError("")
 	}
 
@@ -831,12 +831,12 @@ func (s *AuthService) ResetPassword(ctx context.Context, req model.ResetPassword
 	req.Email = helper.NormalizeEmail(req.Email)
 
 	if err := s.validator.Struct(&req); err != nil {
-		slog.Warn("Validation failed", "error", err)
+		slog.WarnContext(ctx, "Validation failed", "error", err)
 		return helper.NewBadRequestError("")
 	}
 
 	if err := s.captchaAdapter.Verify(req.CaptchaToken, ""); err != nil {
-		slog.Warn("Captcha verification failed", "error", err)
+		slog.WarnContext(ctx, "Captcha verification failed", "error", err)
 		return helper.NewBadRequestError("")
 	}
 
@@ -846,7 +846,7 @@ func (s *AuthService) ResetPassword(ctx context.Context, req model.ResetPassword
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		slog.Error("Failed to start transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to start transaction", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -868,13 +868,13 @@ func (s *AuthService) ResetPassword(ctx context.Context, req model.ResetPassword
 		if ent.IsNotFound(err) {
 			return helper.NewNotFoundError("")
 		}
-		slog.Error("Failed to query user", "error", err)
+		slog.ErrorContext(ctx, "Failed to query user", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
 	hashedPassword, err := helper.HashPassword(req.Password)
 	if err != nil {
-		slog.Error("Failed to hash password", "error", err)
+		slog.ErrorContext(ctx, "Failed to hash password", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
@@ -882,18 +882,18 @@ func (s *AuthService) ResetPassword(ctx context.Context, req model.ResetPassword
 		SetPasswordHash(hashedPassword).
 		Exec(ctx)
 	if err != nil {
-		slog.Error("Failed to update password", "error", err)
+		slog.ErrorContext(ctx, "Failed to update password", "error", err)
 		return helper.NewInternalServerError("")
 	}
 
 	revokeExpected, revokeSnapshot, err := helper.RevokeSessionsForTransaction(ctx, s.sessionStore, u.ID)
 	if err != nil {
-		slog.Error("Failed to revoke sessions after password reset", "error", err, "userID", u.ID)
+		slog.ErrorContext(ctx, "Failed to revoke sessions after password reset", "error", err, "userID", u.ID)
 		return helper.NewServiceUnavailableError("Session service unavailable")
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
+		slog.ErrorContext(ctx, "Failed to commit transaction", "error", err)
 		helper.RollbackSessionRevokeIfNeeded(s.sessionStore, u.ID, revokeExpected, revokeSnapshot)
 		return helper.NewInternalServerError("")
 	}

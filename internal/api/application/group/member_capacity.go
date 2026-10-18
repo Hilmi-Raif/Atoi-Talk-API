@@ -18,7 +18,7 @@ func lockGroupMembership(ctx context.Context, tx *ent.Tx, gc *ent.GroupChat) err
 	if err := tx.GroupChat.UpdateOneID(gc.ID).SetName(gc.Name).Modify(func(u *sql.UpdateBuilder) {
 		u.Set(groupchat.FieldName, sql.Expr(groupchat.FieldName))
 	}).Exec(ctx); err != nil {
-		slog.Error("Failed to lock group for membership update", "error", err)
+		slog.ErrorContext(ctx, "Failed to lock group for membership update", "error", err)
 		return helper.NewInternalServerError("")
 	}
 	return nil
@@ -30,7 +30,7 @@ func checkMemberCapacity(ctx context.Context, tx *ent.Tx, gc *ent.GroupChat, add
 		groupmember.HasUserWith(user.DeletedAtIsNil()),
 	).Count(ctx)
 	if err != nil {
-		slog.Error("Failed to count group members", "error", err)
+		slog.ErrorContext(ctx, "Failed to count group members", "error", err)
 		return helper.NewInternalServerError("")
 	}
 	if count+adding > constant.MaxGroupMembers {

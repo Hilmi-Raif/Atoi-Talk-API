@@ -54,7 +54,7 @@ func (m *RateLimitMiddleware) Limit(keyName string, limit int, window time.Durat
 
 			allowed, ttl, err := m.repo.Allow(r.Context(), key, limit, window)
 			if err != nil {
-				slog.Error("Rate limit check failed", "error", err)
+				slog.ErrorContext(r.Context(), "Rate limit check failed", "error", err)
 				response.WriteError(w, helper.NewServiceUnavailableError("Rate limiting service unavailable"))
 				return
 			}

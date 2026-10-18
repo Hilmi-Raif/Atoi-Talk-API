@@ -110,7 +110,7 @@ func InitTelemetry(ctx context.Context, cfg Config) (ShutdownFunc, error) {
 	)
 	otel.SetMeterProvider(mp)
 
-	slog.Info("OpenTelemetry initialized",
+	slog.InfoContext(ctx, "OpenTelemetry initialized",
 		"service", cfg.ServiceName,
 		"endpoint", cfg.ExporterOTLPEndpoint,
 		"sampler_ratio", cfg.SamplingRatio,

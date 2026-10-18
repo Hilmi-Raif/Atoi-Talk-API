@@ -4,6 +4,7 @@ import (
 	"AtoiTalkAPI/internal/bootstrap"
 	"AtoiTalkAPI/internal/infrastructure/config"
 	"AtoiTalkAPI/internal/infrastructure/fcm"
+	"AtoiTalkAPI/internal/infrastructure/observability"
 	"AtoiTalkAPI/internal/infrastructure/redis"
 	"AtoiTalkAPI/internal/push_worker"
 	"context"
@@ -14,7 +15,7 @@ import (
 )
 
 func main() {
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+	slog.SetDefault(observability.NewLogger(os.Stdout, "production", "push-worker", "unknown"))
 	cfg := config.LoadAppConfig()
 	if !cfg.PushEnabled {
 		slog.Info("Push notifications disabled")

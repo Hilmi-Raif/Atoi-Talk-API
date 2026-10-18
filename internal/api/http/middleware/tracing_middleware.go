@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -64,39 +65,56 @@ func HTTPTraceMiddleware(serviceName string) func(next http.Handler) http.Handle
 			ww := chimiddleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
 			r = r.WithContext(ctx)
-			next.ServeHTTP(ww, r)
-
-			rctx := chi.RouteContext(r.Context())
-			if rctx != nil && rctx.RoutePattern() != "" {
-				pattern := rctx.RoutePattern()
-				span.SetName(fmt.Sprintf("%s %s", r.Method, pattern))
-				span.SetAttributes(semconv.HTTPRoute(pattern))
-			}
-
-			status := ww.Status()
-			if status == 0 {
-				status = http.StatusOK
-			}
-			span.SetAttributes(semconv.HTTPResponseStatusCode(status))
-
-			if status >= 500 {
-				span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", status))
-			} else {
-				span.SetStatus(codes.Ok, "")
-			}
-
-			elapsed := time.Since(startTime).Seconds()
-			if durationHistogram != nil {
-				routeAttr := ""
-				if rctx != nil {
-					routeAttr = rctx.RoutePattern()
+			defer func() {
+				panicValue := recover()
+				rctx := chi.RouteContext(r.Context())
+				if rctx != nil && rctx.RoutePattern() != "" {
+					pattern := rctx.RoutePattern()
+					span.SetName(fmt.Sprintf("%s %s", r.Method, pattern))
+					span.SetAttributes(semconv.HTTPRoute(pattern))
 				}
-				durationHistogram.Record(ctx, elapsed, metric.WithAttributes(
-					attribute.String("http.method", r.Method),
-					attribute.String("http.route", routeAttr),
-					attribute.Int("http.status_code", status),
-				))
-			}
+
+				status := ww.Status()
+				if panicValue != nil {
+					status = http.StatusInternalServerError
+				}
+				if status == 0 {
+					status = http.StatusOK
+				}
+				span.SetAttributes(semconv.HTTPResponseStatusCode(status))
+
+				if status >= 500 {
+					span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", status))
+				} else {
+					span.SetStatus(codes.Ok, "")
+				}
+
+				elapsed := time.Since(startTime).Seconds()
+				route := "unmatched"
+				if rctx != nil && rctx.RoutePattern() != "" {
+					route = rctx.RoutePattern()
+				}
+				level := slog.LevelInfo
+				if status >= 500 {
+					level = slog.LevelError
+				}
+				slog.Log(ctx, level, "HTTP request completed", "request_id", chimiddleware.GetReqID(ctx), "method", r.Method, "route", route, "status", status, "duration_ms", elapsed*1000)
+				if durationHistogram != nil {
+					routeAttr := ""
+					if rctx != nil {
+						routeAttr = rctx.RoutePattern()
+					}
+					durationHistogram.Record(ctx, elapsed, metric.WithAttributes(
+						attribute.String("http.method", r.Method),
+						attribute.String("http.route", routeAttr),
+						attribute.Int("http.status_code", status),
+					))
+				}
+				if panicValue != nil {
+					panic(panicValue)
+				}
+			}()
+			next.ServeHTTP(ww, r)
 		})
 	}
 }

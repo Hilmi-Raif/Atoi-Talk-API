@@ -40,7 +40,7 @@ func (p *PubSubPublisher) BroadcastToChat(chatID uuid.UUID, event events.Event) 
 	defer cancel()
 	members, err := p.recipientQuery.ChatMembers(ctx, chatID)
 	if err != nil {
-		slog.Error("failed to fetch chat members for Pub/Sub event", "error", err)
+		slog.ErrorContext(ctx, "failed to fetch chat members for Pub/Sub event", "error", err, "chat_id", chatID)
 		return
 	}
 	for _, userID := range members {
@@ -59,14 +59,14 @@ func (p *PubSubPublisher) BroadcastToContacts(userID uuid.UUID, event events.Eve
 
 	contacts, err := p.recipientQuery.Contacts(ctx, userID)
 	if err != nil {
-		slog.Error("failed to fetch contacts for Pub/Sub event", "error", err)
+		slog.ErrorContext(ctx, "failed to fetch contacts for Pub/Sub event", "error", err, "user_id", userID)
 		return
 	}
 	blockedContacts := map[uuid.UUID]bool(nil)
 	if event.Type == events.EventUserOnline || event.Type == events.EventUserOffline {
 		blockedContacts, err = p.recipientQuery.BlockedContacts(ctx, userID)
 		if err != nil {
-			slog.Error("failed to fetch blocked contacts for Pub/Sub event", "error", err)
+			slog.ErrorContext(ctx, "failed to fetch blocked contacts for Pub/Sub event", "error", err, "user_id", userID)
 			blockedContacts = nil
 		}
 	}
@@ -93,7 +93,7 @@ func (p *PubSubPublisher) DisconnectUser(userID uuid.UUID) {
 
 func publishToUser(ctx context.Context, client redis.UniversalClient, channel string, userID uuid.UUID, event events.Event) {
 	if err := messagingpubsub.PublishToUser(ctx, client, channel, userID, event); err != nil {
-		slog.Error("failed to publish non-durable event to Redis Pub/Sub", "error", err)
+		slog.ErrorContext(ctx, "failed to publish non-durable event to Redis Pub/Sub", "error", err)
 	}
 }
 

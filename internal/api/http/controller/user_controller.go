@@ -115,7 +115,7 @@ func (c *UserController) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 	var req model.UpdateProfileRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("Error decoding profile update request", "error", err)
+		slog.WarnContext(r.Context(), "Error decoding profile update request", "error", err)
 		response.WriteError(w, helper.NewBadRequestError(""))
 		return
 	}

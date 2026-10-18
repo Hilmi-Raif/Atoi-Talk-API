@@ -39,7 +39,7 @@ func (r *SessionRepository) RevokeAllSessionsAt(ctx context.Context, userID uuid
 
 	err := r.redisAdapter.Set(ctx, key, marker, ttl)
 	if err != nil {
-		slog.Error("Failed to revoke all sessions in repository", "error", err, "userID", userID)
+		slog.ErrorContext(ctx, "Failed to revoke all sessions in repository", "error", err, "userID", userID)
 		return "", fmt.Errorf("failed to revoke sessions: %w", err)
 	}
 	return marker, nil
