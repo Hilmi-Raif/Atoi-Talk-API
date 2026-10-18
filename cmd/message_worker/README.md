@@ -1,6 +1,6 @@
 # Message worker
 
-[Project overview](../../README.md) Â| [Configuration reference](../../docs/configuration.md)
+[Project overview](../../README.md) | [Configuration reference](../../docs/configuration.md)
 
 Claims durable message outbox rows, projects unread/chat state, builds realtime events, publishes to Redis Streams and optionally enqueues per-device push deliveries in the projection transaction.
 
