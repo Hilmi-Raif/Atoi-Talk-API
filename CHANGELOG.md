@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.4](https://github.com/Hilmi-Raif/Atoi-Talk-API/compare/atoitalk-api-v0.1.3...atoitalk-api-v0.1.4) (2026-10-18)
+
+
+### Features
+
+* **notifications:** add FCM push delivery and notification preferences ([c50791b](https://github.com/Hilmi-Raif/Atoi-Talk-API/commit/c50791bc2616328950e8a1e103e179e091f73475))
+* **observability:** unify structured logging and async trace correlation ([3abad6c](https://github.com/Hilmi-Raif/Atoi-Talk-API/commit/3abad6ccdf6a8c469682c6a3de31bb2ab0e96a10))
+
 ## [0.1.3](https://github.com/Hilmi-Raif/Atoi-Talk-API/compare/atoitalk-api-v0.1.2...atoitalk-api-v0.1.3) (2026-10-17)
 
 
