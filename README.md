@@ -287,7 +287,7 @@ integration/                 # Tests requiring -tags=integration
 
 ### Prerequisites
 
-- Go 1.26.9 or a newer patched toolchain
+- Go 1.26.11 or a newer patched toolchain
 - PostgreSQL
 - Redis
 - S3-compatible storage with public and private buckets for media operations

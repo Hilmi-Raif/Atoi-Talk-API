@@ -146,7 +146,7 @@ func TestMain(m *testing.M) {
 
 	repo := repository.NewRepository(testClient, redisAdapter, testConfig)
 
-	validator := config.NewValidator()
+	validator := config.NewValidator(testConfig.CaptchaEnabled)
 	httpClient := config.NewHTTPClient()
 	testRouter = config.NewChi(testConfig)
 

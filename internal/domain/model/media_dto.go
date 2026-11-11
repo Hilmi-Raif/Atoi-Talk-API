@@ -11,7 +11,9 @@ type UploadMediaRequest struct {
 	OriginalName string `json:"original_name" validate:"required,max=255"`
 	FileSize     int64  `json:"file_size" validate:"required,gt=0"`
 	MimeType     string `json:"mime_type" validate:"required,max=100"`
-	CaptchaToken string `json:"captcha_token" validate:"required"`
+	// Required when CAPTCHA_ENABLED is true (default).
+	// May be omitted when CAPTCHA_ENABLED is false.
+	CaptchaToken string `json:"captcha_token" validate:"captcha_required"`
 }
 
 type MediaDTO struct {

@@ -24,6 +24,7 @@ func NewAuthController(authService service.AuthServicePort) *AuthController {
 // Login godoc
 // @Summary      Login
 // @Description  Login with email and password
+// @Description  captcha_token is required when CAPTCHA_ENABLED is true which is the default otherwise it may be omitted
 // @Tags         auth
 // @Accept       json
 // @Produce      json
@@ -137,6 +138,7 @@ func (c *AuthController) GoogleExchange(w http.ResponseWriter, r *http.Request) 
 // Register godoc
 // @Summary      Register User
 // @Description  Register a new user with email, password, and OTP verification.
+// @Description  captcha_token is required when CAPTCHA_ENABLED is true which is the default otherwise it may be omitted
 // @Tags         auth
 // @Accept       json
 // @Produce      json
@@ -167,6 +169,7 @@ func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 // ResetPassword godoc
 // @Summary      Reset Password
 // @Description  Reset user password using OTP verification.
+// @Description  captcha_token is required when CAPTCHA_ENABLED is true which is the default otherwise it may be omitted
 // @Tags         auth
 // @Accept       json
 // @Produce      json

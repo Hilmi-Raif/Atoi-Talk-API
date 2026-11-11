@@ -26,6 +26,7 @@ func NewMediaController(mediaService service.MediaServicePort) *MediaController 
 // UploadMedia godoc
 // @Summary      Create Media Upload URL
 // @Description  Create a pending media row and upload URL for direct storage upload.
+// @Description  captcha_token is required when CAPTCHA_ENABLED is true which is the default otherwise it may be omitted
 // @Tags         media
 // @Accept       json
 // @Produce      json

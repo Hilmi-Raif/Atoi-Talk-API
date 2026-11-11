@@ -12,9 +12,11 @@ type GoogleAuthInitResponse struct {
 }
 
 type LoginRequest struct {
-	Email        string `json:"email" validate:"required,email"`
-	Password     string `json:"password" validate:"required,min=8,max=72,password_complexity"`
-	CaptchaToken string `json:"captcha_token" validate:"required"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=8,max=72,password_complexity"`
+	// Required when CAPTCHA_ENABLED is true (default).
+	// May be omitted when CAPTCHA_ENABLED is false.
+	CaptchaToken string `json:"captcha_token" validate:"captcha_required"`
 }
 
 type AuthResponse struct {
@@ -23,18 +25,22 @@ type AuthResponse struct {
 }
 
 type SendOTPRequest struct {
-	Email        string `json:"email" validate:"required,email"`
-	Mode         string `json:"mode" validate:"required,oneof=register reset change_email"`
-	CaptchaToken string `json:"captcha_token" validate:"required"`
+	Email string `json:"email" validate:"required,email"`
+	Mode  string `json:"mode" validate:"required,oneof=register reset change_email"`
+	// Required when CAPTCHA_ENABLED is true (default).
+	// May be omitted when CAPTCHA_ENABLED is false.
+	CaptchaToken string `json:"captcha_token" validate:"captcha_required"`
 }
 
 type RegisterUserRequest struct {
-	Email        string `json:"email" validate:"required,email"`
-	Username     string `json:"username" validate:"required,min=3,max=50,alphanum"`
-	Code         string `json:"code" validate:"required,len=6"`
-	FullName     string `json:"full_name" validate:"required,min=3,max=100"`
-	Password     string `json:"password" validate:"required,min=8,max=72,password_complexity"`
-	CaptchaToken string `json:"captcha_token" validate:"required"`
+	Email    string `json:"email" validate:"required,email"`
+	Username string `json:"username" validate:"required,min=3,max=50,alphanum"`
+	Code     string `json:"code" validate:"required,len=6"`
+	FullName string `json:"full_name" validate:"required,min=3,max=100"`
+	Password string `json:"password" validate:"required,min=8,max=72,password_complexity"`
+	// Required when CAPTCHA_ENABLED is true (default).
+	// May be omitted when CAPTCHA_ENABLED is false.
+	CaptchaToken string `json:"captcha_token" validate:"captcha_required"`
 }
 
 type ResetPasswordRequest struct {
@@ -42,5 +48,7 @@ type ResetPasswordRequest struct {
 	Code            string `json:"code" validate:"required,len=6"`
 	Password        string `json:"password" validate:"required,min=8,max=72,password_complexity"`
 	ConfirmPassword string `json:"confirm_password" validate:"required,eqfield=Password"`
-	CaptchaToken    string `json:"captcha_token" validate:"required"`
+	// Required when CAPTCHA_ENABLED is true (default).
+	// May be omitted when CAPTCHA_ENABLED is false.
+	CaptchaToken string `json:"captcha_token" validate:"captcha_required"`
 }

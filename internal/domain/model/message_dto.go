@@ -48,17 +48,17 @@ type MessageResponse struct {
 	ChatID uuid.UUID `json:"chat_id"`
 
 	// ID of the sender when available.
-	// Can be null when sender account is deleted or relation is unavailable.
+	// Can be null when the sender account is deleted or the relation is unavailable.
 	SenderID *uuid.UUID `json:"sender_id,omitempty"`
 
 	// Display name of the sender.
-	// Can be "Deleted User" when sender account is deleted.
+	// Can be "Deleted User" when the sender account is deleted.
 	SenderName string `json:"sender_name,omitempty"`
 
-	// Avatar URL of the sender
+	// Avatar URL of the sender.
 	SenderAvatar string `json:"sender_avatar,omitempty"`
 
-	// Role of the sender in the group (owner, admin, member)
+	// Role of the sender in the group (owner, admin, member).
 	SenderRole string `json:"sender_role,omitempty"`
 
 	Type    string `json:"type"`
@@ -114,20 +114,20 @@ type MessageResponse struct {
 	//	}
 	//
 	// Notes:
-	// - target_name and actor_name are enrichment fields added by service layer.
+	// - target_name and actor_name are enrichment fields added by the service layer.
 	// - target_id and actor_id can be removed when referenced users are deleted.
 	ActionData map[string]interface{} `json:"action_data,omitempty"`
 
 	Attachments []MediaDTO `json:"attachments"`
 
-	// Preview of the message this message is replying to
+	// Preview of the message being replied to.
 	ReplyTo *ReplyPreviewDTO `json:"reply_to,omitempty"`
 
 	CreatedAt string  `json:"created_at"`
 	DeletedAt *string `json:"deleted_at,omitempty"`
 	EditedAt  *string `json:"edited_at,omitempty"`
 
-	// Total number of members in the group, only for group chats
+	// Total number of members in the group, only for group chats.
 	MemberCount *int `json:"member_count,omitempty"`
 }
 

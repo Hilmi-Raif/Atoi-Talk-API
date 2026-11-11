@@ -23,6 +23,7 @@ func NewOTPController(otpService service.OTPServicePort) *OTPController {
 // SendOTP godoc
 // @Summary      Send OTP
 // @Description  Sends an OTP code to the user's email for registration or password reset.
+// @Description  captcha_token is required when CAPTCHA_ENABLED is true which is the default otherwise it may be omitted
 // @Tags         otp
 // @Accept       json
 // @Produce      json
