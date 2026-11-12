@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/Hilmi-Raif/Atoi-Talk-API/compare/atoitalk-api-v0.1.4...atoitalk-api-v0.1.5) (2026-11-12)
+
+
+### Bug Fixes
+
+* **captcha:** align token requirements with captcha configuration ([6ef0475](https://github.com/Hilmi-Raif/Atoi-Talk-API/commit/6ef0475032c5da4c0d44ae71b197bb69e546a3db))
+
 ## [0.1.4](https://github.com/Hilmi-Raif/Atoi-Talk-API/compare/atoitalk-api-v0.1.3...atoitalk-api-v0.1.4) (2026-10-18)
 
 
