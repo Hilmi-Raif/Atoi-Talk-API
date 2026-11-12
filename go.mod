@@ -2,7 +2,7 @@ module AtoiTalkAPI
 
 go 1.26.0
 
-toolchain go1.26.9
+toolchain go1.26.11
 
 require (
 	entgo.io/ent v0.14.5

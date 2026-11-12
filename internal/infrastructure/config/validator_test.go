@@ -1,6 +1,7 @@
 package config
 
 import (
+	"AtoiTalkAPI/internal/domain/model"
 	"bytes"
 	"image"
 	"image/color"
@@ -8,7 +9,10 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
+
+	"github.com/go-playground/validator/v10"
 )
 
 func TestValidatorPasswordComplexity(t *testing.T) {
@@ -114,6 +118,72 @@ func TestValidatorImagePassesForNonFileField(t *testing.T) {
 	}
 	if err := validator.Struct(request{Avatar: "not-a-file"}); err != nil {
 		t.Fatalf("expected non-file field to pass validator: %v", err)
+	}
+}
+
+func TestValidatorCaptchaModes(t *testing.T) {
+	requests := map[string]interface{}{
+		"login":    model.LoginRequest{Email: "test@example.com", Password: "StrongPassword1!"},
+		"otp":      model.SendOTPRequest{Email: "test@example.com", Mode: "register"},
+		"register": model.RegisterUserRequest{Email: "test@example.com", Username: "tester", Code: "123456", FullName: "Test User", Password: "StrongPassword1!"},
+		"reset":    model.ResetPasswordRequest{Email: "test@example.com", Code: "123456", Password: "StrongPassword1!", ConfirmPassword: "StrongPassword1!"},
+		"upload":   model.UploadMediaRequest{Usage: "message_attachment", OriginalName: "notes.txt", FileSize: 10, MimeType: "text/plain"},
+		"avatar":   model.UploadMediaRequest{Usage: "user_avatar", OriginalName: "avatar.png", FileSize: 10, MimeType: "image/png"},
+		"group":    model.UploadMediaRequest{Usage: "group_avatar", OriginalName: "avatar.png", FileSize: 10, MimeType: "image/png"},
+	}
+	for name, request := range requests {
+		t.Run(name, func(t *testing.T) {
+			if err := NewValidator(false).Struct(request); err != nil {
+				t.Fatalf("disabled captcha rejected request without token: %v", err)
+			}
+			if err := NewValidator(true).Struct(request); err == nil {
+				t.Fatal("enabled captcha accepted missing token")
+			}
+			if err := NewValidator().Struct(request); err == nil {
+				t.Fatal("default captcha accepted missing token")
+			}
+			value := reflect.New(reflect.TypeOf(request))
+			value.Elem().Set(reflect.ValueOf(request))
+			value.Elem().FieldByName("CaptchaToken").SetString(" \t\n")
+			if err := NewValidator(true).Struct(value.Interface()); err == nil {
+				t.Fatal("enabled captcha accepted whitespace token")
+			}
+			value.Elem().FieldByName("CaptchaToken").SetString("provider-token")
+			for _, enabled := range []bool{true, false} {
+				if err := NewValidator(enabled).Struct(value.Interface()); err != nil {
+					t.Fatalf("captcha enabled=%t rejected populated token: %v", enabled, err)
+				}
+			}
+		})
+	}
+}
+
+func TestValidatorDisabledCaptchaPreservesOtherValidation(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		request interface{}
+		field   string
+	}{
+		{"email", model.LoginRequest{Email: "invalid", Password: "StrongPassword1!"}, "Email"},
+		{"password", model.LoginRequest{Email: "test@example.com", Password: "weak"}, "Password"},
+		{"upload usage", model.UploadMediaRequest{Usage: "invalid", OriginalName: "notes.txt", FileSize: 10, MimeType: "text/plain"}, "Usage"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := NewValidator(false).Struct(tc.request)
+			if err == nil {
+				t.Fatalf("disabled captcha bypassed %s validation", tc.field)
+			}
+			found := false
+			for _, field := range err.(validator.ValidationErrors) {
+				if field.Field() == "CaptchaToken" {
+					t.Fatal("disabled captcha still required a token")
+				}
+				found = found || field.Field() == tc.field
+			}
+			if !found {
+				t.Fatalf("missing validation error for %s: %v", tc.field, err)
+			}
+		})
 	}
 }
 

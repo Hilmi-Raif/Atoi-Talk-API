@@ -47,10 +47,10 @@ type ReportDetailResponse struct {
 	// To navigate to the group in the frontend, use evidence_snapshot.chat_id instead.
 	TargetID *uuid.UUID `json:"target_id,omitempty"`
 
-	// Indicates if the target entity has been soft-deleted
+	// Indicates if the target entity has been soft-deleted.
 	TargetIsDeleted bool `json:"target_is_deleted"`
 
-	// Indicates if the target user (or sender of the message) is banned
+	// Indicates if the target user (or sender of the message) is banned.
 	TargetIsBanned bool `json:"target_is_banned"`
 
 	Reason      string  `json:"reason"`
@@ -61,16 +61,16 @@ type ReportDetailResponse struct {
 	ReporterName   string    `json:"reporter_name"`
 	ReporterAvatar string    `json:"reporter_avatar"`
 
-	// Indicates if the reporter's account has been soft-deleted
+	// Indicates if the reporter's account has been soft-deleted.
 	ReporterIsDeleted bool `json:"reporter_is_deleted"`
 
-	// Indicates if the reporter is banned
+	// Indicates if the reporter is banned.
 	ReporterIsBanned bool `json:"reporter_is_banned"`
 
 	// Snapshot of reported entity data at report creation time.
 	// Shape depends on target_type.
 	//
-	// In shapes below, chat_id is the Chat entity UUID used by frontend.
+	// In the shapes below, chat_id is the Chat entity UUID used by the frontend.
 	// group_id is the internal GroupChat entity UUID for backend reference only.
 	//
 	// target_type = "message":

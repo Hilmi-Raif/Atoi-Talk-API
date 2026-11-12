@@ -16,8 +16,12 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-func NewValidator() *validator.Validate {
+func NewValidator(captchaEnabled ...bool) *validator.Validate {
+	enabled := len(captchaEnabled) == 0 || captchaEnabled[0]
 	v := validator.New()
+	_ = v.RegisterValidation("captcha_required", func(fl validator.FieldLevel) bool {
+		return !enabled || strings.TrimSpace(fl.Field().String()) != ""
+	})
 	_ = v.RegisterValidation("password_complexity", validatePasswordComplexity)
 	_ = v.RegisterValidation("imagevalid", validateImage)
 	return v

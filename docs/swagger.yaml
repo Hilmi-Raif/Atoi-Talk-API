@@ -363,6 +363,9 @@ definitions:
   AtoiTalkAPI_internal_domain_model.LoginRequest:
     properties:
       captcha_token:
+        description: |-
+          Required when CAPTCHA_ENABLED is true (default).
+          May be omitted when CAPTCHA_ENABLED is false.
         type: string
       email:
         type: string
@@ -371,7 +374,6 @@ definitions:
         minLength: 8
         type: string
     required:
-    - captcha_token
     - email
     - password
     type: object
@@ -417,7 +419,7 @@ definitions:
           \"admin\", // or \"member\", \"owner\"\n\t  \"action\": \"ownership_transferred\",
           // optional\n\t  \"target_name\": \"Alice\", // optional enrichment\n\t
           \ \"actor_name\": \"Bob\" // optional enrichment\n\t}\n\nNotes:\n- target_name
-          and actor_name are enrichment fields added by service layer.\n- target_id
+          and actor_name are enrichment fields added by the service layer.\n- target_id
           and actor_id can be removed when referenced users are deleted."
         type: object
       attachments:
@@ -437,27 +439,27 @@ definitions:
       id:
         type: string
       member_count:
-        description: Total number of members in the group, only for group chats
+        description: Total number of members in the group, only for group chats.
         type: integer
       reply_to:
         allOf:
         - $ref: '#/definitions/AtoiTalkAPI_internal_domain_model.ReplyPreviewDTO'
-        description: Preview of the message this message is replying to
+        description: Preview of the message being replied to.
       sender_avatar:
-        description: Avatar URL of the sender
+        description: Avatar URL of the sender.
         type: string
       sender_id:
         description: |-
           ID of the sender when available.
-          Can be null when sender account is deleted or relation is unavailable.
+          Can be null when the sender account is deleted or the relation is unavailable.
         type: string
       sender_name:
         description: |-
           Display name of the sender.
-          Can be "Deleted User" when sender account is deleted.
+          Can be "Deleted User" when the sender account is deleted.
         type: string
       sender_role:
-        description: Role of the sender in the group (owner, admin, member)
+        description: Role of the sender in the group (owner, admin, member).
         type: string
       type:
         type: string
@@ -491,6 +493,9 @@ definitions:
   AtoiTalkAPI_internal_domain_model.RegisterUserRequest:
     properties:
       captcha_token:
+        description: |-
+          Required when CAPTCHA_ENABLED is true (default).
+          May be omitted when CAPTCHA_ENABLED is false.
         type: string
       code:
         type: string
@@ -509,7 +514,6 @@ definitions:
         minLength: 3
         type: string
     required:
-    - captcha_token
     - code
     - email
     - full_name
@@ -549,27 +553,28 @@ definitions:
       evidence_snapshot:
         additionalProperties: true
         description: "Snapshot of reported entity data at report creation time.\nShape
-          depends on target_type.\n\nIn shapes below, chat_id is the Chat entity UUID
-          used by frontend.\ngroup_id is the internal GroupChat entity UUID for backend
-          reference only.\n\ntarget_type = \"message\":\n\n\t{\n\t  \"content\": \"Offensive
-          content...\", // can be null\n\t  \"sender_id\": \"u1...\", // empty string
-          when sender ID unavailable\n\t  \"sender_username\": \"alice\",\n\t  \"sender_name\":
-          \"Alice Wonderland\",\n\t  \"sent_at\": \"2026-02-19T21:14:13Z\",\n\t  \"chat_id\":
-          \"c1...\", // frontend-facing Chat UUID\n\t  \"chat_type\": \"group\", //
-          or \"private\"\n\t  \"is_edited\": false,\n\t  \"attachments\": [\n\t    {\n\t
-          \     \"id\": \"m1...\",\n\t      \"file_name\": \"abc.jpg\",\n\t      \"original_name\":
-          \"photo.jpg\",\n\t      \"file_size\": 12345,\n\t      \"mime_type\": \"image/jpeg\",\n\t
-          \     \"url\": \"https://...\"\n\t    }\n\t  ],\n\t  \"group_id\": \"g1...\"
-          // internal GroupChat UUID, only when chat_type is \"group\"\n\t}\n\ntarget_type
-          = \"group\":\n\n\t{\n\t  \"group_id\": \"g1...\", // internal GroupChat
-          UUID\n\t  \"chat_id\": \"c1...\",  // frontend-facing Chat UUID\n\t  \"name\":
-          \"Bad Group\",\n\t  \"description\": \"...\", // can be null\n\t  \"avatar\":
-          \"https://...\", // can be empty string\n\t  \"created_by\": \"u2...\" //
-          can be null\n\t}\n\ntarget_type = \"user\":\n\n\t{\n\t  \"user_id\": \"u3...\",\n\t
-          \ \"username\": \"baduser\", // can be null\n\t  \"full_name\": \"Bad User\",
-          // can be null\n\t  \"bio\": \"...\", // can be null\n\t  \"avatar\": \"https://...\"
-          // can be empty string\n\t}\n\nNote: attachment URLs may be refreshed when
-          admin fetches report detail."
+          depends on target_type.\n\nIn the shapes below, chat_id is the Chat entity
+          UUID used by the frontend.\ngroup_id is the internal GroupChat entity UUID
+          for backend reference only.\n\ntarget_type = \"message\":\n\n\t{\n\t  \"content\":
+          \"Offensive content...\", // can be null\n\t  \"sender_id\": \"u1...\",
+          // empty string when sender ID unavailable\n\t  \"sender_username\": \"alice\",\n\t
+          \ \"sender_name\": \"Alice Wonderland\",\n\t  \"sent_at\": \"2026-02-19T21:14:13Z\",\n\t
+          \ \"chat_id\": \"c1...\", // frontend-facing Chat UUID\n\t  \"chat_type\":
+          \"group\", // or \"private\"\n\t  \"is_edited\": false,\n\t  \"attachments\":
+          [\n\t    {\n\t      \"id\": \"m1...\",\n\t      \"file_name\": \"abc.jpg\",\n\t
+          \     \"original_name\": \"photo.jpg\",\n\t      \"file_size\": 12345,\n\t
+          \     \"mime_type\": \"image/jpeg\",\n\t      \"url\": \"https://...\"\n\t
+          \   }\n\t  ],\n\t  \"group_id\": \"g1...\" // internal GroupChat UUID, only
+          when chat_type is \"group\"\n\t}\n\ntarget_type = \"group\":\n\n\t{\n\t
+          \ \"group_id\": \"g1...\", // internal GroupChat UUID\n\t  \"chat_id\":
+          \"c1...\",  // frontend-facing Chat UUID\n\t  \"name\": \"Bad Group\",\n\t
+          \ \"description\": \"...\", // can be null\n\t  \"avatar\": \"https://...\",
+          // can be empty string\n\t  \"created_by\": \"u2...\" // can be null\n\t}\n\ntarget_type
+          = \"user\":\n\n\t{\n\t  \"user_id\": \"u3...\",\n\t  \"username\": \"baduser\",
+          // can be null\n\t  \"full_name\": \"Bad User\", // can be null\n\t  \"bio\":
+          \"...\", // can be null\n\t  \"avatar\": \"https://...\" // can be empty
+          string\n\t}\n\nNote: attachment URLs may be refreshed when admin fetches
+          report detail."
         type: object
       id:
         type: string
@@ -580,10 +585,10 @@ definitions:
       reporter_id:
         type: string
       reporter_is_banned:
-        description: Indicates if the reporter is banned
+        description: Indicates if the reporter is banned.
         type: boolean
       reporter_is_deleted:
-        description: Indicates if the reporter's account has been soft-deleted
+        description: Indicates if the reporter's account has been soft-deleted.
         type: boolean
       reporter_name:
         type: string
@@ -598,10 +603,10 @@ definitions:
           To navigate to the group in the frontend, use evidence_snapshot.chat_id instead.
         type: string
       target_is_banned:
-        description: Indicates if the target user (or sender of the message) is banned
+        description: Indicates if the target user (or sender of the message) is banned.
         type: boolean
       target_is_deleted:
-        description: Indicates if the target entity has been soft-deleted
+        description: Indicates if the target entity has been soft-deleted.
         type: boolean
       target_type:
         type: string
@@ -635,6 +640,9 @@ definitions:
   AtoiTalkAPI_internal_domain_model.ResetPasswordRequest:
     properties:
       captcha_token:
+        description: |-
+          Required when CAPTCHA_ENABLED is true (default).
+          May be omitted when CAPTCHA_ENABLED is false.
         type: string
       code:
         type: string
@@ -647,7 +655,6 @@ definitions:
         minLength: 8
         type: string
     required:
-    - captcha_token
     - code
     - confirm_password
     - email
@@ -698,6 +705,9 @@ definitions:
   AtoiTalkAPI_internal_domain_model.SendOTPRequest:
     properties:
       captcha_token:
+        description: |-
+          Required when CAPTCHA_ENABLED is true (default).
+          May be omitted when CAPTCHA_ENABLED is false.
         type: string
       email:
         type: string
@@ -708,7 +718,6 @@ definitions:
         - change_email
         type: string
     required:
-    - captcha_token
     - email
     - mode
     type: object
@@ -768,6 +777,9 @@ definitions:
   AtoiTalkAPI_internal_domain_model.UploadMediaRequest:
     properties:
       captcha_token:
+        description: |-
+          Required when CAPTCHA_ENABLED is true (default).
+          May be omitted when CAPTCHA_ENABLED is false.
         type: string
       file_size:
         type: integer
@@ -784,7 +796,6 @@ definitions:
         - group_avatar
         type: string
     required:
-    - captcha_token
     - file_size
     - mime_type
     - original_name
@@ -1648,7 +1659,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Login with email and password
+      description: |-
+        Login with email and password
+        captcha_token is required when CAPTCHA_ENABLED is true which is the default otherwise it may be omitted
       parameters:
       - description: Login Request
         in: body
@@ -1720,7 +1733,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Register a new user with email, password, and OTP verification.
+      description: |-
+        Register a new user with email, password, and OTP verification.
+        captcha_token is required when CAPTCHA_ENABLED is true which is the default otherwise it may be omitted
       parameters:
       - description: Register User Request
         in: body
@@ -1763,7 +1778,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Reset user password using OTP verification.
+      description: |-
+        Reset user password using OTP verification.
+        captcha_token is required when CAPTCHA_ENABLED is true which is the default otherwise it may be omitted
       parameters:
       - description: Reset Password Request
         in: body
@@ -3027,7 +3044,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a pending media row and upload URL for direct storage upload.
+      description: |-
+        Create a pending media row and upload URL for direct storage upload.
+        captcha_token is required when CAPTCHA_ENABLED is true which is the default otherwise it may be omitted
       parameters:
       - description: Upload request
         in: body
@@ -3330,8 +3349,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Sends an OTP code to the user's email for registration or password
-        reset.
+      description: |-
+        Sends an OTP code to the user's email for registration or password reset.
+        captcha_token is required when CAPTCHA_ENABLED is true which is the default otherwise it may be omitted
       parameters:
       - description: Send OTP Request
         in: body

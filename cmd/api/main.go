@@ -39,7 +39,7 @@ func main() {
 	}
 
 	httpClient := config.NewHTTPClient()
-	validate := config.NewValidator()
+	validate := config.NewValidator(cfg.CaptchaEnabled)
 	chiMux := config.NewChi(cfg)
 
 	bootstrap.Init(cfg, client, validate, s3Client, httpClient, chiMux)
