@@ -23,6 +23,8 @@ func NewS3Client(cfg *AppConfig) *s3.Client {
 
 	client := s3.NewFromConfig(sdkConfig, func(o *s3.Options) {
 		otelaws.AppendMiddlewares(&o.APIOptions)
+		o.ResponseChecksumValidation = aws.ResponseChecksumValidationWhenRequired
+		o.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
 		if cfg.S3Endpoint != "" {
 			o.BaseEndpoint = aws.String(cfg.S3Endpoint)
 			o.UsePathStyle = true

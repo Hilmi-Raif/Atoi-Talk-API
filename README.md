@@ -1,8 +1,8 @@
-# Atoi-Talk-API
+# atoitalk-api
 
 RESTful API and event-driven services for real-time chat applications. Handles authentication, private/group messaging, media uploads, durable event production, and background cleanup jobs. WebSocket connections are served by the separate WebSocket Gateway. Built with Go, PostgreSQL, Redis, and S3-compatible storage.
 
-See [Atoi-Talk](https://github.com/Hilmi-Raif/Atoi-Talk) for an example frontend.
+See [AtoiTalk](https://github.com/hilmi-raif/atoitalk) for an example frontend.
 
 ## Service Guides
 
@@ -325,7 +325,7 @@ For optional FCM delivery, see [Push worker](cmd/push_worker/README.md) and the
 
 ### Releases
 
-See [GitHub Releases](https://github.com/Hilmi-Raif/Atoi-Talk-API/releases) for available versions and release notes. Container images are published to GHCR for each service. Use a version or immutable SHA tag when pinning a deployment.
+See [GitHub Releases](https://github.com/hilmi-raif/atoitalk-api/releases) for available versions and release notes. Container images are published to GHCR for each service. Use a version or immutable SHA tag when pinning a deployment.
 
 ## API Docs
 

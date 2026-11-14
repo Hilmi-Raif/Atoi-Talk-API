@@ -291,6 +291,9 @@ func TestStorageAdapterPresignedRequestsUsePresignEndpoint(t *testing.T) {
 	if err != nil || !strings.HasPrefix(getURL, "http://custom-presign.local:9090/private/file.txt") {
 		t.Fatalf("unexpected presigned GET URL: %q, %v", getURL, err)
 	}
+	if strings.Contains(getURL, "x-amz-checksum-mode") {
+		t.Fatalf("presigned GET URL must not sign x-amz-checksum-mode: %s", getURL)
+	}
 
 	putURL, _, err := adapter.GetPresignedPutURL("file.txt", "text/plain", 12, false, time.Minute)
 	if err != nil || !strings.HasPrefix(putURL, "http://custom-presign.local:9090/private/file.txt") {
