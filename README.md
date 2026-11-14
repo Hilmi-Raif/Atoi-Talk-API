@@ -1,8 +1,8 @@
-# atoitalk-api
+# AtoiTalk API
 
 RESTful API and event-driven services for real-time chat applications. Handles authentication, private/group messaging, media uploads, durable event production, and background cleanup jobs. WebSocket connections are served by the separate WebSocket Gateway. Built with Go, PostgreSQL, Redis, and S3-compatible storage.
 
-See [AtoiTalk](https://github.com/hilmi-raif/atoitalk) for an example frontend.
+See [atoitalk](https://github.com/hilmi-raif/atoitalk) for an example frontend.
 
 ## Service Guides
 
@@ -450,3 +450,8 @@ When changing infrastructure contracts, regenerate mocks with Mockery `2.53.6` u
 ```sh
 go run github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc5 init -g cmd/api/main.go --parseDependency --parseInternal
 ```
+
+## License
+
+This project is licensed under the GNU Affero General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
