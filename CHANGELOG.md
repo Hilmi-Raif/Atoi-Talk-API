@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/hilmi-raif/atoitalk-api/compare/atoitalk-api-v0.1.5...atoitalk-api-v0.1.6) (2026-11-14)
+
+
+### Bug Fixes
+
+* **storage:** correct s3 presigned checksums and normalize project references ([2a19b85](https://github.com/hilmi-raif/atoitalk-api/commit/2a19b857a5bb934790c71b1bd63e7c298de0136f))
+
 ## [0.1.5](https://github.com/hilmi-raif/atoitalk-api/compare/atoitalk-api-v0.1.4...atoitalk-api-v0.1.5) (2026-11-12)
 
 
